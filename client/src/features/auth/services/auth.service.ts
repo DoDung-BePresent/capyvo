@@ -4,19 +4,12 @@ import type { User } from '../types'
 import type { ApiResponse } from '@/shared/types/api'
 
 export const authService = {
-  sendOtp: async (email: string): Promise<void> => {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true },
-    })
-    if (error) throw error
-  },
-
-  verifyOtp: async (email: string, token: string): Promise<void> => {
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'email',
+  loginWithGoogle: async (): Promise<void> => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
     })
     if (error) throw error
   },

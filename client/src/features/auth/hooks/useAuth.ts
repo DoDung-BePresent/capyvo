@@ -1,31 +1,43 @@
+import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { Session } from '@supabase/supabase-js'
 import { queryKeys } from '@/lib/query-keys'
+import supabase from '@/lib/supabase'
 import { authService } from '../services/auth.service'
 
-export function useGetMe() {
+export function useGetMe(session?: Session | null) {
   return useQuery({
     queryKey: queryKeys.auth.me(),
     queryFn: authService.getMe,
+    enabled: !!session,
     retry: false,
     staleTime: Infinity,
   })
 }
 
-export function useSendOtp() {
-  return useMutation({
-    mutationFn: (email: string) => authService.sendOtp(email),
-  })
-}
-
-export function useVerifyOtp() {
+/** Invalidates getMe query khi auth state thay đổi (login/logout) */
+export function useAuthSync() {
   const queryClient = useQueryClient()
 
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() })
+      }
+      if (event === 'SIGNED_OUT') {
+        queryClient.removeQueries({ queryKey: queryKeys.auth.me() })
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [queryClient])
+}
+
+export function useLoginWithGoogle() {
   return useMutation({
-    mutationFn: ({ email, token }: { email: string; token: string }) =>
-      authService.verifyOtp(email, token),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() })
-    },
+    mutationFn: authService.loginWithGoogle,
   })
 }
 

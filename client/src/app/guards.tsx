@@ -1,34 +1,38 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { Spin } from 'antd'
+import { useSession } from '@/features/auth/hooks/useSession'
 import { useGetMe } from '@/features/auth/hooks/useAuth'
 import type { Role } from '@/features/auth/types'
 
 // Chặn user chưa đăng nhập, redirect về /login
 export function ProtectedRoute() {
-  const { data: user, isLoading, isError } = useGetMe()
+  const { session, isInitializing } = useSession()
+  const { data: user, isLoading } = useGetMe(session)
 
-  if (isLoading) return <FullscreenSpin />
-  if (isError || !user) return <Navigate to="/login" replace />
+  if (isInitializing || isLoading) return <FullscreenSpin />
+  if (!session || !user) return <Navigate to="/login" replace />
 
   return <Outlet />
 }
 
 // Chặn user đã đăng nhập vào /login, redirect về trang chính theo role
 export function GuestRoute() {
-  const { data: user, isLoading } = useGetMe()
+  const { session, isInitializing } = useSession()
+  const { data: user, isLoading } = useGetMe(session)
 
-  if (isLoading) return <FullscreenSpin />
-  if (user) return <Navigate to={user.role === 'ADMIN' ? '/admin' : '/'} replace />
+  if (isInitializing || isLoading) return <FullscreenSpin />
+  if (session && user) return <Navigate to={user.role === 'ADMIN' ? '/admin' : '/'} replace />
 
   return <Outlet />
 }
 
 // Chặn route theo role cụ thể
 export function RoleRoute({ role }: { role: Role }) {
-  const { data: user, isLoading, isError } = useGetMe()
+  const { session, isInitializing } = useSession()
+  const { data: user, isLoading } = useGetMe(session)
 
-  if (isLoading) return <FullscreenSpin />
-  if (isError || !user) return <Navigate to="/login" replace />
+  if (isInitializing || isLoading) return <FullscreenSpin />
+  if (!session || !user) return <Navigate to="/login" replace />
   if (user.role !== role) return <Navigate to={user.role === 'ADMIN' ? '/admin' : '/'} replace />
 
   return <Outlet />
