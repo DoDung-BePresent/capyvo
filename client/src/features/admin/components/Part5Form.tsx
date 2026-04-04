@@ -1,4 +1,5 @@
 import { Form, Input, Button, Space } from 'antd'
+import { SoundOutlined } from '@ant-design/icons'
 import type { Part5FormValues } from '../types'
 
 interface Props {
@@ -9,20 +10,26 @@ interface Props {
 export default function Part5Form({ onSubmit, loading }: Props) {
   return (
     <Form layout="vertical" onFinish={onSubmit} requiredMark={false}>
-      <Form.Item label="Nội dung câu hỏi" name="questionText" rules={[{ required: true }]}>
-        <Input.TextArea rows={3} placeholder="Nhập câu hỏi express an opinion..." />
-      </Form.Item>
       <Form.Item
-        label="URL audio câu hỏi"
-        name="questionAudioUrl"
-        rules={[{ required: true }, { type: 'url', message: 'Nhập URL hợp lệ' }]}
+        label="Câu hỏi (câu 11 — prep 45s / response 60s)"
+        name="questionText"
+        rules={[{ required: true, message: 'Nhập nội dung câu hỏi' }]}
+        extra={
+          <Space style={{ fontSize: 12, color: '#888' }}>
+            <SoundOutlined /> Audio sẽ được tự động tạo từ text này
+          </Space>
+        }
       >
-        <Input placeholder="https://..." />
+        <Input.TextArea
+          rows={4}
+          placeholder="Ví dụ: Do you think working from home is more productive than working in an office? Why or why not?"
+        />
       </Form.Item>
+
       <Form.Item>
         <Space>
           <Button type="primary" htmlType="submit" loading={loading}>
-            Lưu câu hỏi
+            Tạo câu + Gen audio
           </Button>
           <Button htmlType="reset">Xóa</Button>
         </Space>

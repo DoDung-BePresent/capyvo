@@ -1,3 +1,23 @@
+// ─── Question model (matches Prisma/API response) ─────────────────────────────
+
+export interface Question {
+  id: string
+  examSetId: string | null
+  partNumber: number
+  questionNumber: number
+  contentText: string | null
+  contextText: string | null
+  contextAudioUrl: string | null
+  questionText: string | null
+  questionAudioUrl: string | null
+  imageUrls: string[]
+  prepTimeSeconds: number
+  responseTimeSeconds: number
+  createdAt: string
+}
+
+// ─── Form values (per part, sent to the UI form) ───────────────────────────────
+
 export interface Part1FormValues {
   questionNumber: 1 | 2
   contentText: string
@@ -5,29 +25,30 @@ export interface Part1FormValues {
 
 export interface Part2FormValues {
   questionNumber: 3 | 4
-  contentText: string
+  imageUrl: string // URL returned after upload
 }
 
+/** Part 3: fills context once + 3 question texts (→ auto TTS) */
 export interface Part3FormValues {
-  questionNumber: 5 | 6 | 7
   contextText: string
-  contextAudioUrl: string
-  questionText: string
-  questionAudioUrl: string
+  q5: string
+  q6: string
+  q7: string
 }
 
+/** Part 4: 1 shared image + 3 question texts (→ auto TTS) */
 export interface Part4FormValues {
-  questionNumber: 8 | 9 | 10
-  imageUrls: string[]
-  questionText: string
-  questionAudioUrl: string
+  imageUrl: string
+  q8: string
+  q9: string
+  q10: string
 }
 
 export interface Part5FormValues {
-  questionNumber: 11
   questionText: string
-  questionAudioUrl: string
 }
+
+// ─── Part metadata ─────────────────────────────────────────────────────────────
 
 export const PART_META = {
   1: {
@@ -74,3 +95,5 @@ export const PART_META = {
     color: '#DC2626',
   },
 } as const
+
+export type PartNumber = keyof typeof PART_META

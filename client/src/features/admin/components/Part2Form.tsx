@@ -1,4 +1,5 @@
-import { Form, Input, Select, Button, Space } from 'antd'
+import { Form, Select, Button, Space } from 'antd'
+import ImageUpload from './ImageUpload'
 import type { Part2FormValues } from '../types'
 
 interface Props {
@@ -11,19 +12,22 @@ export default function Part2Form({ onSubmit, loading }: Props) {
     <Form layout="vertical" onFinish={onSubmit} requiredMark={false}>
       <Form.Item label="Số câu" name="questionNumber" rules={[{ required: true }]}>
         <Select
+          placeholder="Chọn câu"
           options={[
-            { value: 3, label: 'Câu 3' },
-            { value: 4, label: 'Câu 4' },
+            { value: 3, label: 'Câu 3 (prep 45s / response 30s)' },
+            { value: 4, label: 'Câu 4 (prep 45s / response 30s)' },
           ]}
         />
       </Form.Item>
+
       <Form.Item
-        label="Nội dung đọc (text hiển thị trên màn hình)"
-        name="contentText"
-        rules={[{ required: true, message: 'Vui lòng nhập nội dung' }]}
+        label="Hình ảnh miêu tả"
+        name="imageUrl"
+        rules={[{ required: true, message: 'Vui lòng tải ảnh lên' }]}
       >
-        <Input.TextArea rows={6} placeholder="Nhập đoạn văn bản để thí sinh đọc to..." />
+        <ImageUpload />
       </Form.Item>
+
       <Form.Item>
         <Space>
           <Button type="primary" htmlType="submit" loading={loading}>

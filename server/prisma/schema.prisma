@@ -61,7 +61,7 @@ model ExamSet {
 
 model Question {
   id             String   @id @default(uuid())
-  examSetId      String
+  examSetId      String?
   partNumber     Int // 1-5
   questionNumber Int // 1-11
   // Part 1-4: read aloud
@@ -79,7 +79,7 @@ model Question {
   responseTimeSeconds Int
   createdAt        DateTime @default(now())
 
-  examSet       ExamSet        @relation(fields: [examSetId], references: [id], onDelete: Cascade)
+  examSet       ExamSet?       @relation(fields: [examSetId], references: [id], onDelete: SetNull)
   userResponses UserResponse[]
 
   @@unique([examSetId, questionNumber])
