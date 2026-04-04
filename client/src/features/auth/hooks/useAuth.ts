@@ -11,9 +11,21 @@ export function useGetMe() {
   })
 }
 
-export function useSendMagicLink() {
+export function useSendOtp() {
   return useMutation({
-    mutationFn: (email: string) => authService.sendMagicLink(email),
+    mutationFn: (email: string) => authService.sendOtp(email),
+  })
+}
+
+export function useVerifyOtp() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ email, token }: { email: string; token: string }) =>
+      authService.verifyOtp(email, token),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() })
+    },
   })
 }
 
