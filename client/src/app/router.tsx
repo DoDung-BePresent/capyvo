@@ -14,6 +14,10 @@ const router = createBrowserRouter([
     lazy: lazy(() => import('@/features/auth/pages/LoginPage')),
   },
   {
+    path: '/auth/callback',
+    lazy: lazy(async () => await import('@/features/auth/pages/AuthCallbackPage')),
+  },
+  {
     path: '/exam/:examSetId',
     lazy: lazy(() => import('@/features/exam/pages/ExamPage')),
   },

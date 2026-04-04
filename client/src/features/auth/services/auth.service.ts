@@ -1,18 +1,34 @@
+import supabase from '@/lib/supabase'
 import axiosInstance from '@/lib/axios'
-import type { AuthResponse, LoginPayload } from '../types'
+import type { User } from '../types'
 
 export const authService = {
-  login: async (payload: LoginPayload): Promise<AuthResponse> => {
-    const { data } = await axiosInstance.post<AuthResponse>('/auth/login', payload)
+  /**
+   * Gửi magic link tới email — user click link để đăng nhập
+   */
+  sendMagicLink: async (email: string): Promise<void> => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+    if (error) throw error
+  },
+
+  /**
+   * Lấy profile user từ BE (đã sync với Prisma)
+   */
+  getMe: async (): Promise<User> => {
+    const { data } = await axiosInstance.get<User>('/auth/me')
     return data
   },
 
+  /**
+   * Đăng xuất — xóa session Supabase
+   */
   logout: async (): Promise<void> => {
-    await axiosInstance.post('/auth/logout')
-  },
-
-  getMe: async (): Promise<AuthResponse['user']> => {
-    const { data } = await axiosInstance.get<AuthResponse['user']>('/auth/me')
-    return data
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
   },
 }

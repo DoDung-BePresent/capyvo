@@ -1,0 +1,123 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ExamSetType {
+  PRACTICE
+  FORECAST
+  CUSTOM
+}
+
+enum SessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id // Matches Supabase auth.users.id (UUID)
+  email     String   @unique
+  fullName  String?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  practiceSessions PracticeSession[]
+
+  @@map("users")
+}
+
+model ExamSet {
+  id          String      @id @default(uuid())
+  title       String
+  description String?
+  type        ExamSetType @default(PRACTICE)
+  isPublished Boolean     @default(false)
+  createdBy   String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  questions        Question[]
+  practiceSessions PracticeSession[]
+
+  @@map("exam_sets")
+}
+
+model Question {
+  id             String   @id @default(uuid())
+  examSetId      String
+  partNumber     Int // 1-5
+  questionNumber Int // 1-11
+  // Part 1-4: read aloud
+  contentText    String?
+  // Part 3, 5: context audio
+  contextText    String?
+  contextAudioUrl String?
+  // Part 3, 4, 5: question audio
+  questionText    String?
+  questionAudioUrl String?
+  // Part 4: images
+  imageUrls       String[] @default([])
+  // Timing
+  prepTimeSeconds     Int
+  responseTimeSeconds Int
+  createdAt        DateTime @default(now())
+
+  examSet       ExamSet        @relation(fields: [examSetId], references: [id], onDelete: Cascade)
+  userResponses UserResponse[]
+
+  @@unique([examSetId, questionNumber])
+  @@map("questions")
+}
+
+model PracticeSession {
+  id          String        @id @default(uuid())
+  userId      String
+  examSetId   String
+  status      SessionStatus @default(IN_PROGRESS)
+  startedAt   DateTime      @default(now())
+  completedAt DateTime?
+
+  user          User           @relation(fields: [userId], references: [id])
+  examSet       ExamSet        @relation(fields: [examSetId], references: [id])
+  userResponses UserResponse[]
+
+  @@map("practice_sessions")
+}
+
+model UserResponse {
+  id                  String   @id @default(uuid())
+  sessionId           String
+  questionId          String
+  audioUrl            String?
+  transcript          String?
+  pronunciationScore  Json?
+  contentScore        Json?
+  overallScore        Float?
+  feedback            String?
+  evaluatedAt         DateTime?
+  createdAt           DateTime @default(now())
+
+  session  PracticeSession @relation(fields: [sessionId], references: [id])
+  question Question        @relation(fields: [questionId], references: [id])
+
+  @@unique([sessionId, questionId])
+  @@map("user_responses")
+}
+
