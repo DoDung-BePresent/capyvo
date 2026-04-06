@@ -7,13 +7,10 @@ const lazy = (importFn: () => Promise<{ default: React.ComponentType }>) => asyn
 })
 
 const router = createBrowserRouter([
-  // Auth callback — không cần guard
   {
     path: '/auth/callback',
     lazy: lazy(() => import('@/features/auth/pages/AuthCallbackPage')),
   },
-
-  // Guest only (đã login thì redirect ra)
   {
     element: <GuestRoute />,
     children: [
@@ -23,8 +20,6 @@ const router = createBrowserRouter([
       },
     ],
   },
-
-  // User routes
   {
     element: <ProtectedRoute />,
     children: [
@@ -41,8 +36,6 @@ const router = createBrowserRouter([
       },
     ],
   },
-
-  // Admin routes (wrapped in AdminLayout with sidebar)
   {
     element: <ProtectedRoute />,
     children: [

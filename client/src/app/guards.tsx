@@ -1,10 +1,17 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { Spin } from 'antd'
+
+/**
+ * Hooks
+ */
 import { useSession } from '@/features/auth/hooks/useSession'
 import { useGetMe } from '@/features/auth/hooks/useAuth'
+
+/**
+ * Types
+ */
 import type { Role } from '@/features/auth/types'
 
-// Chặn user chưa đăng nhập, redirect về /login
 export function ProtectedRoute() {
   const { session, isInitializing } = useSession()
   const { data: user, isLoading } = useGetMe(session)
@@ -15,7 +22,6 @@ export function ProtectedRoute() {
   return <Outlet />
 }
 
-// Chặn user đã đăng nhập vào /login, redirect về trang chính theo role
 export function GuestRoute() {
   const { session, isInitializing } = useSession()
   const { data: user, isLoading } = useGetMe(session)
@@ -26,7 +32,6 @@ export function GuestRoute() {
   return <Outlet />
 }
 
-// Chặn route theo role cụ thể
 export function RoleRoute({ role }: { role: Role }) {
   const { session, isInitializing } = useSession()
   const { data: user, isLoading } = useGetMe(session)
