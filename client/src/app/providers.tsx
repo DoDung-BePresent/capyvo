@@ -7,6 +7,7 @@ import type { ReactNode } from 'react'
  * Libs
  */
 import queryClient from '@/lib/query-client'
+import { antTheme } from '@/config'
 
 /**
  * Hooks
@@ -26,7 +27,7 @@ export default function Providers({ children }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthSync />
-      <ConfigProvider>
+      <ConfigProvider theme={antTheme}>
         <AntdApp>{children}</AntdApp>
       </ConfigProvider>
       <ReactQueryDevtools initialIsOpen={false} />

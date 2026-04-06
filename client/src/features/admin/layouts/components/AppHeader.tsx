@@ -47,7 +47,6 @@ export function AppHeader() {
 
   return (
     <Header style={{ background: colorBgContainer }}>
-      {/* Breadcrumb-style title */}
       <Space size={4}>
         <Link onClick={() => navigate('/admin')} style={{ color: '#888', fontSize: 13 }}>
           Dashboard
@@ -60,7 +59,6 @@ export function AppHeader() {
         )}
       </Space>
 
-      {/* User avatar + dropdown */}
       <Dropdown menu={{ items: menuItems }} trigger={['click']} placement="bottomRight">
         <Avatar
           size="small"

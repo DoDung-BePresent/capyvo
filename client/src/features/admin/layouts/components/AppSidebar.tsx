@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { PART_META } from '../../types'
+import { SIDEBAR_WIDTHS } from '@/config'
 
 const { Sider } = Layout
 const { Text } = Typography
@@ -61,8 +62,8 @@ export function AppSidebar({ collapsed, onCollapse }: AppSidebarProps) {
       trigger={null}
       collapsible
       collapsed={collapsed}
-      width={240}
-      collapsedWidth={64}
+      width={SIDEBAR_WIDTHS.width}
+      collapsedWidth={SIDEBAR_WIDTHS.collapsedWidth}
       theme="light"
     >
       {/* Logo */}
