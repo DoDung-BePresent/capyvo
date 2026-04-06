@@ -11,7 +11,7 @@ export default function AdminLayout() {
       <AppSidebar collapsed={collapsed} onCollapse={setCollapsed} />
 
       <Layout>
-        <AppHeader />
+        <AppHeader collapsed={collapsed} onCollapse={setCollapsed} />
         <AppContent>
           <Outlet />
         </AppContent>

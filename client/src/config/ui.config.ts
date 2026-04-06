@@ -5,7 +5,6 @@ export const antTheme: ThemeConfig = {
   token: {
     fontFamily: 'Nunito',
     borderRadius: 4,
-    colorPrimary: '#4F46E5',
   },
   components: {
     Typography: {

@@ -1,4 +1,9 @@
-import { Layout, Menu, Typography, Button } from 'antd'
+import { Layout, Menu, Typography } from 'antd'
+import { useNavigate, useLocation } from 'react-router-dom'
+
+/**
+ * Icons
+ */
 import {
   DashboardOutlined,
   ReadOutlined,
@@ -6,11 +11,16 @@ import {
   MessageOutlined,
   TableOutlined,
   BulbOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
 } from '@ant-design/icons'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { PART_META } from '../../types'
+
+/**
+ * Types
+ */
+import { PART_META } from '@/features/admin/types'
+
+/**
+ * Configs
+ */
 import { SIDEBAR_WIDTHS } from '@/config'
 
 const { Sider } = Layout
@@ -49,7 +59,7 @@ interface AppSidebarProps {
   onCollapse: (value: boolean) => void
 }
 
-export function AppSidebar({ collapsed, onCollapse }: AppSidebarProps) {
+export function AppSidebar({ collapsed }: AppSidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -67,25 +77,10 @@ export function AppSidebar({ collapsed, onCollapse }: AppSidebarProps) {
       theme="light"
     >
       {/* Logo */}
-      <div
-        style={{
-          height: 56,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'space-between',
-          padding: collapsed ? '0 20px' : '0 16px 0 20px',
-          borderBottom: '1px solid #f0f0f0',
-        }}
-      >
+      <div className="p-4 px-6">
         {!collapsed && (
           <Text style={{ fontWeight: 700, fontSize: 17, letterSpacing: 0.5 }}>🐹 Capyvo</Text>
         )}
-        <Button
-          type="text"
-          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          onClick={() => onCollapse(!collapsed)}
-          style={{ color: '#666' }}
-        />
       </div>
 
       <Menu
