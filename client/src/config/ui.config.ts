@@ -5,6 +5,7 @@ export const antTheme: ThemeConfig = {
   token: {
     fontFamily: 'Nunito',
     borderRadius: 4,
+    fontSize: 14,
   },
   components: {
     Typography: {
@@ -19,18 +20,10 @@ export const antTheme: ThemeConfig = {
       itemBorderRadius: 0,
       itemHeight: 46,
     },
-    Button: {
-      fontSizeLG: 14,
-    },
-    Input: {
-      fontSizeLG: 14,
-    },
-    InputNumber: {
-      fontSizeLG: 14,
-    },
-    Select: {
-      fontSizeLG: 14,
-    },
+    Button: {},
+    Input: {},
+    InputNumber: {},
+    Select: {},
     Card: {
       colorBorderSecondary: '#E6EBF1',
       headerFontSize: 14,
@@ -38,9 +31,7 @@ export const antTheme: ThemeConfig = {
     Tabs: {
       horizontalItemGutter: 0,
     },
-    DatePicker: {
-      fontSizeLG: 14,
-    },
+    DatePicker: {},
     Divider: {
       marginLG: 0,
     },

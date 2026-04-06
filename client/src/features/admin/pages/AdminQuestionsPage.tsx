@@ -3,6 +3,7 @@ import { Row, Col, Card, Typography, Tag, Space } from 'antd'
 import { RightOutlined } from '@ant-design/icons'
 import { PART_META } from '../types'
 import type { PartNumber } from '../types'
+import { PageHeader } from '@/shared/components'
 
 const { Title, Text } = Typography
 
@@ -11,12 +12,7 @@ export default function AdminQuestionsPage() {
 
   return (
     <Space direction="vertical" size={24} style={{ width: '100%' }}>
-      <div>
-        <Title level={3} style={{ margin: 0 }}>
-          Quản lý câu hỏi
-        </Title>
-        <Text type="secondary">Chọn một Part để thêm và xem câu hỏi.</Text>
-      </div>
+      <PageHeader title="Quản lý câu hỏi" description="Chọn một Part để thêm và xem câu hỏi." />
 
       <Row gutter={[16, 16]}>
         {(Object.entries(PART_META) as [string, (typeof PART_META)[PartNumber]][]).map(

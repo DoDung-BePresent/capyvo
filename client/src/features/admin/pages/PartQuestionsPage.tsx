@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import {
   Typography,
   Card,
@@ -14,7 +14,8 @@ import {
   Spin,
   Form,
 } from 'antd'
-import { ArrowLeftOutlined, DeleteOutlined, SoundOutlined } from '@ant-design/icons'
+import { DeleteOutlined, SoundOutlined } from '@ant-design/icons'
+import { PageHeader } from '@/shared/components'
 import type { ColumnsType } from 'antd/es/table'
 import { PART_META } from '../types'
 import type { PartNumber, Question } from '../types'
@@ -40,7 +41,7 @@ import type {
   Part5FormValues,
 } from '../types'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 // ─── Column definitions ────────────────────────────────────────────────────────
 
@@ -232,7 +233,6 @@ function PartForm({ partNumber, onSuccess }: { partNumber: PartNumber; onSuccess
 
 export default function PartQuestionsPage() {
   const { partNumber: partParam } = useParams<{ partNumber: string }>()
-  const navigate = useNavigate()
   const partNumber = Number(partParam) as PartNumber
 
   const meta = PART_META[partNumber]
@@ -245,27 +245,18 @@ export default function PartQuestionsPage() {
 
   const columns = getColumns(partNumber, deleteQuestion, deleting)
 
+  const responseTimeText =
+    'responseTimeOverride' in meta
+      ? `${meta.responseTime}s (câu cuối ${Object.values(meta.responseTimeOverride as Record<number, number>)[0]}s)`
+      : `${meta.responseTime}s`
+
   return (
     <Space direction="vertical" size={24} style={{ width: '100%' }}>
-      {/* Header */}
-      <Space>
-        <Button
-          type="text"
-          icon={<ArrowLeftOutlined />}
-          onClick={() => navigate('/admin/questions')}
-        />
-        <div>
-          <Title level={4} style={{ margin: 0 }}>
-            {meta.label} — {meta.description}
-          </Title>
-          <Text type="secondary">
-            Prep: {meta.prepTime}s | Response:{' '}
-            {'responseTimeOverride' in meta
-              ? `${meta.responseTime}s (câu cuối ${Object.values(meta.responseTimeOverride)[0]}s)`
-              : `${meta.responseTime}s`}
-          </Text>
-        </div>
-      </Space>
+      <PageHeader
+        title={`${meta.label} — ${meta.description}`}
+        description={`Prep: ${meta.prepTime}s | Response: ${responseTimeText}`}
+        breadcrumbs={[{ label: 'Câu hỏi', href: '/admin/questions' }, { label: meta.label }]}
+      />
 
       <Row gutter={24}>
         {/* Add form */}

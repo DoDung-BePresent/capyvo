@@ -1,6 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ConfigProvider, App as AntdApp } from 'antd'
+import { HelmetProvider } from 'react-helmet-async'
 import type { ReactNode } from 'react'
 
 /**
@@ -25,12 +26,14 @@ interface ProvidersProps {
 
 export default function Providers({ children }: ProvidersProps) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthSync />
-      <ConfigProvider theme={antTheme}>
-        <AntdApp>{children}</AntdApp>
-      </ConfigProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthSync />
+        <ConfigProvider theme={antTheme}>
+          <AntdApp>{children}</AntdApp>
+        </ConfigProvider>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </HelmetProvider>
   )
 }

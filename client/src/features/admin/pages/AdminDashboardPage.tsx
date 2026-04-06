@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Card, Row, Col, Typography } from 'antd'
 import { EditOutlined } from '@ant-design/icons'
+import { PageHeader } from '@/shared/components'
 
 const { Title, Text } = Typography
 
@@ -8,8 +9,8 @@ export default function AdminDashboardPage() {
   const navigate = useNavigate()
 
   return (
-    <div style={{ maxWidth: 900, margin: '48px auto', padding: '0 16px' }}>
-      <Title level={3}>Admin Dashboard</Title>
+    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+      <PageHeader title="Admin Dashboard" />
       <Row gutter={16} style={{ marginTop: 24 }}>
         <Col>
           <Card hoverable style={{ width: 240 }} onClick={() => navigate('/admin/questions')}>
