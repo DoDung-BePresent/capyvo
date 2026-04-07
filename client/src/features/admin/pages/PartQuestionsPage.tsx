@@ -1,21 +1,7 @@
 import { useParams } from 'react-router-dom'
-import {
-  Typography,
-  Card,
-  Row,
-  Col,
-  Table,
-  Button,
-  Tag,
-  Space,
-  Popconfirm,
-  Image,
-  Empty,
-  Spin,
-  Form,
-} from 'antd'
-import { DeleteOutlined, SoundOutlined } from '@ant-design/icons'
-import { PageHeader } from '@/shared/components'
+import { Typography, Button, Tag, Space, Popconfirm, Image, Empty, Form, Drawer } from 'antd'
+import { DeleteOutlined, PlusOutlined, SoundOutlined } from '@ant-design/icons'
+import { PageHeader, DataTable } from '@/shared/components'
 import type { ColumnsType } from 'antd/es/table'
 import { PART_META } from '../types'
 import type { PartNumber, Question } from '../types'
@@ -40,6 +26,7 @@ import type {
   Part4FormValues,
   Part5FormValues,
 } from '../types'
+import { useState } from 'react'
 
 const { Text } = Typography
 
@@ -52,9 +39,15 @@ function getColumns(
 ): ColumnsType<Question> {
   const baseColumns: ColumnsType<Question> = [
     {
+      title: 'No.',
+      key: 'no',
+      width: 60,
+      render: (_: unknown, __: Question, index: number) => index + 1,
+    },
+    {
       title: 'Câu',
       dataIndex: 'questionNumber',
-      width: 70,
+      width: 80,
       render: (n: number) => <Tag color="blue">Câu {n}</Tag>,
     },
   ]
@@ -71,7 +64,7 @@ function getColumns(
         okButtonProps={{ danger: true }}
         onConfirm={() => onDelete(record.id)}
       >
-        <Button type="text" danger size="small" icon={<DeleteOutlined />} loading={deleting} />
+        <Button type="text" danger icon={<DeleteOutlined />} loading={deleting} />
       </Popconfirm>
     ),
   }
@@ -87,7 +80,7 @@ function getColumns(
             {r.prepTimeSeconds}s / {r.responseTimeSeconds}s
           </Text>
         ),
-        width: 100,
+        width: 120,
       },
       deleteColumn,
     ]
@@ -122,7 +115,7 @@ function getColumns(
           ) : (
             '—'
           ),
-        width: 80,
+        width: 90,
       },
       deleteColumn,
     ]
@@ -149,13 +142,12 @@ function getColumns(
           ) : (
             '—'
           ),
-        width: 80,
+        width: 90,
       },
       deleteColumn,
     ]
   }
 
-  // Part 5
   return [
     ...baseColumns,
     { title: 'Câu hỏi', dataIndex: 'questionText', ellipsis: true },
@@ -169,7 +161,7 @@ function getColumns(
         ) : (
           '—'
         ),
-      width: 80,
+      width: 90,
     },
     deleteColumn,
   ]
@@ -235,6 +227,8 @@ export default function PartQuestionsPage() {
   const { partNumber: partParam } = useParams<{ partNumber: string }>()
   const partNumber = Number(partParam) as PartNumber
 
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
   const meta = PART_META[partNumber]
   const { data: questions = [], isLoading } = useGetQuestions(partNumber)
   const { mutate: deleteQuestion, isPending: deleting } = useDeleteQuestion(partNumber)
@@ -256,44 +250,38 @@ export default function PartQuestionsPage() {
         title={`${meta.label} — ${meta.description}`}
         description={`Prep: ${meta.prepTime}s | Response: ${responseTimeText}`}
         breadcrumbs={[{ label: 'Câu hỏi', href: '/admin/questions' }, { label: meta.label }]}
+        extra={
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            size="large"
+            onClick={() => setDrawerOpen(true)}
+          >
+            Thêm câu hỏi
+          </Button>
+        }
       />
 
-      <Row gutter={24}>
-        {/* Add form */}
-        <Col xs={24} xl={10}>
-          <Card title="Thêm câu hỏi mới" size="small">
-            <PartForm partNumber={partNumber} onSuccess={() => {}} />
-          </Card>
-        </Col>
+      <DataTable
+        dataSource={questions}
+        columns={columns}
+        rowKey="id"
+        size="large"
+        loading={isLoading}
+        locale={{ emptyText: <Empty description="Chưa có câu hỏi nào" /> }}
+      />
 
-        {/* Question list */}
-        <Col xs={24} xl={14}>
-          <Card
-            title={
-              <Space>
-                Danh sách câu hỏi
-                <Tag>{questions.length} câu</Tag>
-              </Space>
-            }
-            size="small"
-          >
-            {isLoading ? (
-              <div style={{ textAlign: 'center', padding: 40 }}>
-                <Spin />
-              </div>
-            ) : (
-              <Table
-                dataSource={questions}
-                columns={columns}
-                rowKey="id"
-                size="small"
-                pagination={{ pageSize: 10, showSizeChanger: false }}
-                locale={{ emptyText: <Empty description="Chưa có câu hỏi nào" /> }}
-              />
-            )}
-          </Card>
-        </Col>
-      </Row>
+      <Drawer
+        title="Thêm câu hỏi mới"
+        placement="right"
+        width={560}
+        open={drawerOpen}
+        closeIcon={null}
+        onClose={() => setDrawerOpen(false)}
+        destroyOnHidden
+      >
+        <PartForm partNumber={partNumber} onSuccess={() => setDrawerOpen(false)} />
+      </Drawer>
     </Space>
   )
 }

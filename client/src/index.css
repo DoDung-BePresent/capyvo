@@ -3,9 +3,15 @@
 /* ===== BASE ===== */
 @layer base {
   body {
-    font-family: 'Nunito', sans-serif;
+    font-family: 'Lexend', sans-serif;
   }
   .anticon {
     font-size: 16px !important;
+  }
+}
+
+@layer components {
+  .ant-btn.ant-btn-lg .anticon {
+    margin-top: 3px !important;
   }
 }

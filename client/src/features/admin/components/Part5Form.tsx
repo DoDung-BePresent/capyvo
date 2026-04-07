@@ -9,7 +9,7 @@ interface Props {
 
 export default function Part5Form({ onSubmit, loading }: Props) {
   return (
-    <Form layout="vertical" onFinish={onSubmit} requiredMark={false}>
+    <Form layout="vertical" onFinish={onSubmit} requiredMark={false} size="large">
       <Form.Item
         label="Câu hỏi (câu 11 — prep 45s / response 60s)"
         name="questionText"

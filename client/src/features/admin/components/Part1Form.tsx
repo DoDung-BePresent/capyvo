@@ -8,7 +8,7 @@ interface Props {
 
 export default function Part1Form({ onSubmit, loading }: Props) {
   return (
-    <Form layout="vertical" onFinish={onSubmit} requiredMark={false}>
+    <Form layout="vertical" onFinish={onSubmit} requiredMark={false} size="large">
       <Form.Item label="Số câu" name="questionNumber" rules={[{ required: true }]}>
         <Select
           placeholder="Chọn câu"

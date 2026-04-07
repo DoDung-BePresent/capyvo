@@ -3,7 +3,7 @@ import type { ThemeConfig } from 'antd'
 export const antTheme: ThemeConfig = {
   cssVar: { key: '_,:root,css-var-my-theme-id' },
   token: {
-    fontFamily: 'Nunito',
+    fontFamily: 'Lexend',
     borderRadius: 4,
     fontSize: 14,
   },
@@ -20,7 +20,9 @@ export const antTheme: ThemeConfig = {
       itemBorderRadius: 0,
       itemHeight: 46,
     },
-    Button: {},
+    Button: {
+      fontSizeLG: 14,
+    },
     Input: {},
     InputNumber: {},
     Select: {},
