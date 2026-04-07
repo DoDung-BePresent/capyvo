@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom'
-import { Typography, Button, Tag, Space, Popconfirm, Image, Empty, Form, Drawer } from 'antd'
+import { Typography, Button, Tag, Space, Popconfirm, Image, Empty, Form, Drawer, Input } from 'antd'
 import { DeleteOutlined, PlusOutlined, SoundOutlined } from '@ant-design/icons'
+import type { FormInstance } from 'antd'
 import { PageHeader, DataTable } from '@/shared/components'
 import type { ColumnsType } from 'antd/es/table'
 import { PART_META } from '../types'
@@ -167,58 +168,39 @@ function getColumns(
   ]
 }
 
-// ─── Part form switcher ────────────────────────────────────────────────────────
+// ─── Part form renderer (no mutations, no buttons) ────────────────────────────
 
-function PartForm({ partNumber, onSuccess }: { partNumber: PartNumber; onSuccess: () => void }) {
-  const [form] = Form.useForm()
-  const createPart1 = useCreatePart1()
-  const createPart2 = useCreatePart2()
-  const createPart3 = useCreatePart3()
-  const createPart4 = useCreatePart4()
-  const createPart5 = useCreatePart5()
-
-  const handleSuccess = () => {
-    form.resetFields()
-    onSuccess()
+function PartFormContent({
+  partNumber,
+  form,
+  onSubmit,
+}: {
+  partNumber: PartNumber
+  form: FormInstance
+  onSubmit: (values: unknown) => void
+}) {
+  switch (partNumber) {
+    case 1:
+      return <Part1Form form={form} onSubmit={onSubmit as (v: Part1FormValues) => void} />
+    case 2:
+      return <Part2Form form={form} onSubmit={onSubmit as (v: Part2FormValues) => void} />
+    case 3:
+      return <Part3Form form={form} onSubmit={onSubmit as (v: Part3FormValues) => void} />
+    case 4:
+      return <Part4Form form={form} onSubmit={onSubmit as (v: Part4FormValues) => void} />
+    default:
+      return <Part5Form form={form} onSubmit={onSubmit as (v: Part5FormValues) => void} />
   }
+}
 
-  if (partNumber === 1)
-    return (
-      <Form.Provider onFormFinish={() => handleSuccess()}>
-        <Part1Form
-          onSubmit={(v: Part1FormValues) => createPart1.mutate(v, { onSuccess: handleSuccess })}
-          loading={createPart1.isPending}
-        />
-      </Form.Provider>
-    )
-  if (partNumber === 2)
-    return (
-      <Part2Form
-        onSubmit={(v: Part2FormValues) => createPart2.mutate(v, { onSuccess: handleSuccess })}
-        loading={createPart2.isPending}
-      />
-    )
-  if (partNumber === 3)
-    return (
-      <Part3Form
-        onSubmit={(v: Part3FormValues) => createPart3.mutate(v, { onSuccess: handleSuccess })}
-        loading={createPart3.isPending}
-      />
-    )
-  if (partNumber === 4)
-    return (
-      <Part4Form
-        onSubmit={(v: Part4FormValues) => createPart4.mutate(v, { onSuccess: handleSuccess })}
-        loading={createPart4.isPending}
-      />
-    )
+// ─── Submit label per part ────────────────────────────────────────────────────
 
-  return (
-    <Part5Form
-      onSubmit={(v: Part5FormValues) => createPart5.mutate(v, { onSuccess: handleSuccess })}
-      loading={createPart5.isPending}
-    />
-  )
+const SUBMIT_LABEL: Record<PartNumber, string> = {
+  1: 'Lưu câu hỏi',
+  2: 'Lưu câu hỏi',
+  3: 'Tạo 3 câu + Gen audio',
+  4: 'Tạo 3 câu + Gen audio',
+  5: 'Tạo câu + Gen audio',
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -228,10 +210,51 @@ export default function PartQuestionsPage() {
   const partNumber = Number(partParam) as PartNumber
 
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [drawerForm] = Form.useForm()
 
-  const meta = PART_META[partNumber]
   const { data: questions = [], isLoading } = useGetQuestions(partNumber)
   const { mutate: deleteQuestion, isPending: deleting } = useDeleteQuestion(partNumber)
+
+  const createPart1 = useCreatePart1()
+  const createPart2 = useCreatePart2()
+  const createPart3 = useCreatePart3()
+  const createPart4 = useCreatePart4()
+  const createPart5 = useCreatePart5()
+
+  const isPendingMap: Record<PartNumber, boolean> = {
+    1: createPart1.isPending,
+    2: createPart2.isPending,
+    3: createPart3.isPending,
+    4: createPart4.isPending,
+    5: createPart5.isPending,
+  }
+
+  const handleFormFinish = (values: unknown) => {
+    const onSuccess = () => {
+      drawerForm.resetFields()
+      setDrawerOpen(false)
+    }
+    switch (partNumber) {
+      case 1:
+        createPart1.mutate(values as Part1FormValues, { onSuccess })
+        break
+      case 2:
+        createPart2.mutate(values as Part2FormValues, { onSuccess })
+        break
+      case 3:
+        createPart3.mutate(values as Part3FormValues, { onSuccess })
+        break
+      case 4:
+        createPart4.mutate(values as Part4FormValues, { onSuccess })
+        break
+      case 5:
+        createPart5.mutate(values as Part5FormValues, { onSuccess })
+        break
+    }
+  }
+
+  const meta = PART_META[partNumber]
 
   if (!meta) {
     return <Empty description="Part không hợp lệ" />
@@ -243,6 +266,17 @@ export default function PartQuestionsPage() {
     'responseTimeOverride' in meta
       ? `${meta.responseTime}s (câu cuối ${Object.values(meta.responseTimeOverride as Record<number, number>)[0]}s)`
       : `${meta.responseTime}s`
+
+  const filtered = questions.filter((q) => {
+    if (!search) return true
+    const s = search.toLowerCase()
+    return (
+      q.questionText?.toLowerCase().includes(s) ||
+      q.contentText?.toLowerCase().includes(s) ||
+      q.contextText?.toLowerCase().includes(s) ||
+      String(q.questionNumber).includes(s)
+    )
+  })
 
   return (
     <Space direction="vertical" size={24} style={{ width: '100%' }}>
@@ -263,12 +297,22 @@ export default function PartQuestionsPage() {
       />
 
       <DataTable
-        dataSource={questions}
+        dataSource={filtered}
         columns={columns}
         rowKey="id"
         size="large"
         loading={isLoading}
         locale={{ emptyText: <Empty description="Chưa có câu hỏi nào" /> }}
+        filter={
+          <Input.Search
+            placeholder="Tìm kiếm câu hỏi..."
+            allowClear
+            size="large"
+            style={{ maxWidth: 360 }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        }
       />
 
       <Drawer
@@ -276,11 +320,26 @@ export default function PartQuestionsPage() {
         placement="right"
         width={560}
         open={drawerOpen}
-        closeIcon={null}
         onClose={() => setDrawerOpen(false)}
         destroyOnHidden
+        closeIcon={null}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <Button size="large" onClick={() => drawerForm.resetFields()}>
+              Xóa
+            </Button>
+            <Button
+              type="primary"
+              size="large"
+              loading={isPendingMap[partNumber]}
+              onClick={() => drawerForm.submit()}
+            >
+              {SUBMIT_LABEL[partNumber]}
+            </Button>
+          </div>
+        }
       >
-        <PartForm partNumber={partNumber} onSuccess={() => setDrawerOpen(false)} />
+        <PartFormContent partNumber={partNumber} form={drawerForm} onSubmit={handleFormFinish} />
       </Drawer>
     </Space>
   )

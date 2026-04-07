@@ -1,15 +1,16 @@
-import { Form, Input, Button, Space, Alert } from 'antd'
+import { Form, Input, Alert, Space } from 'antd'
+import type { FormInstance } from 'antd'
 import { SoundOutlined } from '@ant-design/icons'
 import type { Part3FormValues } from '../types'
 
 interface Props {
+  form?: FormInstance
   onSubmit: (values: Part3FormValues) => void
-  loading?: boolean
 }
 
-export default function Part3Form({ onSubmit, loading }: Props) {
+export default function Part3Form({ form, onSubmit }: Props) {
   return (
-    <Form layout="vertical" onFinish={onSubmit} requiredMark={false} size="large">
+    <Form layout="vertical" onFinish={onSubmit} requiredMark={false} size="large" form={form}>
       <Alert
         type="info"
         showIcon
@@ -48,15 +49,6 @@ export default function Part3Form({ onSubmit, loading }: Props) {
           <Input.TextArea rows={2} placeholder={`Nhập nội dung câu hỏi ${num}...`} />
         </Form.Item>
       ))}
-
-      <Form.Item>
-        <Space>
-          <Button type="primary" htmlType="submit" loading={loading}>
-            Tạo 3 câu + Gen audio
-          </Button>
-          <Button htmlType="reset">Xóa</Button>
-        </Space>
-      </Form.Item>
     </Form>
   )
 }

@@ -1,15 +1,16 @@
-import { Form, Input, Button, Space } from 'antd'
+import { Form, Input, Space } from 'antd'
+import type { FormInstance } from 'antd'
 import { SoundOutlined } from '@ant-design/icons'
 import type { Part5FormValues } from '../types'
 
 interface Props {
+  form?: FormInstance
   onSubmit: (values: Part5FormValues) => void
-  loading?: boolean
 }
 
-export default function Part5Form({ onSubmit, loading }: Props) {
+export default function Part5Form({ form, onSubmit }: Props) {
   return (
-    <Form layout="vertical" onFinish={onSubmit} requiredMark={false} size="large">
+    <Form layout="vertical" onFinish={onSubmit} requiredMark={false} size="large" form={form}>
       <Form.Item
         label="Câu hỏi (câu 11 — prep 45s / response 60s)"
         name="questionText"
@@ -24,15 +25,6 @@ export default function Part5Form({ onSubmit, loading }: Props) {
           rows={4}
           placeholder="Ví dụ: Do you think working from home is more productive than working in an office? Why or why not?"
         />
-      </Form.Item>
-
-      <Form.Item>
-        <Space>
-          <Button type="primary" htmlType="submit" loading={loading}>
-            Tạo câu + Gen audio
-          </Button>
-          <Button htmlType="reset">Xóa</Button>
-        </Space>
       </Form.Item>
     </Form>
   )

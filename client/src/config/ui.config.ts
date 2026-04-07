@@ -6,6 +6,7 @@ export const antTheme: ThemeConfig = {
     fontFamily: 'Lexend',
     borderRadius: 4,
     fontSize: 14,
+    fontSizeLG: 14,
   },
   components: {
     Typography: {
@@ -20,9 +21,7 @@ export const antTheme: ThemeConfig = {
       itemBorderRadius: 0,
       itemHeight: 46,
     },
-    Button: {
-      fontSizeLG: 14,
-    },
+    Button: {},
     Input: {},
     InputNumber: {},
     Select: {},

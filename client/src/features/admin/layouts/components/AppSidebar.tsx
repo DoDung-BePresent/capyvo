@@ -4,14 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 /**
  * Icons
  */
-import {
-  DashboardOutlined,
-  ReadOutlined,
-  PictureOutlined,
-  MessageOutlined,
-  TableOutlined,
-  BulbOutlined,
-} from '@ant-design/icons'
+import { DashboardOutlined, ReadOutlined } from '@ant-design/icons'
 
 /**
  * Types
@@ -37,19 +30,11 @@ const MENU_ITEMS = [
     icon: <ReadOutlined />,
     label: 'Câu hỏi',
     children: [
-      { key: '/admin/questions/part/1', icon: <ReadOutlined />, label: PART_META[1].description },
-      {
-        key: '/admin/questions/part/2',
-        icon: <PictureOutlined />,
-        label: PART_META[2].description,
-      },
-      {
-        key: '/admin/questions/part/3',
-        icon: <MessageOutlined />,
-        label: PART_META[3].description,
-      },
-      { key: '/admin/questions/part/4', icon: <TableOutlined />, label: PART_META[4].description },
-      { key: '/admin/questions/part/5', icon: <BulbOutlined />, label: PART_META[5].description },
+      { key: '/admin/questions/part/1', label: PART_META[1].label },
+      { key: '/admin/questions/part/2', label: PART_META[2].label },
+      { key: '/admin/questions/part/3', label: PART_META[3].label },
+      { key: '/admin/questions/part/4', label: PART_META[4].label },
+      { key: '/admin/questions/part/5', label: PART_META[5].label },
     ],
   },
 ]
