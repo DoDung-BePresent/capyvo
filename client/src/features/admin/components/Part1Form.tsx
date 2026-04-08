@@ -1,4 +1,4 @@
-import { Form, Input, Select } from 'antd'
+import { Form, Input, Segmented } from 'antd'
 import type { FormInstance } from 'antd'
 import type { Part1FormValues } from '../types'
 
@@ -21,12 +21,12 @@ export default function Part1Form({ form, onSubmit }: Props) {
         },
       }}
     >
-      <Form.Item label="Số câu" name="questionNumber" rules={[{ required: true }]}>
-        <Select
-          placeholder="Chọn câu"
+      <Form.Item label="Số câu" name="questionNumber" rules={[{ required: true }]} initialValue={1}>
+        <Segmented
+          block
           options={[
-            { value: 1, label: 'Câu 1 (prep 45s / response 45s)' },
-            { value: 2, label: 'Câu 2 (prep 45s / response 45s)' },
+            { value: 1, label: 'Câu 1 — prep 45s / response 45s' },
+            { value: 2, label: 'Câu 2 — prep 45s / response 45s' },
           ]}
         />
       </Form.Item>

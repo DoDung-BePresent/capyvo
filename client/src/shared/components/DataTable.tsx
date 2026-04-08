@@ -4,12 +4,14 @@ import type { ReactNode } from 'react'
 
 type DataTableProps<T extends AnyObject = AnyObject> = TableProps<T> & {
   filter?: ReactNode
+  noCard?: boolean
 }
 
 export const DataTable = <T extends AnyObject = AnyObject>({
   pagination,
   className,
   filter,
+  noCard,
   ...tableProps
 }: DataTableProps<T>) => {
   const defaultPagination = {
@@ -19,6 +21,19 @@ export const DataTable = <T extends AnyObject = AnyObject>({
     style: { paddingInline: 16, paddingBottom: 16, marginBottom: 0 },
     ...pagination,
   }
+
+  const tableElement = (
+    <Table
+      {...tableProps}
+      styles={{
+        content: { scrollbarWidth: 'thin', scrollbarColor: '#eaeaea transparent' },
+        ...tableProps.styles,
+      }}
+      pagination={defaultPagination}
+    />
+  )
+
+  if (noCard) return tableElement
 
   return (
     <>
@@ -32,14 +47,7 @@ export const DataTable = <T extends AnyObject = AnyObject>({
         }
         className={!filter ? className : undefined}
       >
-        <Table
-          {...tableProps}
-          styles={{
-            content: { scrollbarWidth: 'thin', scrollbarColor: '#eaeaea transparent' },
-            ...tableProps.styles,
-          }}
-          pagination={defaultPagination}
-        />
+        {tableElement}
       </Card>
     </>
   )

@@ -1,6 +1,17 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Typography, Button, Tag, Space, Popconfirm, Image, Empty, Form, Drawer, Input } from 'antd'
+import {
+  Typography,
+  Button,
+  Space,
+  Popconfirm,
+  Image,
+  Empty,
+  Form,
+  Drawer,
+  Input,
+  Tabs,
+} from 'antd'
 
 /**
  * Icons
@@ -64,12 +75,6 @@ function getColumns(
       key: 'no',
       width: 60,
       render: (_: unknown, __: Question, index: number) => index + 1,
-    },
-    {
-      title: 'Câu',
-      dataIndex: 'questionNumber',
-      width: 80,
-      render: (n: number) => <Tag color="blue">Câu {n}</Tag>,
     },
   ]
 
@@ -229,6 +234,16 @@ export default function PartQuestionsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [drawerForm] = Form.useForm()
+  const [activeQNum, setActiveQNum] = useState<number>(
+    () => PART_META[partNumber]?.questionNumbers[0] ?? 1,
+  )
+  const [prevPartNumber, setPrevPartNumber] = useState(partNumber)
+
+  if (prevPartNumber !== partNumber) {
+    setPrevPartNumber(partNumber)
+    setActiveQNum(PART_META[partNumber]?.questionNumbers[0] ?? 1)
+    setSearch('')
+  }
 
   const { data: questions = [], isLoading } = useGetQuestions(partNumber)
   const { mutate: deleteQuestion, isPending: deleting } = useDeleteQuestion(partNumber)
@@ -277,6 +292,7 @@ export default function PartQuestionsPage() {
     return <Empty description="Part không hợp lệ" />
   }
 
+  const questionNumbers = [...meta.questionNumbers]
   const columns = getColumns(partNumber, deleteQuestion, deleting)
 
   const responseTimeText =
@@ -284,16 +300,28 @@ export default function PartQuestionsPage() {
       ? `${meta.responseTime}s (câu cuối ${Object.values(meta.responseTimeOverride as Record<number, number>)[0]}s)`
       : `${meta.responseTime}s`
 
-  const filtered = questions.filter((q) => {
-    if (!search) return true
-    const s = search.toLowerCase()
-    return (
-      q.questionText?.toLowerCase().includes(s) ||
-      q.contentText?.toLowerCase().includes(s) ||
-      q.contextText?.toLowerCase().includes(s) ||
-      String(q.questionNumber).includes(s)
-    )
-  })
+  const getFilteredData = (qNum: number): Question[] =>
+    questions.filter((q) => {
+      if (q.questionNumber !== qNum) return false
+      if (!search) return true
+      const s = search.toLowerCase()
+      return (
+        q.questionText?.toLowerCase().includes(s) ||
+        q.contentText?.toLowerCase().includes(s) ||
+        q.contextText?.toLowerCase().includes(s)
+      )
+    })
+
+  const searchNode = (
+    <Input.Search
+      placeholder="Tìm kiếm câu hỏi..."
+      allowClear
+      size="large"
+      style={{ width: 300 }}
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+    />
+  )
 
   return (
     <Space vertical size={0} style={{ width: '100%' }}>
@@ -313,24 +341,41 @@ export default function PartQuestionsPage() {
         }
       />
 
-      <DataTable
-        dataSource={filtered}
-        columns={columns}
-        rowKey="id"
-        size="large"
-        loading={isLoading}
-        locale={{ emptyText: <Empty description="Chưa có câu hỏi nào" /> }}
-        filter={
-          <Input.Search
-            placeholder="Tìm kiếm câu hỏi..."
-            allowClear
-            size="large"
-            style={{ maxWidth: 360 }}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        }
-      />
+      {questionNumbers.length > 1 ? (
+        <Tabs
+          type="card"
+          size="large"
+          activeKey={String(activeQNum)}
+          onChange={(k) => setActiveQNum(Number(k))}
+          tabBarExtraContent={searchNode}
+          tabBarStyle={{ marginBottom: 0 }}
+          items={questionNumbers.map((n) => ({
+            key: String(n),
+            label: `Câu ${n}`,
+            children: (
+              <DataTable
+                noCard
+                dataSource={getFilteredData(n)}
+                columns={columns}
+                rowKey="id"
+                size="large"
+                loading={isLoading}
+                locale={{ emptyText: <Empty description="Chưa có câu hỏi nào" /> }}
+              />
+            ),
+          }))}
+        />
+      ) : (
+        <DataTable
+          dataSource={getFilteredData(questionNumbers[0])}
+          columns={columns}
+          rowKey="id"
+          size="large"
+          loading={isLoading}
+          locale={{ emptyText: <Empty description="Chưa có câu hỏi nào" /> }}
+          filter={searchNode}
+        />
+      )}
 
       <Drawer
         title="Thêm câu hỏi mới"
