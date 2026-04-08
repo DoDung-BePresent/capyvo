@@ -44,6 +44,7 @@ export interface PartInstruction {
 export interface Question {
   id: string
   examSetId: string | null
+  examSet?: { id: string; title: string } | null
   partNumber: number
   questionNumber: number
   contentText: string | null

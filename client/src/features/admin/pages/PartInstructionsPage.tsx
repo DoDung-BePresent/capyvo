@@ -1,10 +1,25 @@
 import { useRef } from 'react'
 import { Button, Card, Flex, Skeleton, Space, Tag, Typography, Upload } from 'antd'
+
+/**
+ * Icons
+ */
 import { SoundOutlined, UploadOutlined } from '@ant-design/icons'
 
+/**
+ * Components
+ */
 import { PageHeader } from '@/shared/components'
-import { PART_META } from '../types'
+
+/**
+ * Hooks
+ */
 import { useGetInstructions, useUploadInstructionAudio } from '../hooks/useInstruction'
+
+/**
+ * Types
+ */
+import { PART_META } from '../types'
 import type { PartInstruction } from '../types'
 
 const { Text } = Typography
@@ -92,7 +107,7 @@ export default function PartInstructionsPage() {
   const instructionMap = new Map(instructions.map((i) => [i.partNumber, i]))
 
   return (
-    <Space direction="vertical" size={24} style={{ width: '100%' }}>
+    <Space vertical size={0} style={{ width: '100%' }}>
       <PageHeader
         title="Cấu hình giọng đọc"
         description="Upload audio hướng dẫn (instruction) cho từng phần thi"

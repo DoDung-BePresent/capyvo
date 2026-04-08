@@ -68,6 +68,7 @@ export function useAssignQuestion(examSetId: string) {
     mutationFn: (questionId: string) => examSetService.assignQuestion(examSetId, questionId),
     onSuccess: (_data, _v, _ctx) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.examSets.detail(examSetId) })
+      queryClient.invalidateQueries({ queryKey: ['questions', 'pool'] })
       message.success('Đã gán câu hỏi vào bộ đề')
     },
     onError: (err: Error) => {

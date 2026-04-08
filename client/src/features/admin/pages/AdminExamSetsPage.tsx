@@ -177,6 +177,11 @@ export default function AdminExamSetsPage() {
           layout="vertical"
           size="large"
           onFinish={handleSubmit}
+          styles={{
+            label: {
+              height: 22,
+            },
+          }}
           initialValues={{ type: 'PRACTICE' }}
         >
           <Form.Item

@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import {
   Button,
   Card,
+  Drawer,
   Empty,
   Flex,
   Image,
-  Modal,
   Popconfirm,
   Radio,
   Skeleton,
@@ -15,9 +15,10 @@ import {
   Tag,
   Typography,
 } from 'antd'
-import { ArrowLeftOutlined, CheckOutlined, SoundOutlined, SwapOutlined } from '@ant-design/icons'
+import { CheckOutlined, LinkOutlined, SoundOutlined, SwapOutlined } from '@ant-design/icons'
 
 import { PageHeader } from '@/shared/components'
+import { DRAWER_WIDTHS } from '@/config'
 import { PART_META } from '../types'
 import type { Question } from '../types'
 import {
@@ -131,43 +132,63 @@ function QuestionSlot({
   )
 }
 
-// ─── Pool modal ─── //
-function AssignModal({
+// ─── Assign drawer ─── //
+function AssignDrawer({
   open,
   questionNumber,
-  examSetId,
+  currentExamSetId,
   onClose,
 }: {
   open: boolean
   questionNumber: number
-  examSetId: string
+  currentExamSetId: string
   onClose: () => void
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const { data: pool = [], isLoading } = useGetPoolQuestions(questionNumber, open)
-  const { mutate: assign, isPending } = useAssignQuestion(examSetId)
+  const { mutate: assign, isPending } = useAssignQuestion(currentExamSetId)
 
-  const handleOk = () => {
+  const handleConfirm = () => {
     if (!selectedId) return
-    assign(selectedId, { onSuccess: onClose })
+    assign(selectedId, {
+      onSuccess: () => {
+        setSelectedId(null)
+        onClose()
+      },
+    })
   }
 
   return (
-    <Modal
-      title={`Chọn câu hỏi cho Câu ${questionNumber}`}
+    <Drawer
+      title={`Chọn câu hỏi — Câu ${questionNumber}`}
+      placement="right"
+      width={DRAWER_WIDTHS.medium}
       open={open}
-      onCancel={onClose}
-      onOk={handleOk}
-      okText="Gán câu"
-      okButtonProps={{ disabled: !selectedId, loading: isPending, icon: <CheckOutlined /> }}
-      cancelText="Hủy"
-      width={680}
-      afterClose={() => setSelectedId(null)}
+      onClose={onClose}
+      destroyOnHidden
+      closeIcon={null}
+      footer={
+        <Flex justify="flex-end" gap={8}>
+          <Button size="large" onClick={onClose}>
+            Hủy
+          </Button>
+          <Button
+            type="primary"
+            size="large"
+            icon={<CheckOutlined />}
+            disabled={!selectedId}
+            loading={isPending}
+            onClick={handleConfirm}
+          >
+            Gán câu này
+          </Button>
+        </Flex>
+      }
     >
       {isLoading ? (
         <Skeleton active />
       ) : pool.length === 0 ? (
-        <Empty description="Không có câu hỏi chưa được gán trong pool" />
+        <Empty description="Chưa có câu hỏi nào cho slot này" />
       ) : (
         <Radio.Group
           value={selectedId}
@@ -175,86 +196,109 @@ function AssignModal({
           style={{ width: '100%' }}
         >
           <Space direction="vertical" style={{ width: '100%' }} size={8}>
-            {pool.map((q) => (
-              <Radio
-                key={q.id}
-                value={q.id}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: `1px solid ${selectedId === q.id ? '#4F46E5' : '#e8e8e8'}`,
-                  borderRadius: 6,
-                  backgroundColor: selectedId === q.id ? '#f0f0ff' : '#fff',
-                }}
-              >
-                <Space direction="vertical" size={4} style={{ marginLeft: 8 }}>
-                  {q.contentText && <Text>{q.contentText}</Text>}
-                  {q.questionText && <Text>{q.questionText}</Text>}
-                  {q.imageUrls?.[0] && (
-                    <Image
-                      src={q.imageUrls[0]}
-                      height={48}
-                      style={{ objectFit: 'cover', borderRadius: 4 }}
-                      preview={false}
-                    />
-                  )}
-                  {q.questionAudioUrl && (
-                    <a
-                      href={q.questionAudioUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <SoundOutlined /> Audio
-                    </a>
-                  )}
-                </Space>
-              </Radio>
-            ))}
+            {pool.map((q) => {
+              const isSelected = selectedId === q.id
+              const assignedElsewhere = q.examSetId !== null && q.examSetId !== currentExamSetId
+              const assignedHere = q.examSetId === currentExamSetId
+
+              return (
+                <Radio
+                  key={q.id}
+                  value={q.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: `1.5px solid ${
+                      isSelected ? '#4F46E5' : assignedElsewhere ? '#fa8c16' : '#e8e8e8'
+                    }`,
+                    borderRadius: 8,
+                    backgroundColor: isSelected ? '#f0f0ff' : assignedHere ? '#f6ffed' : '#fff',
+                  }}
+                >
+                  <Space direction="vertical" size={6} style={{ flex: 1, marginLeft: 8 }}>
+                    {/* Assignment badge */}
+                    <Flex align="center" gap={6}>
+                      {assignedHere && (
+                        <Tag color="green" icon={<CheckOutlined />}>
+                          Bộ đề này
+                        </Tag>
+                      )}
+                      {assignedElsewhere && (
+                        <Tag color="orange" icon={<LinkOutlined />}>
+                          Đã gán: {q.examSet?.title ?? q.examSetId}
+                        </Tag>
+                      )}
+                      {!q.examSetId && <Tag color="default">Chưa gán</Tag>}
+                      {assignedElsewhere && (
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                          · sẽ tự động gỡ khỏi bộ đề kia
+                        </Text>
+                      )}
+                    </Flex>
+
+                    {/* Content */}
+                    {q.contentText && <Text>{q.contentText}</Text>}
+                    {q.questionText && <Text>{q.questionText}</Text>}
+                    {q.imageUrls?.[0] && (
+                      <Image
+                        src={q.imageUrls[0]}
+                        height={56}
+                        style={{ objectFit: 'cover', borderRadius: 4 }}
+                        preview={false}
+                      />
+                    )}
+                    {q.questionAudioUrl && (
+                      <a
+                        href={q.questionAudioUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <SoundOutlined /> Nghe audio
+                      </a>
+                    )}
+                  </Space>
+                </Radio>
+              )
+            })}
           </Space>
         </Radio.Group>
       )}
-    </Modal>
+    </Drawer>
   )
 }
 
 // ─── Page ─── //
 export default function ExamSetDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
 
   const { data: examSet, isLoading } = useGetExamSet(id ?? '')
   const updateMutation = useUpdateExamSet(id ?? '')
   const { mutate: unassign, isPending: unassigning } = useUnassignQuestion(id ?? '')
 
-  const [assignModalQNum, setAssignModalQNum] = useState<number | null>(null)
+  const [assignDrawerQNum, setAssignDrawerQNum] = useState<number | null>(null)
 
   if (isLoading) return <Skeleton active style={{ padding: 24 }} />
   if (!examSet) return <Empty description="Không tìm thấy bộ đề" />
 
   const questionMap = new Map(examSet.questions.map((q) => [q.questionNumber, q]))
 
-  const allQuestionNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-
   return (
-    <Space direction="vertical" size={24} style={{ width: '100%' }}>
+    <Space direction="vertical" size={0} style={{ width: '100%' }}>
       <PageHeader
         title={examSet.title}
         description={examSet.description ?? undefined}
         breadcrumbs={[{ label: 'Bộ đề', href: '/admin/exam-sets' }, { label: examSet.title }]}
         extra={
           <Space>
-            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin/exam-sets')}>
-              Quay lại
-            </Button>
-            <Space>
-              <Text type="secondary">Xuất bản</Text>
-              <Switch
-                checked={examSet.isPublished}
-                loading={updateMutation.isPending}
-                onChange={(checked) => updateMutation.mutate({ isPublished: checked })}
-              />
-            </Space>
+            <Text type="secondary">Xuất bản</Text>
+            <Switch
+              checked={examSet.isPublished}
+              loading={updateMutation.isPending}
+              onChange={(checked) => updateMutation.mutate({ isPublished: checked })}
+            />
           </Space>
         }
       />
@@ -287,30 +331,21 @@ export default function ExamSetDetailPage() {
                 key={qNum}
                 questionNumber={qNum}
                 question={questionMap.get(qNum)}
-                onAssign={setAssignModalQNum}
+                onAssign={setAssignDrawerQNum}
                 onUnassign={(q) => unassign(q.id)}
                 unassignPending={unassigning}
               />
             ))}
           </div>
         ))}
-
-        {/* Ensure all 11 are covered — Part 5 Q11 */}
-        {!allQuestionNumbers.every((n) =>
-          Object.values(PART_META)
-            .flatMap((m) => [...m.questionNumbers])
-            .includes(n as never),
-        ) && null}
       </Card>
 
-      {assignModalQNum !== null && (
-        <AssignModal
-          open
-          questionNumber={assignModalQNum}
-          examSetId={id ?? ''}
-          onClose={() => setAssignModalQNum(null)}
-        />
-      )}
+      <AssignDrawer
+        open={assignDrawerQNum !== null}
+        questionNumber={assignDrawerQNum ?? 1}
+        currentExamSetId={id ?? ''}
+        onClose={() => setAssignDrawerQNum(null)}
+      />
     </Space>
   )
 }

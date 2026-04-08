@@ -75,8 +75,9 @@ export class ExamSetService {
 
   async getPoolQuestions(questionNumber: number) {
     return prisma.question.findMany({
-      where: { questionNumber, examSetId: null },
+      where: { questionNumber },
       orderBy: { createdAt: 'desc' },
+      include: { examSet: { select: { id: true, title: true } } },
     })
   }
 }

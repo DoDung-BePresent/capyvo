@@ -5,6 +5,18 @@
   body {
     font-family: 'Lexend', sans-serif;
   }
+  .ant-form-item-required {
+    flex-direction: row-reverse;
+    display: inline-flex;
+    align-items: center;
+  }
+  .ant-form-item-required::after {
+    display: none;
+  }
+  .ant-form-item-required::before {
+    margin-right: 0;
+    margin-left: 4px;
+  }
   .anticon {
     font-size: 16px !important;
   }
