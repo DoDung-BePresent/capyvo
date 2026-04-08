@@ -27,7 +27,7 @@ export default function Part4Form({ form, onSubmit }: Props) {
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
-        message="Form này tạo cùng lúc 3 câu (8, 9, 10) dùng chung 1 ảnh. Audio câu hỏi sẽ được tự động tạo bằng AI."
+        message="Form này tạo cùng lúc 3 câu (8, 9, 10) dùng chung 1 ảnh và 1 bối cảnh. Audio câu hỏi sẽ được tự động tạo bằng AI."
       />
 
       <Form.Item
@@ -36,6 +36,22 @@ export default function Part4Form({ form, onSubmit }: Props) {
         rules={[{ required: true, message: 'Vui lòng tải ảnh lên' }]}
       >
         <ImageUpload />
+      </Form.Item>
+
+      <Form.Item
+        label="Bối cảnh (context — đọc cho thí sinh nghe trước khi trả lời)"
+        name="contextText"
+        rules={[{ required: true, message: 'Nhập nội dung bối cảnh' }]}
+        extra={
+          <Space style={{ fontSize: 12, color: '#888' }}>
+            <SoundOutlined /> Audio sẽ được tự động tạo từ text này
+          </Space>
+        }
+      >
+        <Input.TextArea
+          rows={4}
+          placeholder="Ví dụ: Imagine you work at a company and your manager asks you..."
+        />
       </Form.Item>
 
       {([8, 9, 10] as const).map((num, idx) => (

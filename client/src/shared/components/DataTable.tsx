@@ -26,6 +26,9 @@ export const DataTable = <T extends AnyObject = AnyObject>({
     <Table
       {...tableProps}
       styles={{
+        root: {
+          background: 'white',
+        },
         content: { scrollbarWidth: 'thin', scrollbarColor: '#eaeaea transparent' },
         ...tableProps.styles,
       }}

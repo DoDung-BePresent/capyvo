@@ -38,6 +38,7 @@ export interface Part3FormValues {
 
 /** Part 4: 1 shared image + 3 question texts (→ auto TTS) */
 export interface Part4FormValues {
+  contextText: string
   imageUrl: string
   q8: string
   q9: string
