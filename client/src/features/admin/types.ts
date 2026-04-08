@@ -1,3 +1,44 @@
+// ─── ExamSet model ─────────────────────────────────────────────────────────────
+
+export type ExamSetType = 'PRACTICE' | 'FORECAST' | 'CUSTOM'
+
+export interface ExamSet {
+  id: string
+  title: string
+  description: string | null
+  type: ExamSetType
+  isPublished: boolean
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+  _count?: { questions: number }
+}
+
+export interface ExamSetWithQuestions extends ExamSet {
+  questions: Question[]
+}
+
+export interface CreateExamSetPayload {
+  title: string
+  description?: string
+  type: ExamSetType
+}
+
+export interface UpdateExamSetPayload {
+  title?: string
+  description?: string
+  type?: ExamSetType
+  isPublished?: boolean
+}
+
+// ─── PartInstruction model ─────────────────────────────────────────────────────
+
+export interface PartInstruction {
+  partNumber: number
+  audioUrl: string | null
+  updatedAt: string
+}
+
 // ─── Question model (matches Prisma/API response) ─────────────────────────────
 
 export interface Question {

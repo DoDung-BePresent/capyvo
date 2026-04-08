@@ -57,6 +57,18 @@ const router = createBrowserRouter([
                 path: '/admin/questions/part/:partNumber',
                 lazy: lazy(() => import('@/features/admin/pages/PartQuestionsPage')),
               },
+              {
+                path: '/admin/exam-sets',
+                lazy: lazy(() => import('@/features/admin/pages/AdminExamSetsPage')),
+              },
+              {
+                path: '/admin/exam-sets/:id',
+                lazy: lazy(() => import('@/features/admin/pages/ExamSetDetailPage')),
+              },
+              {
+                path: '/admin/instructions',
+                lazy: lazy(() => import('@/features/admin/pages/PartInstructionsPage')),
+              },
             ],
           },
         ],

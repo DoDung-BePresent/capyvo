@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 /**
  * Icons
  */
-import { DashboardOutlined, ReadOutlined } from '@ant-design/icons'
+import { DashboardOutlined, FileDoneOutlined, ReadOutlined, SoundOutlined } from '@ant-design/icons'
 
 /**
  * Types
@@ -37,6 +37,16 @@ const MENU_ITEMS = [
       { key: '/admin/questions/part/5', label: PART_META[5].label },
     ],
   },
+  {
+    key: '/admin/exam-sets',
+    icon: <FileDoneOutlined />,
+    label: 'Bộ đề',
+  },
+  {
+    key: '/admin/instructions',
+    icon: <SoundOutlined />,
+    label: 'Cấu hình giọng đọc',
+  },
 ]
 
 interface AppSidebarProps {
@@ -48,7 +58,9 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const selectedKey = location.pathname
+  const selectedKey = location.pathname.startsWith('/admin/exam-sets')
+    ? '/admin/exam-sets'
+    : location.pathname
   const openKeys =
     !collapsed && location.pathname.startsWith('/admin/questions') ? ['questions'] : []
 

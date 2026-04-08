@@ -29,6 +29,7 @@ export const CreatePart3Schema = z.object({
 })
 
 export const CreatePart4Schema = z.object({
+  contextText: z.string().min(1),
   imageUrl: z.string().url(),
   questions: z
     .array(
@@ -161,6 +162,8 @@ export class QuestionService {
   async createPart4(body: unknown) {
     const dto = CreatePart4Schema.parse(body)
 
+    const contextAudioUrl = await generateAndUploadTTS(dto.contextText, 'context-p4')
+
     const questions = await Promise.all(
       dto.questions.map(async (q) => {
         const questionAudioUrl = await generateAndUploadTTS(q.questionText, `q${q.questionNumber}`)
@@ -169,6 +172,8 @@ export class QuestionService {
           data: {
             partNumber: 4,
             questionNumber: q.questionNumber,
+            contextText: dto.contextText,
+            contextAudioUrl,
             imageUrls: [dto.imageUrl],
             questionText: q.questionText,
             questionAudioUrl,

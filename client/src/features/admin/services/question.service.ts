@@ -42,6 +42,7 @@ export const questionService = {
 
   createPart4: async (payload: Part4FormValues): Promise<Question[]> => {
     const body = {
+      contextText: payload.contextText,
       imageUrl: payload.imageUrl,
       questions: [
         { questionNumber: 8, questionText: payload.q8 },

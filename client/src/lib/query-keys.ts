@@ -20,6 +20,7 @@ export const queryKeys = {
     byPart: (partNumber: number) => ['questions', 'part', partNumber] as const,
     byExamSet: (examSetId: string) => ['questions', 'exam-set', examSetId] as const,
     detail: (id: string) => ['questions', 'detail', id] as const,
+    pool: (questionNumber: number) => ['questions', 'pool', questionNumber] as const,
   },
 
   // Practice sessions
@@ -38,5 +39,10 @@ export const queryKeys = {
   // System audio
   systemAudio: {
     all: () => ['system-audio'] as const,
+  },
+
+  // Part instructions (manual audio per part)
+  partInstructions: {
+    all: () => ['part-instructions'] as const,
   },
 }
