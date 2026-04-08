@@ -7,15 +7,15 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false)
 
   return (
-    <Layout hasSider style={{ minHeight: '100vh' }}>
+    <Layout hasSider style={{ height: '100vh', overflow: 'hidden' }}>
       <AppSidebar collapsed={collapsed} onCollapse={setCollapsed} />
 
       <Layout>
         <AppHeader collapsed={collapsed} onCollapse={setCollapsed} />
         <AppContent>
           <Outlet />
+          <AppFooter />
         </AppContent>
-        <AppFooter />
       </Layout>
     </Layout>
   )

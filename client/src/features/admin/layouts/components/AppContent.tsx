@@ -8,5 +8,9 @@ interface AppContentProps {
 }
 
 export function AppContent({ children }: AppContentProps) {
-  return <Content className="p-5 px-10">{children}</Content>
+  return (
+    <Content className="p-5 px-10 pb-0" style={{ overflowY: 'auto' }}>
+      {children}
+    </Content>
+  )
 }

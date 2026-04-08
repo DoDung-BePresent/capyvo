@@ -94,6 +94,14 @@ model PartInstruction {
   @@map("part_instructions")
 }
 
+model SystemAudio {
+  key       String   @id // e.g. START_SPEAKING, START_RESPONSE
+  audioUrl  String?
+  updatedAt DateTime @updatedAt
+
+  @@map("system_audio")
+}
+
 model PracticeSession {
   id          String        @id @default(uuid())
   userId      String

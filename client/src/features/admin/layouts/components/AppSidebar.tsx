@@ -72,6 +72,7 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
       width={SIDEBAR_WIDTHS.width}
       collapsedWidth={SIDEBAR_WIDTHS.collapsedWidth}
       theme="light"
+      style={{ height: '100vh', overflow: 'auto', position: 'sticky', top: 0 }}
     >
       {/* Logo */}
       <div className="p-4 px-6">

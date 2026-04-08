@@ -39,6 +39,27 @@ export interface PartInstruction {
   updatedAt: string
 }
 
+// ─── SystemAudio model ─────────────────────────────────────────────────────────
+
+export type SystemAudioKey = 'START_SPEAKING' | 'START_RESPONSE'
+
+export const SYSTEM_AUDIO_META: Record<SystemAudioKey, { label: string; description: string }> = {
+  START_SPEAKING: {
+    label: 'Tín hiệu bắt đầu nói',
+    description: 'Phát trước khi thí sinh bắt đầu đọc / trả lời',
+  },
+  START_RESPONSE: {
+    label: 'Tín hiệu bắt đầu phản hồi',
+    description: 'Phát khi hệ thống bắt đầu ghi âm câu trả lời',
+  },
+}
+
+export interface SystemAudio {
+  key: SystemAudioKey
+  audioUrl: string | null
+  updatedAt: string
+}
+
 // ─── Question model (matches Prisma/API response) ─────────────────────────────
 
 export interface Question {
