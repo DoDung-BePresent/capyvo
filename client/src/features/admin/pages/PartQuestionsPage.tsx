@@ -1,16 +1,40 @@
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Typography, Button, Tag, Space, Popconfirm, Image, Empty, Form, Drawer, Input } from 'antd'
+
+/**
+ * Icons
+ */
 import { DeleteOutlined, PlusOutlined, SoundOutlined } from '@ant-design/icons'
+
+/**
+ * Types
+ */
 import type { FormInstance } from 'antd'
-import { PageHeader, DataTable } from '@/shared/components'
 import type { ColumnsType } from 'antd/es/table'
 import { PART_META } from '../types'
 import type { PartNumber, Question } from '../types'
+import type {
+  Part1FormValues,
+  Part2FormValues,
+  Part3FormValues,
+  Part4FormValues,
+  Part5FormValues,
+} from '../types'
+
+/**
+ * Components
+ */
+import { PageHeader, DataTable } from '@/shared/components'
 import Part1Form from '../components/Part1Form'
 import Part2Form from '../components/Part2Form'
 import Part3Form from '../components/Part3Form'
 import Part4Form from '../components/Part4Form'
 import Part5Form from '../components/Part5Form'
+
+/**
+ * Hooks
+ */
 import {
   useGetQuestions,
   useCreatePart1,
@@ -20,19 +44,15 @@ import {
   useCreatePart5,
   useDeleteQuestion,
 } from '../hooks/useQuestion'
-import type {
-  Part1FormValues,
-  Part2FormValues,
-  Part3FormValues,
-  Part4FormValues,
-  Part5FormValues,
-} from '../types'
-import { useState } from 'react'
+
+/**
+ * Configs
+ */
+import { DRAWER_WIDTHS } from '@/config'
 
 const { Text } = Typography
 
-// ─── Column definitions ────────────────────────────────────────────────────────
-
+// ─── Column definitions ─── //
 function getColumns(
   partNumber: PartNumber,
   onDelete: (id: string) => void,
@@ -168,8 +188,7 @@ function getColumns(
   ]
 }
 
-// ─── Part form renderer (no mutations, no buttons) ────────────────────────────
-
+// ─── Part form renderer (no mutations, no buttons) ─── //
 function PartFormContent({
   partNumber,
   form,
@@ -193,8 +212,7 @@ function PartFormContent({
   }
 }
 
-// ─── Submit label per part ────────────────────────────────────────────────────
-
+// ─── Submit label per part ─── //
 const SUBMIT_LABEL: Record<PartNumber, string> = {
   1: 'Lưu câu hỏi',
   2: 'Lưu câu hỏi',
@@ -203,8 +221,7 @@ const SUBMIT_LABEL: Record<PartNumber, string> = {
   5: 'Tạo câu + Gen audio',
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
+// ─── Page ─── //
 export default function PartQuestionsPage() {
   const { partNumber: partParam } = useParams<{ partNumber: string }>()
   const partNumber = Number(partParam) as PartNumber
@@ -279,7 +296,7 @@ export default function PartQuestionsPage() {
   })
 
   return (
-    <Space direction="vertical" size={24} style={{ width: '100%' }}>
+    <Space vertical size={0} style={{ width: '100%' }}>
       <PageHeader
         title={`${meta.label} — ${meta.description}`}
         description={`Prep: ${meta.prepTime}s | Response: ${responseTimeText}`}
@@ -318,7 +335,7 @@ export default function PartQuestionsPage() {
       <Drawer
         title="Thêm câu hỏi mới"
         placement="right"
-        width={560}
+        width={DRAWER_WIDTHS.medium}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         destroyOnHidden

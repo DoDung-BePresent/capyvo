@@ -9,7 +9,18 @@ interface Props {
 
 export default function Part1Form({ form, onSubmit }: Props) {
   return (
-    <Form layout="vertical" onFinish={onSubmit} requiredMark={false} size="large" form={form}>
+    <Form
+      layout="vertical"
+      onFinish={onSubmit}
+      requiredMark={false}
+      size="large"
+      form={form}
+      styles={{
+        label: {
+          height: 22,
+        },
+      }}
+    >
       <Form.Item label="Số câu" name="questionNumber" rules={[{ required: true }]}>
         <Select
           placeholder="Chọn câu"

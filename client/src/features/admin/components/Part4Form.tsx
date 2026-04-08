@@ -11,7 +11,18 @@ interface Props {
 
 export default function Part4Form({ form, onSubmit }: Props) {
   return (
-    <Form layout="vertical" onFinish={onSubmit} requiredMark={false} size="large" form={form}>
+    <Form
+      layout="vertical"
+      onFinish={onSubmit}
+      requiredMark={false}
+      size="large"
+      form={form}
+      styles={{
+        label: {
+          height: 22,
+        },
+      }}
+    >
       <Alert
         type="info"
         showIcon
