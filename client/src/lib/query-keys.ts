@@ -24,7 +24,8 @@ export const queryKeys = {
     detail: (id: string) => ['questions', 'detail', id] as const,
     pool: (questionNumber: number) => ['questions', 'pool', questionNumber] as const,
     practiceSets: (partNumber: number) => ['questions', 'practice-sets', partNumber] as const,
-    set: (leaderId: string) => ['questions', 'set', leaderId] as const,
+    byPartAndSet: (partNumber: number, examSetId: string) =>
+      ['questions', 'part-set', partNumber, examSetId] as const,
   },
 
   // Practice sessions

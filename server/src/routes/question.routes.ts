@@ -9,7 +9,6 @@ const ctrl = new QuestionController()
 // Any authenticated user can fetch questions (needed for practice mode)
 router.get('/', authenticate, (req, res, next) => ctrl.getQuestions(req, res, next))
 router.get('/practice-sets', authenticate, (req, res, next) => ctrl.getPracticeSets(req, res, next))
-router.get('/set/:leaderId', authenticate, (req, res, next) => ctrl.getSetByLeader(req, res, next))
 
 // The rest are admin-only
 router.use(authenticate, requireRole('ADMIN'))

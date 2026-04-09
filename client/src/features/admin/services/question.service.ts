@@ -28,8 +28,10 @@ export const questionService = {
     return data.data
   },
 
-  getSetByLeader: async (leaderId: string): Promise<Question[]> => {
-    const { data } = await axiosInstance.get<ApiResponse<Question[]>>(`/questions/set/${leaderId}`)
+  getByPartAndSet: async (partNumber: number, examSetId: string): Promise<Question[]> => {
+    const { data } = await axiosInstance.get<ApiResponse<Question[]>>('/questions', {
+      params: { partNumber, examSetId },
+    })
     return data.data
   },
 

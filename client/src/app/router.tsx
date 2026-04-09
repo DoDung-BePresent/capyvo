@@ -42,7 +42,7 @@ const router = createBrowserRouter([
           // Fullscreen exam pages — no layout
           { path: '/exam/:examSetId', lazy: lazy(() => import('@/features/exam/pages/ExamPage')) },
           {
-            path: '/practice/set/:leaderId',
+            path: '/practice/part/:partNumber/set/:examSetId',
             lazy: lazy(() => import('@/features/exam/pages/PartExamPage')),
           },
           {

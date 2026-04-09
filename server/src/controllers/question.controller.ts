@@ -77,11 +77,12 @@ export class QuestionController {
   async getQuestions(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const partNumber = Number(req.query['partNumber'])
+      const examSetId = req.query['examSetId'] as string | undefined
       if (!partNumber || partNumber < 1 || partNumber > 5) {
         res.status(400).json({ success: false, message: 'partNumber must be 1–5' })
         return
       }
-      const questions = await questionService.getQuestions(partNumber)
+      const questions = await questionService.getQuestions(partNumber, examSetId)
       res.json({ success: true, data: questions })
     } catch (err) {
       next(err)
@@ -111,19 +112,6 @@ export class QuestionController {
       }
       const sets = await questionService.getPracticeSets(partNumber)
       res.json({ success: true, data: sets })
-    } catch (err) {
-      next(err)
-    }
-  }
-
-  async getSetByLeader(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const questions = await questionService.getSetByLeader(req.params['leaderId'] as string)
-      if (!questions) {
-        res.status(404).json({ success: false, message: 'Set not found' })
-        return
-      }
-      res.json({ success: true, data: questions })
     } catch (err) {
       next(err)
     }
