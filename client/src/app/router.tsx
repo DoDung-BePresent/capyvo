@@ -32,10 +32,19 @@ const router = createBrowserRouter([
             children: [
               { path: '/', lazy: lazy(() => import('@/features/exam/pages/HomePage')) },
               { path: '/practice', lazy: lazy(() => import('@/features/exam/pages/PracticePage')) },
+              {
+                path: '/practice/part/:partNumber',
+                lazy: lazy(() => import('@/features/exam/pages/PartPracticePage')),
+              },
               { path: '/exam', lazy: lazy(() => import('@/features/exam/pages/ExamListPage')) },
             ],
           },
+          // Fullscreen exam pages — no layout
           { path: '/exam/:examSetId', lazy: lazy(() => import('@/features/exam/pages/ExamPage')) },
+          {
+            path: '/practice/part/:partNumber/start',
+            lazy: lazy(() => import('@/features/exam/pages/PartExamPage')),
+          },
           {
             path: '/result/:sessionId',
             lazy: lazy(() => import('@/features/exam/pages/ResultPage')),

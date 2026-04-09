@@ -88,4 +88,22 @@ export class ExamSetController {
       next(err)
     }
   }
+
+  async getPublished(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const examSets = await examSetService.findPublished()
+      res.json({ success: true, data: examSets })
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  async getPublishedById(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const examSet = await examSetService.findPublishedById(req.params['id'] as string)
+      res.json({ success: true, data: examSet })
+    } catch (err) {
+      next(err)
+    }
+  }
 }

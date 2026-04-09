@@ -5,6 +5,13 @@ import { authenticate, requireRole } from '@/middlewares/authenticate'
 const router = Router()
 const controller = new ExamSetController()
 
+// ─── User-accessible routes (authenticated, no role restriction) ──────────────
+router.get('/published', authenticate, (req, res, next) => controller.getPublished(req, res, next))
+router.get('/:id/take', authenticate, (req, res, next) =>
+  controller.getPublishedById(req, res, next),
+)
+
+// ─── Admin-only routes ────────────────────────────────────────────────────────
 router.use(authenticate, requireRole('ADMIN'))
 
 // Pool must come before /:id to avoid route conflict

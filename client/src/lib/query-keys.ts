@@ -13,6 +13,8 @@ export const queryKeys = {
     all: () => ['exam-sets'] as const,
     list: (filters?: Record<string, unknown>) => ['exam-sets', 'list', filters] as const,
     detail: (id: string) => ['exam-sets', 'detail', id] as const,
+    published: () => ['exam-sets', 'published'] as const,
+    publishedDetail: (id: string) => ['exam-sets', 'published', id] as const,
   },
 
   // Questions

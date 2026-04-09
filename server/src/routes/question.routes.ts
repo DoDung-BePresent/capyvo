@@ -6,10 +6,12 @@ import { requireRole } from '@/middlewares/authenticate'
 const router = Router()
 const ctrl = new QuestionController()
 
-// All question management routes require admin auth
+// Any authenticated user can fetch questions by part (needed for practice mode)
+router.get('/', authenticate, (req, res, next) => ctrl.getQuestions(req, res, next))
+
+// The rest are admin-only
 router.use(authenticate, requireRole('ADMIN'))
 
-router.get('/', (req, res, next) => ctrl.getQuestions(req, res, next))
 router.delete('/:id', (req, res, next) => ctrl.deleteQuestion(req, res, next))
 
 // Upload image → returns { url }

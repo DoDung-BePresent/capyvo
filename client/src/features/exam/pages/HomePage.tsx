@@ -32,6 +32,12 @@ export default function HomePage() {
             </Text>
           </Flex>
         }
+        styles={{
+          body: {
+            paddingLeft: 10,
+          },
+        }}
+        className="w-fit"
       >
         <Heatmap activityByDate={activityByDate} />
       </Card>

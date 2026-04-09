@@ -83,13 +83,13 @@ export function Heatmap({ activityByDate = new Map() }: HeatmapProps) {
   const totalWidth = grid.length * (CELL + GAP)
 
   return (
-    <div style={{ display: 'inline-block', overflowX: 'auto' }}>
+    <div style={{ display: 'inline-block' }}>
       {/* Month labels */}
       <div
         style={{
           display: 'flex',
           marginLeft: 32,
-          marginBottom: 6,
+          marginBottom: 22,
           position: 'relative',
           width: totalWidth,
         }}

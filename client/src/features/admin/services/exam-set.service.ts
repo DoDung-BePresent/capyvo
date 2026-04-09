@@ -55,4 +55,16 @@ export const examSetService = {
     })
     return data.data
   },
+
+  getPublished: async (): Promise<ExamSet[]> => {
+    const { data } = await axiosInstance.get<ApiResponse<ExamSet[]>>('/exam-sets/published')
+    return data.data
+  },
+
+  getPublishedById: async (id: string): Promise<ExamSetWithQuestions> => {
+    const { data } = await axiosInstance.get<ApiResponse<ExamSetWithQuestions>>(
+      `/exam-sets/${id}/take`,
+    )
+    return data.data
+  },
 }

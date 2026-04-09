@@ -73,6 +73,23 @@ export class ExamSetService {
     return prisma.question.update({ where: { id: questionId }, data: { examSetId: null } })
   }
 
+  async findPublished() {
+    return prisma.examSet.findMany({
+      where: { isPublished: true },
+      orderBy: { createdAt: 'desc' },
+      include: { _count: { select: { questions: true } } },
+    })
+  }
+
+  async findPublishedById(id: string) {
+    const examSet = await prisma.examSet.findUnique({
+      where: { id, isPublished: true },
+      include: { questions: { orderBy: { questionNumber: 'asc' } } },
+    })
+    if (!examSet) throw new NotFoundError('ExamSet')
+    return examSet
+  }
+
   async getPoolQuestions(questionNumber: number) {
     return prisma.question.findMany({
       where: { questionNumber },
