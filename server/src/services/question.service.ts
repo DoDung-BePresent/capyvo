@@ -210,6 +210,45 @@ export class QuestionService {
     })
   }
 
+  async getPracticeSets(partNumber: number) {
+    const questions = await prisma.question.findMany({
+      where: { partNumber },
+      orderBy: [{ createdAt: 'asc' }, { questionNumber: 'asc' }],
+    })
+
+    // Parts 3 & 4 questions are grouped by shared contextText
+    if (partNumber === 3 || partNumber === 4) {
+      const groups = new Map<string, typeof questions>()
+      for (const q of questions) {
+        const key = q.contextText ?? q.id
+        if (!groups.has(key)) groups.set(key, [])
+        groups.get(key)!.push(q)
+      }
+      return Array.from(groups.values()).map((qs) => {
+        const sorted = qs.sort((a, b) => a.questionNumber - b.questionNumber)
+        return { leaderId: sorted[0].id, questions: sorted }
+      })
+    }
+
+    // Parts 1, 2, 5: each question is its own practice set
+    return questions.map((q) => ({ leaderId: q.id, questions: [q] }))
+  }
+
+  async getSetByLeader(leaderId: string) {
+    const leader = await prisma.question.findUnique({ where: { id: leaderId } })
+    if (!leader) return null
+
+    // Parts 3 & 4: return all questions with the same contextText in this part
+    if ((leader.partNumber === 3 || leader.partNumber === 4) && leader.contextText) {
+      return prisma.question.findMany({
+        where: { partNumber: leader.partNumber, contextText: leader.contextText },
+        orderBy: { questionNumber: 'asc' },
+      })
+    }
+
+    return [leader]
+  }
+
   async deleteQuestion(id: string) {
     return prisma.question.delete({ where: { id } })
   }

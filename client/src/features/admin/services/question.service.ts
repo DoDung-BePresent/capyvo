@@ -2,6 +2,7 @@ import axiosInstance from '@/lib/axios'
 import type { ApiResponse } from '@/shared/types/api'
 import type {
   Question,
+  PracticeSet,
   Part1FormValues,
   Part2FormValues,
   Part3FormValues,
@@ -14,6 +15,21 @@ export const questionService = {
     const { data } = await axiosInstance.get<ApiResponse<Question[]>>('/questions', {
       params: { partNumber },
     })
+    return data.data
+  },
+
+  getPracticeSets: async (partNumber: number): Promise<PracticeSet[]> => {
+    const { data } = await axiosInstance.get<ApiResponse<PracticeSet[]>>(
+      '/questions/practice-sets',
+      {
+        params: { partNumber },
+      },
+    )
+    return data.data
+  },
+
+  getSetByLeader: async (leaderId: string): Promise<Question[]> => {
+    const { data } = await axiosInstance.get<ApiResponse<Question[]>>(`/questions/set/${leaderId}`)
     return data.data
   },
 

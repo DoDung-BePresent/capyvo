@@ -161,3 +161,10 @@ export const PART_META = {
 } as const
 
 export type PartNumber = keyof typeof PART_META
+
+// ─── Practice set (grouped questions for practice) ────────────────────────────
+
+export interface PracticeSet {
+  leaderId: string
+  questions: Question[]
+}

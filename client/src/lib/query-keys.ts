@@ -23,6 +23,8 @@ export const queryKeys = {
     byExamSet: (examSetId: string) => ['questions', 'exam-set', examSetId] as const,
     detail: (id: string) => ['questions', 'detail', id] as const,
     pool: (questionNumber: number) => ['questions', 'pool', questionNumber] as const,
+    practiceSets: (partNumber: number) => ['questions', 'practice-sets', partNumber] as const,
+    set: (leaderId: string) => ['questions', 'set', leaderId] as const,
   },
 
   // Practice sessions

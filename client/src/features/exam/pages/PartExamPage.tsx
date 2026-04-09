@@ -5,15 +5,14 @@ import { questionService } from '@/features/admin/services/question.service'
 import { queryKeys } from '@/lib/query-keys'
 import { ExamRunner } from '../components/ExamRunner'
 
-export default function PartExamPage() {
-  const { partNumber } = useParams<{ partNumber: string }>()
+export default function SetExamPage() {
+  const { leaderId } = useParams<{ leaderId: string }>()
   const navigate = useNavigate()
-  const part = Number(partNumber)
 
   const { data: questions = [], isLoading } = useQuery({
-    queryKey: queryKeys.questions.byPart(part),
-    queryFn: () => questionService.getByPart(part),
-    enabled: !!part,
+    queryKey: queryKeys.questions.set(leaderId ?? ''),
+    queryFn: () => questionService.getSetByLeader(leaderId ?? ''),
+    enabled: !!leaderId,
   })
 
   return (
