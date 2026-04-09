@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { questionService } from '@/features/admin/services/question.service'
 import { queryKeys } from '@/lib/query-keys'
 import { ExamRunner } from '../components/ExamRunner'
+import { MicPermissionGate } from '../components/MicPermissionGate'
 
 export default function PartExamPage() {
   const { partNumber, examSetId } = useParams<{ partNumber: string; examSetId: string }>()
@@ -17,10 +18,12 @@ export default function PartExamPage() {
   })
 
   return (
-    <ExamRunner
-      questions={questions}
-      isLoading={isLoading}
-      onDone={() => navigate('/practice', { replace: true })}
-    />
+    <MicPermissionGate>
+      <ExamRunner
+        questions={questions}
+        isLoading={isLoading}
+        onDone={() => navigate('/practice', { replace: true })}
+      />
+    </MicPermissionGate>
   )
 }

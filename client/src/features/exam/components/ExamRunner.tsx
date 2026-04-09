@@ -1,6 +1,6 @@
-import { useEffect, useReducer, useRef } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Button, Image, Spin } from 'antd'
+import { Button, Image, Modal, Spin, Typography } from 'antd'
 import { RightOutlined } from '@ant-design/icons'
 
 import { PART_META } from '@/features/admin/types'
@@ -8,6 +8,8 @@ import type { Question } from '@/features/admin/types'
 import { instructionService } from '@/features/admin/services/instruction.service'
 import { systemAudioService } from '@/features/admin/services/system-audio.service'
 import { queryKeys } from '@/lib/query-keys'
+import { responseService } from '@/features/exam/services/response.service'
+import { MicWaveform } from './MicWaveform'
 
 // ─── Directions text per part ─── //
 const PART_DIRECTIONS: Record<number, string> = {
@@ -48,8 +50,12 @@ function buildPhases(questions: Question[]): Phase[] {
 }
 
 // ─── Reducer ─── //
-type State = { phases: Phase[]; phaseIndex: number; secondsLeft: number }
-type Action = { type: 'init'; phases: Phase[] } | { type: 'next' } | { type: 'tick' }
+type State = { phases: Phase[]; phaseIndex: number; secondsLeft: number; responseEnded: boolean }
+type Action =
+  | { type: 'init'; phases: Phase[] }
+  | { type: 'next' }
+  | { type: 'tick' }
+  | { type: 'response_saved' }
 
 function phaseInitSeconds(phase: Phase | undefined): number {
   if (
@@ -70,19 +76,44 @@ function reducer(state: State, action: Action): State {
         phases: action.phases,
         phaseIndex: 0,
         secondsLeft: phaseInitSeconds(action.phases[0]),
+        responseEnded: false,
       }
     }
     case 'next': {
       const next = state.phaseIndex + 1
-      return { ...state, phaseIndex: next, secondsLeft: phaseInitSeconds(state.phases[next]) }
+      return {
+        ...state,
+        phaseIndex: next,
+        secondsLeft: phaseInitSeconds(state.phases[next]),
+        responseEnded: false,
+      }
     }
     case 'tick': {
       const s = state.secondsLeft - 1
+      const current = state.phases[state.phaseIndex]
       if (s <= 0) {
+        if (current?.kind === 'response') {
+          // Don't auto-advance — let the saving effect handle it
+          return { ...state, secondsLeft: 0, responseEnded: true }
+        }
         const next = state.phaseIndex + 1
-        return { ...state, phaseIndex: next, secondsLeft: phaseInitSeconds(state.phases[next]) }
+        return {
+          ...state,
+          phaseIndex: next,
+          secondsLeft: phaseInitSeconds(state.phases[next]),
+          responseEnded: false,
+        }
       }
       return { ...state, secondsLeft: s }
+    }
+    case 'response_saved': {
+      const next = state.phaseIndex + 1
+      return {
+        ...state,
+        phaseIndex: next,
+        secondsLeft: phaseInitSeconds(state.phases[next]),
+        responseEnded: false,
+      }
     }
     default:
       return state
@@ -93,6 +124,42 @@ function reducer(state: State, action: Action): State {
 function formatTime(secs: number): string {
   const s = Math.max(0, secs)
   return `00:${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+}
+
+// ─── SavingModal ─── //
+const { Text } = Typography
+
+function SavingModal({ open }: { open: boolean }) {
+  return (
+    <Modal
+      open={open}
+      footer={null}
+      closable={false}
+      centered
+      title={null}
+      styles={{ body: { padding: 0, overflow: 'hidden' } }}
+    >
+      <div
+        style={{
+          padding: '18px 24px',
+          textAlign: 'center',
+        }}
+      >
+        <Text style={{ fontSize: 20, fontWeight: 700 }}>Stop Talking</Text>
+      </div>
+      <div style={{ padding: '28px 32px', textAlign: 'center' }}>
+        <Text style={{ color: '#1D4ED8', fontSize: 15, display: 'block', marginBottom: 10 }}>
+          Your response time has ended. Stop speaking now.
+        </Text>
+        <Text style={{ color: '#1D4ED8', fontSize: 15, display: 'block', marginBottom: 10 }}>
+          You will automatically proceed to the next question after your response has been saved.
+        </Text>
+        <Text style={{ color: '#1D4ED8', fontSize: 15, display: 'block' }}>
+          This may take several seconds.
+        </Text>
+      </div>
+    </Modal>
+  )
 }
 
 // ─── TimerBar ─── //
@@ -113,17 +180,11 @@ function TimerBar({
         backgroundColor: '#1a1a1a',
         display: 'flex',
         justifyContent: 'center',
+        alignItems: 'center',
+        padding: '10px 40px',
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 3,
-          padding: '12px 40px',
-        }}
-      >
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
         <span
           style={{
             color: '#bbb',
@@ -251,10 +312,20 @@ function InstructionScreen({
 // ─── Question screen ─── //
 type TimerPhase = Extract<Phase, { kind: 'prep_signal' | 'prep' | 'response_signal' | 'response' }>
 
-function QuestionScreen({ phase, seconds }: { phase: TimerPhase; seconds: number }) {
+function QuestionScreen({
+  phase,
+  seconds,
+  recordingStream,
+}: {
+  phase: TimerPhase
+  seconds: number
+  recordingStream?: MediaStream | null
+}) {
   const { question } = phase
   const label =
     phase.kind === 'prep' || phase.kind === 'prep_signal' ? 'PREPARATION TIME' : 'RESPONSE TIME'
+  // TimerBar height is ~68px; waveform strip is 72px
+  const bottomOffset = 68
 
   return (
     <div
@@ -264,7 +335,7 @@ function QuestionScreen({ phase, seconds }: { phase: TimerPhase; seconds: number
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        padding: '60px 80px 120px',
+        padding: `60px 80px ${bottomOffset + (recordingStream ? 72 : 0) + 16}px`,
       }}
     >
       <div style={{ maxWidth: 820, width: '100%' }}>
@@ -291,6 +362,38 @@ function QuestionScreen({ phase, seconds }: { phase: TimerPhase; seconds: number
         )}
       </div>
 
+      {/* Waveform strip above TimerBar */}
+      {recordingStream && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: bottomOffset,
+            left: 0,
+            right: 0,
+            backgroundColor: '#111',
+            padding: '8px 40px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <div
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              backgroundColor: '#ff4d4f',
+              flexShrink: 0,
+              animation: 'pulse 1.2s ease-in-out infinite',
+            }}
+          />
+          <div className="w-60">
+            <MicWaveform stream={recordingStream} height={40} />
+          </div>
+        </div>
+      )}
+
       <TimerBar label={label} seconds={seconds} />
     </div>
   )
@@ -304,7 +407,12 @@ export interface ExamRunnerProps {
 }
 
 export function ExamRunner({ questions, isLoading, onDone }: ExamRunnerProps) {
-  const [state, dispatch] = useReducer(reducer, { phases: [], phaseIndex: 0, secondsLeft: 0 })
+  const [state, dispatch] = useReducer(reducer, {
+    phases: [],
+    phaseIndex: 0,
+    secondsLeft: 0,
+    responseEnded: false,
+  })
 
   const { data: partInstructions = [], isLoading: isLoadingInstructions } = useQuery({
     queryKey: queryKeys.partInstructions.all(),
@@ -318,6 +426,14 @@ export function ExamRunner({ questions, isLoading, onDone }: ExamRunnerProps) {
     staleTime: Infinity,
   })
 
+  // ─ Recording state ─
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const audioStreamRef = useRef<MediaStream | null>(null)
+  const [recordingStream, setRecordingStream] = useState<MediaStream | null>(null)
+  // Stable ref to the question currently being answered (for upload after stop)
+  const currentResponseQuestionRef = useRef<Question | null>(null)
+
   useEffect(() => {
     if (!questions.length) return
     dispatch({ type: 'init', phases: buildPhases(questions) })
@@ -325,11 +441,20 @@ export function ExamRunner({ questions, isLoading, onDone }: ExamRunnerProps) {
 
   const currentPhase = state.phases[state.phaseIndex] as Phase | undefined
 
+  // Keep question ref in sync (must run every render so no deps)
+  useEffect(() => {
+    if (currentPhase?.kind === 'response') {
+      currentResponseQuestionRef.current = currentPhase.question
+    }
+  })
+
+  // Timer — pause after responseEnded to prevent double-transition
   useEffect(() => {
     if (currentPhase?.kind !== 'prep' && currentPhase?.kind !== 'response') return
+    if (state.responseEnded) return
     const id = setInterval(() => dispatch({ type: 'tick' }), 1000)
     return () => clearInterval(id)
-  }, [state.phaseIndex, currentPhase?.kind])
+  }, [state.phaseIndex, currentPhase?.kind, state.responseEnded])
 
   // Play system audio for signal phases and auto-advance when done
   useEffect(() => {
@@ -363,6 +488,93 @@ export function ExamRunner({ questions, isLoading, onDone }: ExamRunnerProps) {
       audio.src = ''
     }
   }, [state.phaseIndex, currentPhase?.kind, systemAudios])
+
+  // Start microphone + recorder when response phase begins
+  useEffect(() => {
+    if (currentPhase?.kind !== 'response') return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop())
+          return
+        }
+        audioStreamRef.current = stream
+        setRecordingStream(stream)
+
+        audioChunksRef.current = []
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : MediaRecorder.isTypeSupported('audio/webm')
+            ? 'audio/webm'
+            : ''
+        const recorder = mimeType
+          ? new MediaRecorder(stream, { mimeType })
+          : new MediaRecorder(stream)
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) audioChunksRef.current.push(e.data)
+        }
+        recorder.start(100)
+        recorderRef.current = recorder
+      } catch {
+        // Microphone unavailable — continue without recording
+      }
+    })()
+
+    return () => {
+      cancelled = true
+      setRecordingStream(null)
+      if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+        recorderRef.current.stop()
+      }
+      recorderRef.current = null
+      audioStreamRef.current?.getTracks().forEach((t) => t.stop())
+      audioStreamRef.current = null
+    }
+  }, [state.phaseIndex, currentPhase?.kind])
+
+  // When response timer ends: stop recorder → upload → advance
+  useEffect(() => {
+    if (!state.responseEnded) return
+
+    const question = currentResponseQuestionRef.current
+
+    const finalize = async (blob: Blob | null) => {
+      setRecordingStream(null)
+      audioStreamRef.current?.getTracks().forEach((t) => t.stop())
+      audioStreamRef.current = null
+
+      if (blob && blob.size > 0 && question) {
+        try {
+          await responseService.saveAudio(question.id, blob)
+        } catch {
+          // Upload failure — still proceed to next question
+        }
+      }
+      dispatch({ type: 'response_saved' })
+    }
+
+    const recorder = recorderRef.current
+    if (!recorder || recorder.state === 'inactive') {
+      const blob =
+        audioChunksRef.current.length > 0
+          ? new Blob(audioChunksRef.current, { type: recorder?.mimeType || 'audio/webm' })
+          : null
+      finalize(blob)
+    } else {
+      recorder.onstop = () => {
+        const blob =
+          audioChunksRef.current.length > 0
+            ? new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+            : null
+        finalize(blob)
+      }
+      recorder.requestData()
+      recorder.stop()
+    }
+  }, [state.responseEnded])  
 
   useEffect(() => {
     if (currentPhase?.kind === 'done') {
@@ -405,7 +617,17 @@ export function ExamRunner({ questions, isLoading, onDone }: ExamRunnerProps) {
     currentPhase.kind === 'response_signal' ||
     currentPhase.kind === 'response'
   ) {
-    return <QuestionScreen phase={currentPhase} seconds={state.secondsLeft} />
+    const isRecording = currentPhase.kind === 'response' && !!recordingStream
+    return (
+      <>
+        <QuestionScreen
+          phase={currentPhase}
+          seconds={state.secondsLeft}
+          recordingStream={isRecording ? recordingStream : null}
+        />
+        <SavingModal open={state.responseEnded} />
+      </>
+    )
   }
 
   return null
