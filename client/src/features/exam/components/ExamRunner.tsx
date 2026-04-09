@@ -385,8 +385,8 @@ function QuestionScreen({
               borderRadius: '50%',
               backgroundColor: '#ff4d4f',
               flexShrink: 0,
-              animation: 'pulse 1.2s ease-in-out infinite',
             }}
+            className="animate-pulse"
           />
           <div className="w-60">
             <MicWaveform stream={recordingStream} height={40} />
@@ -574,7 +574,7 @@ export function ExamRunner({ questions, isLoading, onDone }: ExamRunnerProps) {
       recorder.requestData()
       recorder.stop()
     }
-  }, [state.responseEnded])  
+  }, [state.responseEnded])
 
   useEffect(() => {
     if (currentPhase?.kind === 'done') {

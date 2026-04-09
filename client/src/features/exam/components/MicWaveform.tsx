@@ -6,18 +6,14 @@ export interface MicWaveformProps {
   color?: string
   barWidth?: number
   barGap?: number
-  barRadius?: number
-  noiseThreshold?: number
 }
 
 export function MicWaveform({
   stream,
-  height = 56,
+  height = 106,
   color = '#818cf8',
-  barWidth = 4,
-  barGap = 2,
-  barRadius = 2,
-  noiseThreshold = 12,
+  barWidth = 18,
+  barGap = 10,
 }: MicWaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -27,8 +23,8 @@ export function MicWaveform({
 
     const audioCtx = new AudioContext()
     const analyser = audioCtx.createAnalyser()
-    analyser.fftSize = 256
-    analyser.smoothingTimeConstant = 0.75
+    analyser.fftSize = 1024
+    analyser.smoothingTimeConstant = 0.8
 
     const source = audioCtx.createMediaStreamSource(stream)
     source.connect(analyser)
@@ -40,12 +36,13 @@ export function MicWaveform({
 
     function draw() {
       animId = requestAnimationFrame(draw)
-      analyser.getByteFrequencyData(dataArray)
+      analyser.getByteTimeDomainData(dataArray)
 
       if (!canvas) return
       const ctx = canvas.getContext('2d')!
       const W = canvas.width
       const H = canvas.height
+      const midY = H / 2
 
       ctx.clearRect(0, 0, W, H)
       ctx.fillStyle = color
@@ -55,23 +52,20 @@ export function MicWaveform({
       const sliceSize = Math.max(1, Math.floor(bufferLength / count))
 
       for (let i = 0; i < count; i++) {
-        let sum = 0
+        let maxDev = 0
         for (let j = 0; j < sliceSize; j++) {
-          sum += dataArray[i * sliceSize + j] ?? 0
+          const v = dataArray[i * sliceSize + j] ?? 128
+          const dev = Math.abs(v - 128)
+          if (dev > maxDev) maxDev = dev
         }
-        const avg = sum / sliceSize
 
-        // below noiseThreshold → treat as silence (no bar)
-        const amplitude = avg < noiseThreshold ? 0 : avg / 255
-        const barH = Math.max(2 * (amplitude > 0 ? 1 : 0), amplitude * H)
-
-        if (barH === 0) continue
+        // 128 = silence → amplitude 0, bars are just a thin line
+        const amplitude = maxDev / 128
+        const barH = Math.max(3, Math.pow(amplitude, 0.5) * H * 0.9)
 
         const x = i * step
-        const y = (H - barH) / 2
-
         ctx.beginPath()
-        ctx.roundRect(x, y, barWidth, barH, barRadius)
+        ctx.roundRect(x, midY - barH / 2, barWidth, barH, 2)
         ctx.fill()
       }
     }
@@ -83,7 +77,7 @@ export function MicWaveform({
       source.disconnect()
       audioCtx.close()
     }
-  }, [stream, height, color, barWidth, barGap, barRadius, noiseThreshold])
+  }, [stream, height, color, barWidth, barGap])
 
   return (
     <canvas
