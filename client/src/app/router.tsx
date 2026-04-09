@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom'
 import { GuestRoute, ProtectedRoute, RoleRoute } from './guards'
 import AdminLayout from '@/features/admin/layouts/AdminLayout'
+import UserLayout from '@/features/exam/layouts/UserLayout'
 
 const lazy = (importFn: () => Promise<{ default: React.ComponentType }>) => async () => ({
   Component: (await importFn()).default,
@@ -26,7 +27,14 @@ const router = createBrowserRouter([
       {
         element: <RoleRoute role="USER" />,
         children: [
-          { path: '/', lazy: lazy(() => import('@/features/exam/pages/HomePage')) },
+          {
+            element: <UserLayout />,
+            children: [
+              { path: '/', lazy: lazy(() => import('@/features/exam/pages/HomePage')) },
+              { path: '/practice', lazy: lazy(() => import('@/features/exam/pages/PracticePage')) },
+              { path: '/exam', lazy: lazy(() => import('@/features/exam/pages/ExamListPage')) },
+            ],
+          },
           { path: '/exam/:examSetId', lazy: lazy(() => import('@/features/exam/pages/ExamPage')) },
           {
             path: '/result/:sessionId',

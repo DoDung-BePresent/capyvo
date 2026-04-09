@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Layout } from 'antd'
-import { Outlet } from 'react-router-dom'
 import { AppSidebar, AppHeader, AppContent, AppFooter } from './components'
 
 export default function AdminLayout() {
@@ -12,10 +11,8 @@ export default function AdminLayout() {
 
       <Layout>
         <AppHeader collapsed={collapsed} onCollapse={setCollapsed} />
-        <AppContent>
-          <Outlet />
-          <AppFooter />
-        </AppContent>
+        <AppContent />
+        <AppFooter />
       </Layout>
     </Layout>
   )
