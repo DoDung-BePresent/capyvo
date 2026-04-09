@@ -1,9 +1,13 @@
-import { useEffect, useReducer } from 'react'
+import { useEffect, useReducer, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Button, Image, Spin } from 'antd'
 import { RightOutlined } from '@ant-design/icons'
 
 import { PART_META } from '@/features/admin/types'
 import type { Question } from '@/features/admin/types'
+import { instructionService } from '@/features/admin/services/instruction.service'
+import { systemAudioService } from '@/features/admin/services/system-audio.service'
+import { queryKeys } from '@/lib/query-keys'
 
 // ─── Directions text per part ─── //
 const PART_DIRECTIONS: Record<number, string> = {
@@ -17,8 +21,10 @@ const PART_DIRECTIONS: Record<number, string> = {
 // ─── Phase model ─── //
 type Phase =
   | { kind: 'instruction'; partNumber: number }
-  | { kind: 'prep'; question: Question; totalSeconds: number }
-  | { kind: 'response'; question: Question; totalSeconds: number }
+  | { kind: 'prep_signal'; question: Question; totalSeconds: number } // show question, play START_SPEAKING, timer frozen
+  | { kind: 'prep'; question: Question; totalSeconds: number } // timer counting
+  | { kind: 'response_signal'; question: Question; totalSeconds: number } // play START_RESPONSE, timer frozen
+  | { kind: 'response'; question: Question; totalSeconds: number } // timer counting
   | { kind: 'done' }
 
 function buildPhases(questions: Question[]): Phase[] {
@@ -31,7 +37,9 @@ function buildPhases(questions: Question[]): Phase[] {
       phases.push({ kind: 'instruction', partNumber: q.partNumber })
       lastPart = q.partNumber
     }
+    phases.push({ kind: 'prep_signal', question: q, totalSeconds: q.prepTimeSeconds })
     phases.push({ kind: 'prep', question: q, totalSeconds: q.prepTimeSeconds })
+    phases.push({ kind: 'response_signal', question: q, totalSeconds: q.responseTimeSeconds })
     phases.push({ kind: 'response', question: q, totalSeconds: q.responseTimeSeconds })
   }
 
@@ -44,7 +52,15 @@ type State = { phases: Phase[]; phaseIndex: number; secondsLeft: number }
 type Action = { type: 'init'; phases: Phase[] } | { type: 'next' } | { type: 'tick' }
 
 function phaseInitSeconds(phase: Phase | undefined): number {
-  return phase?.kind === 'prep' || phase?.kind === 'response' ? phase.totalSeconds : 0
+  if (
+    phase?.kind === 'prep_signal' ||
+    phase?.kind === 'prep' ||
+    phase?.kind === 'response_signal' ||
+    phase?.kind === 'response'
+  ) {
+    return phase.totalSeconds
+  }
+  return 0
 }
 
 function reducer(state: State, action: Action): State {
@@ -83,17 +99,10 @@ function formatTime(secs: number): string {
 function TimerBar({
   label,
   seconds,
-  totalSeconds,
 }: {
   label: 'PREPARATION TIME' | 'RESPONSE TIME'
   seconds: number
-  totalSeconds: number
 }) {
-  const r = 18
-  const circ = 2 * Math.PI * r
-  const dashOffset = circ * (1 - Math.max(0, seconds) / (totalSeconds || 1))
-  const arcColor = label === 'RESPONSE TIME' ? '#ff4d4f' : '#fa8c16'
-
   return (
     <div
       style={{
@@ -109,53 +118,34 @@ function TimerBar({
       <div
         style={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          gap: 20,
-          padding: '10px 40px',
-          minWidth: 320,
+          gap: 3,
+          padding: '12px 40px',
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-          <span
-            style={{
-              color: '#bbb',
-              fontSize: 11,
-              letterSpacing: 3,
-              fontFamily: '"Courier New", monospace',
-              textTransform: 'uppercase',
-            }}
-          >
-            {label}
-          </span>
-          <span
-            style={{
-              color: '#fff',
-              fontSize: 32,
-              fontFamily: '"Courier New", monospace',
-              fontVariantNumeric: 'tabular-nums',
-              lineHeight: 1.1,
-            }}
-          >
-            {formatTime(seconds)}
-          </span>
-        </div>
-
-        <svg key={`${label}-${totalSeconds}`} width={44} height={44}>
-          <circle cx={22} cy={22} r={r} fill="none" stroke="#3a3a3a" strokeWidth={3} />
-          <circle
-            cx={22}
-            cy={22}
-            r={r}
-            fill="none"
-            stroke={arcColor}
-            strokeWidth={3}
-            strokeLinecap="round"
-            strokeDasharray={`${circ}`}
-            strokeDashoffset={`${dashOffset}`}
-            transform="rotate(-90 22 22)"
-            style={{ transition: 'stroke-dashoffset 0.95s linear' }}
-          />
-        </svg>
+        <span
+          style={{
+            color: '#bbb',
+            fontSize: 11,
+            letterSpacing: 3,
+            fontFamily: '"Courier New", monospace',
+            textTransform: 'uppercase',
+          }}
+        >
+          {label}
+        </span>
+        <span
+          style={{
+            color: '#fff',
+            fontSize: 32,
+            fontFamily: '"Courier New", monospace',
+            fontVariantNumeric: 'tabular-nums',
+            lineHeight: 1.1,
+          }}
+        >
+          {formatTime(seconds)}
+        </span>
       </div>
     </div>
   )
@@ -164,9 +154,11 @@ function TimerBar({
 // ─── Instruction screen ─── //
 function InstructionScreen({
   partNumber,
+  audioSequence,
   onContinue,
 }: {
   partNumber: number
+  audioSequence: string[]
   onContinue: () => void
 }) {
   const meta = PART_META[partNumber as keyof typeof PART_META]
@@ -174,6 +166,40 @@ function InstructionScreen({
   const qRange =
     qNums.length > 1 ? `Questions ${qNums[0]}-${qNums[qNums.length - 1]}` : `Question ${qNums[0]}`
   const shortDesc = meta.description.split(': ')[1] ?? meta.description
+
+  // Stable ref so the effect doesn't need `onContinue` in its deps array.
+  const onContinueRef = useRef(onContinue)
+  useEffect(() => {
+    onContinueRef.current = onContinue
+  })
+
+  useEffect(() => {
+    if (!audioSequence.length) return
+    let cancelled = false
+    let current: HTMLAudioElement | null = null
+
+    const playAt = (i: number) => {
+      if (cancelled) return
+      if (i >= audioSequence.length) {
+        onContinueRef.current()
+        return
+      }
+      current = new Audio(audioSequence[i])
+      current.onended = () => playAt(i + 1)
+      current.onerror = () => playAt(i + 1)
+      current.play().catch(() => playAt(i + 1))
+    }
+
+    playAt(0)
+
+    return () => {
+      cancelled = true
+      if (current) {
+        current.pause()
+        current.src = ''
+      }
+    }
+  }, [audioSequence])
 
   return (
     <div
@@ -203,32 +229,32 @@ function InstructionScreen({
           <strong>Directions: </strong>
           {PART_DIRECTIONS[partNumber]}
         </p>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 40 }}>
-          <Button
-            type="primary"
-            size="large"
-            icon={<RightOutlined />}
-            iconPosition="end"
-            onClick={onContinue}
-          >
-            Tiếp tục
-          </Button>
-        </div>
+        {/* Fallback button shown only when no audio is configured */}
+        {!audioSequence.length && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 40 }}>
+            <Button
+              type="primary"
+              size="large"
+              icon={<RightOutlined />}
+              iconPosition="end"
+              onClick={onContinue}
+            >
+              Tiếp tục
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
 // ─── Question screen ─── //
-function QuestionScreen({
-  phase,
-  seconds,
-}: {
-  phase: Extract<Phase, { kind: 'prep' | 'response' }>
-  seconds: number
-}) {
+type TimerPhase = Extract<Phase, { kind: 'prep_signal' | 'prep' | 'response_signal' | 'response' }>
+
+function QuestionScreen({ phase, seconds }: { phase: TimerPhase; seconds: number }) {
   const { question } = phase
-  const label = phase.kind === 'prep' ? 'PREPARATION TIME' : 'RESPONSE TIME'
+  const label =
+    phase.kind === 'prep' || phase.kind === 'prep_signal' ? 'PREPARATION TIME' : 'RESPONSE TIME'
 
   return (
     <div
@@ -265,7 +291,7 @@ function QuestionScreen({
         )}
       </div>
 
-      <TimerBar label={label} seconds={seconds} totalSeconds={phase.totalSeconds} />
+      <TimerBar label={label} seconds={seconds} />
     </div>
   )
 }
@@ -280,6 +306,18 @@ export interface ExamRunnerProps {
 export function ExamRunner({ questions, isLoading, onDone }: ExamRunnerProps) {
   const [state, dispatch] = useReducer(reducer, { phases: [], phaseIndex: 0, secondsLeft: 0 })
 
+  const { data: partInstructions = [], isLoading: isLoadingInstructions } = useQuery({
+    queryKey: queryKeys.partInstructions.all(),
+    queryFn: instructionService.getAll,
+    staleTime: Infinity,
+  })
+
+  const { data: systemAudios = [], isLoading: isLoadingSystemAudio } = useQuery({
+    queryKey: queryKeys.systemAudio.all(),
+    queryFn: systemAudioService.getAll,
+    staleTime: Infinity,
+  })
+
   useEffect(() => {
     if (!questions.length) return
     dispatch({ type: 'init', phases: buildPhases(questions) })
@@ -293,13 +331,46 @@ export function ExamRunner({ questions, isLoading, onDone }: ExamRunnerProps) {
     return () => clearInterval(id)
   }, [state.phaseIndex, currentPhase?.kind])
 
+  // Play system audio for signal phases and auto-advance when done
+  useEffect(() => {
+    const kind = currentPhase?.kind
+    if (kind !== 'prep_signal' && kind !== 'response_signal') return
+
+    const audioUrl =
+      kind === 'prep_signal'
+        ? systemAudios.find((a) => a.key === 'START_SPEAKING')?.audioUrl
+        : systemAudios.find((a) => a.key === 'START_RESPONSE')?.audioUrl
+
+    if (!audioUrl) {
+      dispatch({ type: 'next' })
+      return
+    }
+
+    let done = false
+    const audio = new Audio(audioUrl)
+    const advance = () => {
+      if (done) return
+      done = true
+      dispatch({ type: 'next' })
+    }
+    audio.onended = advance
+    audio.onerror = advance
+    audio.play().catch(advance)
+
+    return () => {
+      done = true
+      audio.pause()
+      audio.src = ''
+    }
+  }, [state.phaseIndex, currentPhase?.kind, systemAudios])
+
   useEffect(() => {
     if (currentPhase?.kind === 'done') {
       onDone()
     }
   }, [currentPhase?.kind, onDone])
 
-  if (isLoading || !currentPhase) {
+  if (isLoading || isLoadingInstructions || isLoadingSystemAudio || !currentPhase) {
     return (
       <div
         style={{
@@ -315,15 +386,25 @@ export function ExamRunner({ questions, isLoading, onDone }: ExamRunnerProps) {
   }
 
   if (currentPhase.kind === 'instruction') {
+    const instructionAudio =
+      partInstructions.find((i) => i.partNumber === currentPhase.partNumber)?.audioUrl ?? null
+    const audioSequence = instructionAudio ? [instructionAudio] : []
+
     return (
       <InstructionScreen
         partNumber={currentPhase.partNumber}
+        audioSequence={audioSequence}
         onContinue={() => dispatch({ type: 'next' })}
       />
     )
   }
 
-  if (currentPhase.kind === 'prep' || currentPhase.kind === 'response') {
+  if (
+    currentPhase.kind === 'prep_signal' ||
+    currentPhase.kind === 'prep' ||
+    currentPhase.kind === 'response_signal' ||
+    currentPhase.kind === 'response'
+  ) {
     return <QuestionScreen phase={currentPhase} seconds={state.secondsLeft} />
   }
 

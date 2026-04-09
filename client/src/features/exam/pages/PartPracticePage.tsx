@@ -35,7 +35,6 @@ function SetCard({ set, onStart }: { set: PracticeSet; onStart: () => void }) {
 
         <Button
           type="primary"
-          size="small"
           icon={<PlayCircleOutlined />}
           onClick={onStart}
           style={{ alignSelf: 'flex-start' }}
