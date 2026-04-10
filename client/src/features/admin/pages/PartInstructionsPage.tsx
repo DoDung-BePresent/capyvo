@@ -179,9 +179,9 @@ export default function PartInstructionsPage() {
               <Skeleton active />
             </div>
           ) : (
-            (['START_SPEAKING', 'START_RESPONSE'] as SystemAudioKey[]).map((key) => (
-              <SignalRow key={key} audioKey={key} item={signalMap.get(key)} />
-            ))
+            (['START_SPEAKING', 'START_RESPONSE', 'STOP_TALKING'] as SystemAudioKey[]).map(
+              (key) => <SignalRow key={key} audioKey={key} item={signalMap.get(key)} />,
+            )
           )}
         </Card>
 

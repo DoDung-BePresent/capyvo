@@ -3,7 +3,7 @@ import prisma from '@/lib/prisma'
 import supabaseAdmin from '@/lib/supabase'
 import { ValidationError } from '@/errors/app-error'
 
-export const SYSTEM_AUDIO_KEYS = ['START_SPEAKING', 'START_RESPONSE'] as const
+export const SYSTEM_AUDIO_KEYS = ['START_SPEAKING', 'START_RESPONSE', 'STOP_TALKING'] as const
 export type SystemAudioKey = (typeof SYSTEM_AUDIO_KEYS)[number]
 
 const KeySchema = z.enum(SYSTEM_AUDIO_KEYS)
