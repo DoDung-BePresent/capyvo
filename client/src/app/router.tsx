@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom'
 import { GuestRoute, ProtectedRoute, RoleRoute } from './guards'
 import AdminLayout from '@/features/admin/layouts/AdminLayout'
 import UserLayout from '@/features/exam/layouts/UserLayout'
+import { NotFoundPage, ForbiddenPage } from '@/shared/components'
 
 const lazy = (importFn: () => Promise<{ default: React.ComponentType }>) => async () => ({
   Component: (await importFn()).default,
@@ -103,6 +104,9 @@ const router = createBrowserRouter([
       },
     ],
   },
+  // 404 — must be last
+  { path: '/403', element: <ForbiddenPage /> },
+  { path: '*', element: <NotFoundPage /> },
 ])
 
 export default router

@@ -4,16 +4,10 @@ import { ConfigProvider, App as AntdApp } from 'antd'
 import { HelmetProvider } from 'react-helmet-async'
 import type { ReactNode } from 'react'
 
-/**
- * Libs
- */
 import queryClient from '@/lib/query-client'
 import { antTheme } from '@/config'
-
-/**
- * Hooks
- */
 import { useAuthSync } from '@/features/auth/hooks/useAuth'
+import { ErrorBoundary } from '@/shared/components'
 
 function AuthSync() {
   useAuthSync()
@@ -30,7 +24,9 @@ export default function Providers({ children }: ProvidersProps) {
       <QueryClientProvider client={queryClient}>
         <AuthSync />
         <ConfigProvider theme={antTheme}>
-          <AntdApp>{children}</AntdApp>
+          <AntdApp>
+            <ErrorBoundary>{children}</ErrorBoundary>
+          </AntdApp>
         </ConfigProvider>
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>

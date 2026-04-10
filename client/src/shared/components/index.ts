@@ -1,3 +1,5 @@
 export { PageHeader } from './PageHeader'
 export { DataTable } from './DataTable'
 export { Heatmap } from './Heatmap'
+export { ErrorBoundary } from './ErrorBoundary'
+export { NotFoundPage, ForbiddenPage, MaintenancePage, ServerErrorPage } from './ErrorPages'

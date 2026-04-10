@@ -38,7 +38,7 @@ export function RoleRoute({ role }: { role: Role }) {
 
   if (isInitializing || isLoading) return <FullscreenSpin />
   if (!session || !user) return <Navigate to="/login" replace />
-  if (user.role !== role) return <Navigate to={user.role === 'ADMIN' ? '/admin' : '/'} replace />
+  if (user.role !== role) return <Navigate to="/403" replace />
 
   return <Outlet />
 }
