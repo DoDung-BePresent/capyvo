@@ -21,6 +21,7 @@ export default function PartExamPage() {
     <MicPermissionGate>
       <ExamRunner
         examSetId={examSetId ?? ''}
+        partNumber={part}
         questions={questions}
         isLoading={isLoading}
         onDone={(sessionId) =>

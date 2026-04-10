@@ -106,6 +106,7 @@ model PracticeSession {
   id          String        @id @default(uuid())
   userId      String
   examSetId   String
+  partNumber  Int?          // null = full exam, 1-5 = specific part
   status      SessionStatus @default(IN_PROGRESS)
   startedAt   DateTime      @default(now())
   completedAt DateTime?

@@ -7,9 +7,10 @@ export class SessionController {
   async create(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = (req as AuthRequest).userId
-      const { examSetId } = req.body
+      const { examSetId, partNumber } = req.body
       if (!examSetId) throw new ValidationError('examSetId is required')
-      const session = await sessionService.createSession(userId, examSetId)
+      const part = partNumber != null ? Number(partNumber) : null
+      const session = await sessionService.createSession(userId, examSetId, part)
       res.status(201).json({ success: true, data: { sessionId: session.id } })
     } catch (err) {
       next(err)
@@ -30,10 +31,11 @@ export class SessionController {
   async myBySet(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = (req as AuthRequest).userId
-      const { examSetId } = req.query
+      const { examSetId, partNumber } = req.query
       if (!examSetId || typeof examSetId !== 'string')
         throw new ValidationError('examSetId query param is required')
-      const sessions = await sessionService.getUserSessionsBySet(userId, examSetId)
+      const part = partNumber != null ? Number(partNumber) : null
+      const sessions = await sessionService.getUserSessionsBySet(userId, examSetId, part)
       res.json({ success: true, data: sessions })
     } catch (err) {
       next(err)
@@ -54,7 +56,9 @@ export class SessionController {
   async setStats(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const examSetId = req.params.examSetId as string
-      const stats = await sessionService.getSetStats(examSetId)
+      const { partNumber } = req.query
+      const part = partNumber != null ? Number(partNumber) : null
+      const stats = await sessionService.getSetStats(examSetId, part)
       res.json({ success: true, data: stats })
     } catch (err) {
       next(err)
@@ -64,7 +68,9 @@ export class SessionController {
   async completedSetIds(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = (req as AuthRequest).userId
-      const ids = await sessionService.getCompletedSetIds(userId)
+      const { partNumber } = req.query
+      const part = partNumber != null ? Number(partNumber) : null
+      const ids = await sessionService.getCompletedSetIds(userId, part)
       res.json({ success: true, data: ids })
     } catch (err) {
       next(err)

@@ -36,14 +36,14 @@ export default function PartSetDetailPage() {
   const currentSet = sets.find((s) => s.examSetId === setId)
 
   const { data: sessions = [], isLoading: isLoadingSessions } = useQuery({
-    queryKey: queryKeys.practiceSessions.myBySet(setId),
-    queryFn: () => sessionService.getMySessionsBySet(setId),
+    queryKey: queryKeys.practiceSessions.myBySet(setId, part),
+    queryFn: () => sessionService.getMySessionsBySet(setId, part),
     enabled: !!setId,
   })
 
   const { data: stats } = useQuery({
-    queryKey: queryKeys.practiceSessions.setStats(setId),
-    queryFn: () => sessionService.getSetStats(setId),
+    queryKey: queryKeys.practiceSessions.setStats(setId, part),
+    queryFn: () => sessionService.getSetStats(setId, part),
     enabled: !!setId,
   })
 

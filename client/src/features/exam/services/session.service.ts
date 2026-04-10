@@ -39,9 +39,13 @@ export interface SessionDetail {
 }
 
 export const sessionService = {
-  async createSession(examSetId: string): Promise<{ sessionId: string }> {
+  async createSession(
+    examSetId: string,
+    partNumber?: number | null,
+  ): Promise<{ sessionId: string }> {
     const { data } = await axiosInstance.post<ApiResponse<{ sessionId: string }>>('/sessions', {
       examSetId,
+      partNumber: partNumber ?? null,
     })
     return data.data
   },
@@ -50,9 +54,14 @@ export const sessionService = {
     await axiosInstance.patch(`/sessions/${id}/complete`)
   },
 
-  async getMySessionsBySet(examSetId: string): Promise<SessionSummary[]> {
+  async getMySessionsBySet(
+    examSetId: string,
+    partNumber?: number | null,
+  ): Promise<SessionSummary[]> {
+    const params = new URLSearchParams({ examSetId: examSetId })
+    if (partNumber != null) params.set('partNumber', String(partNumber))
     const { data } = await axiosInstance.get<ApiResponse<SessionSummary[]>>(
-      `/sessions/my?examSetId=${encodeURIComponent(examSetId)}`,
+      `/sessions/my?${params.toString()}`,
     )
     return data.data
   },
@@ -62,16 +71,25 @@ export const sessionService = {
     return data.data
   },
 
-  async getSetStats(examSetId: string): Promise<{ totalAttempts: number }> {
+  async getSetStats(
+    examSetId: string,
+    partNumber?: number | null,
+  ): Promise<{ totalAttempts: number }> {
+    const params = new URLSearchParams()
+    if (partNumber != null) params.set('partNumber', String(partNumber))
+    const qs = params.toString() ? `?${params.toString()}` : ''
     const { data } = await axiosInstance.get<ApiResponse<{ totalAttempts: number }>>(
-      `/sessions/stats/${encodeURIComponent(examSetId)}`,
+      `/sessions/stats/${encodeURIComponent(examSetId)}${qs}`,
     )
     return data.data
   },
 
-  async getCompletedSetIds(): Promise<string[]> {
+  async getCompletedSetIds(partNumber?: number | null): Promise<string[]> {
+    const params = new URLSearchParams()
+    if (partNumber != null) params.set('partNumber', String(partNumber))
+    const qs = params.toString() ? `?${params.toString()}` : ''
     const { data } = await axiosInstance.get<ApiResponse<string[]>>(
-      '/sessions/my/completed-set-ids',
+      `/sessions/my/completed-set-ids${qs}`,
     )
     return data.data
   },

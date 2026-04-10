@@ -74,8 +74,8 @@ export default function PartPracticePage() {
   })
 
   const { data: completedSetIds = [] } = useQuery({
-    queryKey: queryKeys.practiceSessions.completedSetIds(),
-    queryFn: () => sessionService.getCompletedSetIds(),
+    queryKey: queryKeys.practiceSessions.completedSetIds(part),
+    queryFn: () => sessionService.getCompletedSetIds(part),
   })
 
   const completedSet = new Set(completedSetIds)

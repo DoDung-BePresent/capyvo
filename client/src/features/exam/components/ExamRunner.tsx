@@ -16,14 +16,16 @@ import { MicWaveform } from './MicWaveform'
 const PART_DIRECTIONS: Record<number, string> = {
   1: 'In this part of the test, you will read aloud the text on the screen. You will have 45 seconds to prepare. Then you will have 45 seconds to read the text aloud.',
   2: 'In this part of the test, you will describe the picture on your screen in as much detail as you can. You will have 45 seconds to prepare your response. Then you will have 30 seconds to speak about the picture.',
-  3: 'In this part of the test, you will answer three questions. For each question, begin responding immediately after you hear a beep. No preparation time is given. You will have 15 seconds to respond to Questions 5 and 6 and 30 seconds to respond to Question 7.',
-  4: 'In this part of the test, you will answer three questions based on the information provided. You will have 45 seconds to read the information before the questions begin. For each question, begin responding immediately after you hear a beep.',
+  3: 'In this part of the test, you will answer three questions. You will have three seconds to prepare after you hear each question. You will have 15 seconds to respond to Questions 5 and 6, and 30 seconds to respond to Question 7.',
+  4: 'In this part of the test, you will answer three questions based on the information provided. You will have 45 seconds to read the information before the questions begin. You will have three seconds to prepare and 15 seconds to respond to Questions 8 and 9. You will hear Question 10 two times. You will have three seconds to prepare and 30 seconds to respond to Question 10.',
   5: 'In this part of the test, you will give your opinion about a specific topic. Be sure to say as much as you can in the time allowed. You will have 45 seconds to prepare. Then you will have 60 seconds to speak.',
 }
 
 // ─── Phase model ─── //
 type Phase =
   | { kind: 'instruction'; partNumber: number }
+  | { kind: 'context'; question: Question } // play contextAudioUrl, show context text
+  | { kind: 'question_audio'; question: Question } // play questionAudioUrl, show context + question
   | { kind: 'prep_signal'; question: Question; totalSeconds: number } // show question, play START_SPEAKING, timer frozen
   | { kind: 'prep'; question: Question; totalSeconds: number } // timer counting
   | { kind: 'response_signal'; question: Question; totalSeconds: number } // play START_RESPONSE, timer frozen
@@ -34,11 +36,20 @@ function buildPhases(questions: Question[]): Phase[] {
   const sorted = [...questions].sort((a, b) => a.questionNumber - b.questionNumber)
   const phases: Phase[] = []
   let lastPart = 0
+  let lastContextAudioUrl: string | null | undefined = undefined
 
   for (const q of sorted) {
     if (q.partNumber !== lastPart) {
       phases.push({ kind: 'instruction', partNumber: q.partNumber })
       lastPart = q.partNumber
+      lastContextAudioUrl = undefined
+    }
+    if (q.contextAudioUrl && q.contextAudioUrl !== lastContextAudioUrl) {
+      phases.push({ kind: 'context', question: q })
+      lastContextAudioUrl = q.contextAudioUrl
+    }
+    if (q.questionAudioUrl) {
+      phases.push({ kind: 'question_audio', question: q })
     }
     phases.push({ kind: 'prep_signal', question: q, totalSeconds: q.prepTimeSeconds })
     phases.push({ kind: 'prep', question: q, totalSeconds: q.prepTimeSeconds })
@@ -310,6 +321,57 @@ function InstructionScreen({
   )
 }
 
+// ─── Context audio screen (context phase & question_audio phase) ─── //
+function ContextAudioScreen({
+  question,
+  showQuestion,
+}: {
+  question: Question
+  showQuestion: boolean
+}) {
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        backgroundColor: '#fff',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '60px 80px',
+      }}
+    >
+      <div style={{ maxWidth: 820, width: '100%' }}>
+        {question.imageUrls?.[0] && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+            <Image
+              src={question.imageUrls[0]}
+              style={{ maxHeight: 380, objectFit: 'contain' }}
+              preview={false}
+            />
+          </div>
+        )}
+        {question.contextText && (
+          <p
+            style={{
+              fontSize: 18,
+              lineHeight: 2.1,
+              color: '#1a1a1a',
+              marginBottom: showQuestion && question.questionText ? 24 : 0,
+            }}
+          >
+            {question.contextText}
+          </p>
+        )}
+        {showQuestion && question.questionText && (
+          <p style={{ fontSize: 18, lineHeight: 2.1, color: '#1a1a1a', margin: 0 }}>
+            {question.questionText}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Question screen ─── //
 type TimerPhase = Extract<Phase, { kind: 'prep_signal' | 'prep' | 'response_signal' | 'response' }>
 
@@ -354,6 +416,19 @@ function QuestionScreen({
               preview={false}
             />
           </div>
+        )}
+
+        {question.contextText && (
+          <p
+            style={{
+              fontSize: 18,
+              lineHeight: 2.1,
+              color: '#1a1a1a',
+              marginBottom: question.questionText ? 24 : 0,
+            }}
+          >
+            {question.contextText}
+          </p>
         )}
 
         {question.questionText && (
@@ -403,12 +478,19 @@ function QuestionScreen({
 // ─── ExamRunner ─── //
 export interface ExamRunnerProps {
   examSetId: string
+  partNumber?: number
   questions: Question[]
   isLoading: boolean
   onDone: (sessionId: string) => void
 }
 
-export function ExamRunner({ examSetId, questions, isLoading, onDone }: ExamRunnerProps) {
+export function ExamRunner({
+  examSetId,
+  partNumber,
+  questions,
+  isLoading,
+  onDone,
+}: ExamRunnerProps) {
   const [state, dispatch] = useReducer(reducer, {
     phases: [],
     phaseIndex: 0,
@@ -433,10 +515,10 @@ export function ExamRunner({ examSetId, questions, isLoading, onDone }: ExamRunn
 
   useEffect(() => {
     if (!questions.length || sessionIdRef.current) return
-    sessionService.createSession(examSetId).then(({ sessionId }) => {
+    sessionService.createSession(examSetId, partNumber ?? null).then(({ sessionId }) => {
       sessionIdRef.current = sessionId
     })
-  }, [questions, examSetId])
+  }, [questions, examSetId, partNumber])
 
   // ─ Recording state ─
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -500,6 +582,39 @@ export function ExamRunner({ examSetId, questions, isLoading, onDone }: ExamRunn
       audio.src = ''
     }
   }, [state.phaseIndex, currentPhase?.kind, systemAudios])
+
+  // Play audio for context / question_audio phases, auto-advance when done
+  useEffect(() => {
+    if (!currentPhase) return
+    if (currentPhase.kind !== 'context' && currentPhase.kind !== 'question_audio') return
+
+    const audioUrl =
+      currentPhase.kind === 'context'
+        ? currentPhase.question.contextAudioUrl
+        : currentPhase.question.questionAudioUrl
+
+    if (!audioUrl) {
+      dispatch({ type: 'next' })
+      return
+    }
+
+    let done = false
+    const audio = new Audio(audioUrl)
+    const advance = () => {
+      if (done) return
+      done = true
+      dispatch({ type: 'next' })
+    }
+    audio.onended = advance
+    audio.onerror = advance
+    audio.play().catch(advance)
+
+    return () => {
+      done = true
+      audio.pause()
+      audio.src = ''
+    }
+  }, [state.phaseIndex, currentPhase])
 
   // Start microphone + recorder when response phase begins
   useEffect(() => {
@@ -633,6 +748,14 @@ export function ExamRunner({ examSetId, questions, isLoading, onDone }: ExamRunn
         onContinue={() => dispatch({ type: 'next' })}
       />
     )
+  }
+
+  if (currentPhase.kind === 'context') {
+    return <ContextAudioScreen question={currentPhase.question} showQuestion={false} />
+  }
+
+  if (currentPhase.kind === 'question_audio') {
+    return <ContextAudioScreen question={currentPhase.question} showQuestion={true} />
   }
 
   if (

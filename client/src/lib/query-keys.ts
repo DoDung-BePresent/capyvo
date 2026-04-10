@@ -33,9 +33,12 @@ export const queryKeys = {
     all: () => ['practice-sessions'] as const,
     detail: (id: string) => ['practice-sessions', 'detail', id] as const,
     byUser: (userId: string) => ['practice-sessions', 'user', userId] as const,
-    myBySet: (examSetId: string) => ['practice-sessions', 'my', examSetId] as const,
-    setStats: (examSetId: string) => ['practice-sessions', 'stats', examSetId] as const,
-    completedSetIds: () => ['practice-sessions', 'my', 'completed-set-ids'] as const,
+    myBySet: (examSetId: string, partNumber?: number | null) =>
+      ['practice-sessions', 'my', examSetId, partNumber ?? null] as const,
+    setStats: (examSetId: string, partNumber?: number | null) =>
+      ['practice-sessions', 'stats', examSetId, partNumber ?? null] as const,
+    completedSetIds: (partNumber?: number | null) =>
+      ['practice-sessions', 'my', 'completed-set-ids', partNumber ?? null] as const,
   },
 
   // User responses

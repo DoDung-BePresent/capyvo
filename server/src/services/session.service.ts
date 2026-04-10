@@ -2,9 +2,9 @@ import prisma from '@/lib/prisma'
 import { NotFoundError } from '@/errors/app-error'
 
 class SessionService {
-  async createSession(userId: string, examSetId: string) {
+  async createSession(userId: string, examSetId: string, partNumber?: number | null) {
     return prisma.practiceSession.create({
-      data: { userId, examSetId, status: 'IN_PROGRESS' },
+      data: { userId, examSetId, partNumber: partNumber ?? null, status: 'IN_PROGRESS' },
     })
   }
 
@@ -17,9 +17,14 @@ class SessionService {
     })
   }
 
-  async getUserSessionsBySet(userId: string, examSetId: string) {
+  async getUserSessionsBySet(userId: string, examSetId: string, partNumber?: number | null) {
     return prisma.practiceSession.findMany({
-      where: { userId, examSetId },
+      where: {
+        userId,
+        examSetId,
+        // if partNumber provided, filter to that part; otherwise full-exam sessions (null)
+        partNumber: partNumber != null ? partNumber : null,
+      },
       include: {
         _count: { select: { userResponses: true } },
         examSet: { select: { title: true } },
@@ -43,16 +48,24 @@ class SessionService {
     return session
   }
 
-  async getSetStats(examSetId: string) {
+  async getSetStats(examSetId: string, partNumber?: number | null) {
     const totalAttempts = await prisma.practiceSession.count({
-      where: { examSetId, status: 'COMPLETED' },
+      where: {
+        examSetId,
+        status: 'COMPLETED',
+        partNumber: partNumber != null ? partNumber : null,
+      },
     })
     return { totalAttempts }
   }
 
-  async getCompletedSetIds(userId: string) {
+  async getCompletedSetIds(userId: string, partNumber?: number | null) {
+    const where =
+      partNumber != null
+        ? { userId, status: 'COMPLETED' as const, partNumber }
+        : { userId, status: 'COMPLETED' as const, partNumber: null }
     const sessions = await prisma.practiceSession.findMany({
-      where: { userId, status: 'COMPLETED' },
+      where,
       select: { examSetId: true },
       distinct: ['examSetId'],
     })
