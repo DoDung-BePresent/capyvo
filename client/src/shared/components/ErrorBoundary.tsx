@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from 'react'
-import { Result, Button } from 'antd'
+import { Result, Button, Flex } from 'antd'
 
 interface Props {
   children: ReactNode
@@ -66,7 +66,7 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div style={{ padding: '48px 24px', maxWidth: 1200, margin: '0 auto' }}>
+        <Flex className="min-h-dvh" vertical align="center" justify="center">
           <Result
             status="error"
             title="Something went wrong"
@@ -86,7 +86,7 @@ export class ErrorBoundary extends Component<Props, State> {
             ]}
           />
           {import.meta.env.DEV && this.state.error && (
-            <div className="mx-auto max-w-7xl px-6">
+            <div className="mx-auto max-w-7xl w-full! px-6">
               <details className="mt-6 rounded-sm border border-(--ant-color-error) bg-(--ant-red-1) p-4">
                 <summary className="cursor-pointer font-semibold">Error Details (Dev Only)</summary>
                 <pre className="mt-2 overflow-auto text-xs">
@@ -97,7 +97,7 @@ export class ErrorBoundary extends Component<Props, State> {
               </details>
             </div>
           )}
-        </div>
+        </Flex>
       )
     }
 

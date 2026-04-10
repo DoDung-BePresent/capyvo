@@ -1,13 +1,15 @@
-import { Layout, Avatar, Dropdown, Typography, theme, Button } from 'antd'
+import { Layout, Avatar, Dropdown, Typography, theme, Button, Switch, Tooltip, App } from 'antd'
 import {
   UserOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  ToolOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useGetMe, useLogout } from '@/features/auth/hooks/useAuth'
 import { useSession } from '@/features/auth/hooks/useSession'
+import { useMaintenance, useMaintenanceMutation } from '@/shared/hooks/useMaintenance'
 
 const { Header } = Layout
 const { Text } = Typography
@@ -22,9 +24,25 @@ export function AppHeader({ collapsed, onCollapse }: AppHeaderProps) {
   const { session } = useSession()
   const { data: user } = useGetMe(session)
   const { mutate: logout } = useLogout()
+  const { isMaintenance } = useMaintenance()
+  const { mutate: setMaintenance, isPending } = useMaintenanceMutation()
+  const { modal } = App.useApp()
   const {
     token: { colorBgContainer },
   } = theme.useToken()
+
+  function handleMaintenanceToggle(checked: boolean) {
+    modal.confirm({
+      title: checked ? 'Bật chế độ bảo trì?' : 'Tắt chế độ bảo trì?',
+      content: checked
+        ? 'Tất cả người dùng sẽ thấy trang bảo trì ngay lập tức.'
+        : 'Hệ thống sẽ hoạt động bình thường trở lại.',
+      okText: 'Xác nhận',
+      cancelText: 'Huỷ',
+      okButtonProps: { danger: checked },
+      onOk: () => setMaintenance(checked),
+    })
+  }
 
   const menuItems = [
     {
@@ -60,9 +78,21 @@ export function AppHeader({ collapsed, onCollapse }: AppHeaderProps) {
         onClick={() => onCollapse(!collapsed)}
         style={{ fontSize: 16, color: '#666' }}
       />
-      <Dropdown menu={{ items: menuItems }} trigger={['click']} placement="bottomRight">
-        <Avatar shape="square" icon={<UserOutlined />} style={{ cursor: 'pointer' }} />
-      </Dropdown>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
+        <Tooltip title={isMaintenance ? 'Đang bảo trì — click để tắt' : 'Bật chế độ bảo trì'}>
+          <Switch
+            checkedChildren={<ToolOutlined />}
+            unCheckedChildren={<ToolOutlined />}
+            checked={isMaintenance}
+            loading={isPending}
+            onChange={handleMaintenanceToggle}
+            style={{ backgroundColor: isMaintenance ? '#faad14' : undefined }}
+          />
+        </Tooltip>
+        <Dropdown menu={{ items: menuItems }} trigger={['click']} placement="bottomRight">
+          <Avatar shape="square" icon={<UserOutlined />} style={{ cursor: 'pointer' }} />
+        </Dropdown>
+      </div>
     </Header>
   )
 }

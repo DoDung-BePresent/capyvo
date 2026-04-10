@@ -7,7 +7,7 @@ import type { ReactNode } from 'react'
 import queryClient from '@/lib/query-client'
 import { antTheme } from '@/config'
 import { useAuthSync } from '@/features/auth/hooks/useAuth'
-import { ErrorBoundary } from '@/shared/components'
+import { ErrorBoundary, MaintenanceGate } from '@/shared/components'
 
 function AuthSync() {
   useAuthSync()
@@ -25,7 +25,9 @@ export default function Providers({ children }: ProvidersProps) {
         <AuthSync />
         <ConfigProvider theme={antTheme}>
           <AntdApp>
-            <ErrorBoundary>{children}</ErrorBoundary>
+            <ErrorBoundary>
+              <MaintenanceGate>{children}</MaintenanceGate>
+            </ErrorBoundary>
           </AntdApp>
         </ConfigProvider>
         <ReactQueryDevtools initialIsOpen={false} />

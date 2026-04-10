@@ -6,9 +6,11 @@ import partInstructionRouter from './part-instruction.routes'
 import systemAudioRouter from './system-audio.routes'
 import responseRouter from './response.routes'
 import sessionRouter from './session.routes'
+import maintenanceRouter from './maintenance.routes'
 
 const router = Router()
 
+router.use('/maintenance', maintenanceRouter)
 router.use('/auth', authRouter)
 router.use('/exam-sets', examSetRouter)
 router.use('/questions', questionRouter)
