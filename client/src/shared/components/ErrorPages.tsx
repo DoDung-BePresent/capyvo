@@ -1,5 +1,8 @@
-import { Result, Button, Flex } from 'antd'
+import { Result, Button, Flex, Typography, Space } from 'antd'
 import { useNavigate } from 'react-router-dom'
+import dayjs from 'dayjs'
+
+const { Text } = Typography
 
 export function NotFoundPage() {
   const navigate = useNavigate()
@@ -37,19 +40,30 @@ export function ForbiddenPage() {
   )
 }
 
-export function MaintenancePage() {
+interface MaintenancePageProps {
+  endTime?: string | null
+  message?: string
+}
+
+export function MaintenancePage({ endTime, message }: MaintenancePageProps = {}) {
+  const subTitle = message || 'Hệ thống đang được bảo trì, vui lòng quay lại sau.'
+
+  const extra = (
+    <Space direction="vertical" align="center">
+      {endTime && (
+        <Text type="secondary">
+          Dự kiến hoàn thành lúc: <Text strong>{dayjs(endTime).format('HH:mm DD/MM/YYYY')}</Text>
+        </Text>
+      )}
+      <Button type="primary" onClick={() => window.location.reload()}>
+        Thử lại
+      </Button>
+    </Space>
+  )
+
   return (
     <Flex className="min-h-dvh" vertical align="center" justify="center">
-      <Result
-        status="500"
-        title="Đang bảo trì"
-        subTitle="Hệ thống đang được bảo trì, vui lòng quay lại sau."
-        extra={
-          <Button type="primary" onClick={() => window.location.reload()}>
-            Thử lại
-          </Button>
-        }
-      />
+      <Result status="500" title="Đang bảo trì" subTitle={subTitle} extra={extra} />
     </Flex>
   )
 }

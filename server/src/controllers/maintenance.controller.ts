@@ -4,7 +4,7 @@ import { ForbiddenError } from '@/errors/app-error'
 
 export class MaintenanceController {
   getStatus(_req: Request, res: Response): void {
-    res.json({ success: true, data: { maintenance: maintenanceService.isEnabled() } })
+    res.json({ success: true, data: maintenanceService.getFullStatus() })
   }
 
   async setStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -14,7 +14,37 @@ export class MaintenanceController {
         throw new ForbiddenError('maintenance must be a boolean')
       }
       await maintenanceService.setEnabled(maintenance)
-      res.json({ success: true, data: { maintenance } })
+      res.json({ success: true, data: maintenanceService.getFullStatus() })
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  async setSchedule(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const {
+        start = null,
+        end = null,
+        message = '',
+      } = req.body as {
+        start?: string | null
+        end?: string | null
+        message?: string
+      }
+      if (start && end && new Date(start) >= new Date(end)) {
+        throw new ForbiddenError('start must be before end')
+      }
+      await maintenanceService.setSchedule(start, end, message)
+      res.json({ success: true, data: maintenanceService.getFullStatus() })
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  async clearSchedule(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await maintenanceService.clearSchedule()
+      res.json({ success: true, data: maintenanceService.getFullStatus() })
     } catch (err) {
       next(err)
     }
@@ -26,8 +56,8 @@ export class MaintenanceController {
     res.setHeader('Connection', 'keep-alive')
     res.flushHeaders()
 
-    // Send current state immediately on connect
-    res.write(`data: ${JSON.stringify({ maintenance: maintenanceService.isEnabled() })}\n\n`)
+    // Send current full state immediately on connect
+    res.write(`data: ${JSON.stringify(maintenanceService.getFullStatus())}\n\n`)
 
     maintenanceService.addSseClient(res)
 

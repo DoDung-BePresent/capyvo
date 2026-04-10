@@ -17,9 +17,9 @@
     margin-right: 0;
     margin-left: 4px;
   }
-  /* .anticon {
+  .ant-layout-sider .anticon {
     font-size: 16px !important;
-  } */
+  }
 }
 
 @layer components {

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Layout } from 'antd'
 import { UserSidebar, UserHeader, UserContent, UserFooter } from './components'
-import { NetworkStatusBanner } from '@/shared/components'
+import { NetworkStatusBanner, ScheduledMaintenanceBanner } from '@/shared/components'
 
 export default function UserLayout() {
   const [collapsed, setCollapsed] = useState(false)
@@ -9,6 +9,7 @@ export default function UserLayout() {
   return (
     <>
       <NetworkStatusBanner />
+      <ScheduledMaintenanceBanner />
       <Layout hasSider style={{ height: '100vh', overflow: 'hidden' }}>
         <UserSidebar collapsed={collapsed} onCollapse={setCollapsed} />
         <Layout>

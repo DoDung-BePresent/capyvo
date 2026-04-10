@@ -6,3 +6,4 @@ export { NotFoundPage, ForbiddenPage, MaintenancePage, ServerErrorPage } from '.
 export { NetworkStatusBanner } from './NetworkStatusBanner'
 export { ScrollTop } from './ScrollTop'
 export { MaintenanceGate } from './MaintenanceGate'
+export { ScheduledMaintenanceBanner } from './ScheduledMaintenanceBanner'

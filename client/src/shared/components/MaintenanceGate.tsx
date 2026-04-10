@@ -7,11 +7,11 @@ interface MaintenanceGateProps {
 }
 
 export function MaintenanceGate({ children }: MaintenanceGateProps) {
-  const { isMaintenance } = useMaintenance()
+  const { isMaintenance, schedule } = useMaintenance()
 
   // Admin routes bypass the gate (they authenticate server-side anyway)
   if (isMaintenance && !window.location.pathname.startsWith('/admin')) {
-    return <MaintenancePage />
+    return <MaintenancePage endTime={schedule?.end} message={schedule?.message} />
   }
 
   return <>{children}</>
