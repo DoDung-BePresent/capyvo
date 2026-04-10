@@ -31,6 +31,7 @@ export interface ResponseItem {
 export interface SessionDetail {
   id: string
   examSetId: string
+  partNumber: number | null
   status: string
   startedAt: string
   completedAt: string | null

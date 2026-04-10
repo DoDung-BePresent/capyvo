@@ -1,18 +1,18 @@
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Button, Card, Divider, Empty, Flex, Image, Spin, Tag, Typography } from 'antd'
-import { ArrowLeftOutlined, SoundOutlined } from '@ant-design/icons'
+import { Card, Empty, Flex, Image, Spin, Tag, Typography } from 'antd'
 import dayjs from 'dayjs'
 
 import { sessionService } from '@/features/exam/services/session.service'
 import { queryKeys } from '@/lib/query-keys'
 import { PART_META } from '@/features/admin/types'
+import { WavesurferPlayer } from '@/features/exam/components/WavesurferPlayer'
+import { PageHeader } from '@/shared/components'
 
-const { Text, Title } = Typography
+const { Text } = Typography
 
 export default function ResultPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
-  const navigate = useNavigate()
 
   const { data: session, isLoading } = useQuery({
     queryKey: queryKeys.practiceSessions.detail(sessionId ?? ''),
@@ -32,31 +32,38 @@ export default function ResultPage() {
     return <Empty description="Không tìm thấy kết quả" style={{ marginTop: 80 }} />
   }
 
-  const { userResponses, examSet } = session
+  const { userResponses, examSet, partNumber } = session
+
+  const breadcrumbs =
+    partNumber != null
+      ? [
+          { label: 'Luyện theo Part', href: '/practice' },
+          {
+            label: PART_META[partNumber as keyof typeof PART_META]?.label ?? `Part ${partNumber}`,
+            href: `/practice/part/${partNumber}`,
+          },
+          { label: examSet.title, href: `/practice/part/${partNumber}/set/${examSet.id}` },
+          { label: 'Kết quả' },
+        ]
+      : [
+          { label: 'Thi thử', href: '/exam' },
+          { label: examSet.title, href: `/exam/${examSet.id}` },
+          { label: 'Kết quả' },
+        ]
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto', padding: '0 0 48px' }}>
-      {/* Header */}
-      <Flex align="center" gap={12} style={{ marginBottom: 8 }}>
-        <Button icon={<ArrowLeftOutlined />} type="text" onClick={() => navigate(-1)} />
-        <div>
-          <Title level={4} style={{ margin: 0 }}>
-            {examSet.title}
-          </Title>
-          <Text type="secondary" style={{ fontSize: 13 }}>
-            {dayjs(session.startedAt).format('DD/MM/YYYY HH:mm')} • {userResponses.length} câu đã
-            ghi âm
-          </Text>
-        </div>
-      </Flex>
-
-      <Divider />
+    <>
+      <PageHeader
+        title={`Kết quả — ${examSet.title}`}
+        description={`${dayjs(session.startedAt).format('DD/MM/YYYY HH:mm')} • ${userResponses.length} câu đã ghi âm`}
+        breadcrumbs={breadcrumbs}
+      />
 
       {userResponses.length === 0 && (
         <Empty description="Không có câu trả lời nào được ghi âm trong buổi này" />
       )}
 
-      <Flex vertical gap={20}>
+      <Flex vertical gap={20} style={{ paddingBottom: 48 }}>
         {userResponses.map((item) => {
           const { question } = item
           const partMeta = PART_META[question.partNumber as keyof typeof PART_META]
@@ -106,10 +113,9 @@ export default function ResultPage() {
 
               {/* Audio player */}
               {item.audioUrl ? (
-                <Flex align="center" gap={12} style={{ marginTop: 8 }}>
-                  <SoundOutlined style={{ color: '#6366f1', fontSize: 18 }} />
-                  <audio controls src={item.audioUrl} style={{ width: '100%', height: 36 }} />
-                </Flex>
+                <div style={{ marginTop: 12 }}>
+                  <WavesurferPlayer url={item.audioUrl} />
+                </div>
               ) : (
                 <Text type="secondary" style={{ fontSize: 13 }}>
                   Không có bản ghi âm cho câu này
@@ -119,11 +125,6 @@ export default function ResultPage() {
           )
         })}
       </Flex>
-
-      {/* Back link */}
-      <Flex justify="center" style={{ marginTop: 40 }}>
-        <Link to="/practice">← Về trang luyện tập</Link>
-      </Flex>
-    </div>
+    </>
   )
 }

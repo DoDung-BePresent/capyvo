@@ -1,6 +1,7 @@
 import { Breadcrumb, Typography, Space, Flex } from 'antd'
 import { Helmet } from 'react-helmet-async'
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 
 const { Title, Text } = Typography
 
@@ -28,7 +29,7 @@ export function PageHeader({ title, description, breadcrumbs, extra }: PageHeade
           <Breadcrumb
             style={{ marginBottom: 8 }}
             items={breadcrumbs.map((b) =>
-              b.href ? { title: <a href={b.href}>{b.label}</a> } : { title: b.label },
+              b.href ? { title: <Link to={b.href}>{b.label}</Link> } : { title: b.label },
             )}
           />
         )}

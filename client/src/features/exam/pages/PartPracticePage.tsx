@@ -49,8 +49,8 @@ function SetCard({
   return (
     <Badge.Ribbon
       text={
-        <Flex align="center" gap={4}>
-          <CheckCircleFilled /> Hoàn thành
+        <Flex align="center" className="py-1!">
+          <CheckCircleFilled />
         </Flex>
       }
       color="green"
