@@ -19,9 +19,14 @@ export default function ExamPage() {
   return (
     <MicPermissionGate>
       <ExamRunner
+        examSetId={examSetId ?? ''}
         questions={examSet?.questions ?? []}
         isLoading={isLoading}
-        onDone={() => navigate('/', { replace: true })}
+        onDone={(sessionId) =>
+          sessionId
+            ? navigate(`/result/${sessionId}`, { replace: true })
+            : navigate('/', { replace: true })
+        }
       />
     </MicPermissionGate>
   )

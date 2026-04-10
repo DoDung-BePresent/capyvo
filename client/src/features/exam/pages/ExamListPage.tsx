@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom'
-import { Row, Col, Card, Button, Tag, Typography, Flex, Empty, Spin } from 'antd'
-import { PlayCircleOutlined } from '@ant-design/icons'
+import { Row, Col, Card, Badge, Tag, Typography, Flex, Empty, Spin } from 'antd'
+import { CheckCircleFilled } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 
 import { examSetService } from '@/features/admin/services/exam-set.service'
+import { sessionService } from '@/features/exam/services/session.service'
 import { queryKeys } from '@/lib/query-keys'
 import { PageHeader } from '@/shared/components'
 
@@ -22,6 +23,13 @@ export default function ExamListPage() {
     queryKey: queryKeys.examSets.published(),
     queryFn: examSetService.getPublished,
   })
+
+  const { data: completedSetIds = [] } = useQuery({
+    queryKey: queryKeys.practiceSessions.completedSetIds(),
+    queryFn: () => sessionService.getCompletedSetIds(),
+  })
+
+  const completedSet = new Set(completedSetIds)
 
   return (
     <>
@@ -45,41 +53,52 @@ export default function ExamListPage() {
           {examSets.map((set) => {
             const type = TYPE_LABELS[set.type] ?? TYPE_LABELS['CUSTOM']
             const count = set._count?.questions ?? 0
+            const isDone = completedSet.has(set.id)
+
+            const card = (
+              <Card
+                hoverable
+                style={{ height: '100%' }}
+                styles={{ body: { padding: '20px 24px' } }}
+                onClick={() => navigate(`/exam/${set.id}`)}
+              >
+                <Flex vertical gap={10}>
+                  <Flex align="center" justify="space-between">
+                    <Tag color={type.color}>{type.label}</Tag>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {count} câu
+                    </Text>
+                  </Flex>
+
+                  <Text strong style={{ fontSize: 15 }}>
+                    {set.title}
+                  </Text>
+
+                  {set.description && (
+                    <Text type="secondary" style={{ fontSize: 13 }}>
+                      {set.description}
+                    </Text>
+                  )}
+                </Flex>
+              </Card>
+            )
+
             return (
               <Col key={set.id} xs={24} sm={12} lg={8}>
-                <Card
-                  hoverable
-                  style={{ height: '100%' }}
-                  styles={{ body: { padding: '20px 24px' } }}
-                >
-                  <Flex vertical gap={10}>
-                    <Flex align="center" justify="space-between">
-                      <Tag color={type.color}>{type.label}</Tag>
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        {count} câu
-                      </Text>
-                    </Flex>
-
-                    <Text strong style={{ fontSize: 15 }}>
-                      {set.title}
-                    </Text>
-
-                    {set.description && (
-                      <Text type="secondary" style={{ fontSize: 13 }}>
-                        {set.description}
-                      </Text>
-                    )}
-
-                    <Button
-                      type="primary"
-                      icon={<PlayCircleOutlined />}
-                      onClick={() => navigate(`/exam/${set.id}`)}
-                      style={{ alignSelf: 'flex-start', marginTop: 4 }}
-                    >
-                      Bắt đầu thi
-                    </Button>
-                  </Flex>
-                </Card>
+                {isDone ? (
+                  <Badge.Ribbon
+                    text={
+                      <Flex align="center" gap={4}>
+                        <CheckCircleFilled /> Đã làm
+                      </Flex>
+                    }
+                    color="green"
+                  >
+                    {card}
+                  </Badge.Ribbon>
+                ) : (
+                  card
+                )}
               </Col>
             )
           })}

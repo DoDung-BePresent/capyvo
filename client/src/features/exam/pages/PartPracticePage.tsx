@@ -1,9 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { Button, Card, Col, Empty, Flex, Row, Spin, Tag, Typography } from 'antd'
-import { PlayCircleOutlined } from '@ant-design/icons'
+import { Badge, Card, Col, Empty, Flex, Row, Spin, Tag, Typography } from 'antd'
+import { CheckCircleFilled } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 
 import { questionService } from '@/features/admin/services/question.service'
+import { sessionService } from '@/features/exam/services/session.service'
 import { queryKeys } from '@/lib/query-keys'
 import { PART_META } from '@/features/admin/types'
 import type { PracticeSet, PartNumber } from '@/features/admin/types'
@@ -11,7 +12,15 @@ import { PageHeader } from '@/shared/components'
 
 const { Text } = Typography
 
-function SetCard({ set, onStart }: { set: PracticeSet; onStart: () => void }) {
+function SetCard({
+  set,
+  isDone,
+  onClick,
+}: {
+  set: PracticeSet
+  isDone: boolean
+  onClick: () => void
+}) {
   const { questions } = set
   const totalSeconds = questions.reduce((s, q) => s + q.prepTimeSeconds + q.responseTimeSeconds, 0)
   const minutes = Math.floor(totalSeconds / 60)
@@ -19,8 +28,8 @@ function SetCard({ set, onStart }: { set: PracticeSet; onStart: () => void }) {
   const timeLabel =
     minutes > 0 ? `${minutes} phút${seconds > 0 ? ` ${seconds}s` : ''}` : `${seconds}s`
 
-  return (
-    <Card hoverable styles={{ body: { padding: '16px 20px' } }}>
+  const card = (
+    <Card hoverable styles={{ body: { padding: '16px 20px' } }} onClick={onClick}>
       <Flex vertical gap={10}>
         <Flex align="center" justify="space-between">
           <Text strong style={{ fontSize: 15 }}>
@@ -28,21 +37,26 @@ function SetCard({ set, onStart }: { set: PracticeSet; onStart: () => void }) {
           </Text>
           <Tag color="blue">{questions.length} câu</Tag>
         </Flex>
-
         <Text type="secondary" style={{ fontSize: 12 }}>
           Thời gian ước tính: {timeLabel}
         </Text>
-
-        <Button
-          type="primary"
-          icon={<PlayCircleOutlined />}
-          onClick={onStart}
-          style={{ alignSelf: 'flex-start' }}
-        >
-          Bắt đầu luyện
-        </Button>
       </Flex>
     </Card>
+  )
+
+  if (!isDone) return card
+
+  return (
+    <Badge.Ribbon
+      text={
+        <Flex align="center" gap={4}>
+          <CheckCircleFilled /> Hoàn thành
+        </Flex>
+      }
+      color="green"
+    >
+      {card}
+    </Badge.Ribbon>
   )
 }
 
@@ -58,6 +72,13 @@ export default function PartPracticePage() {
     queryFn: () => questionService.getPracticeSets(part),
     enabled: !!part && part >= 1 && part <= 5,
   })
+
+  const { data: completedSetIds = [] } = useQuery({
+    queryKey: queryKeys.practiceSessions.completedSetIds(),
+    queryFn: () => sessionService.getCompletedSetIds(),
+  })
+
+  const completedSet = new Set(completedSetIds)
 
   return (
     <>
@@ -89,7 +110,8 @@ export default function PartPracticePage() {
             <Col key={set.examSetId} xs={24} sm={12} lg={8}>
               <SetCard
                 set={set}
-                onStart={() => navigate(`/practice/part/${part}/set/${set.examSetId}`)}
+                isDone={completedSet.has(set.examSetId)}
+                onClick={() => navigate(`/practice/part/${part}/set/${set.examSetId}`)}
               />
             </Col>
           ))}

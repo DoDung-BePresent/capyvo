@@ -36,18 +36,29 @@ const router = createBrowserRouter([
                 path: '/practice/part/:partNumber',
                 lazy: lazy(() => import('@/features/exam/pages/PartPracticePage')),
               },
+              {
+                path: '/practice/part/:partNumber/set/:examSetId',
+                lazy: lazy(() => import('@/features/exam/pages/PartSetDetailPage')),
+              },
               { path: '/exam', lazy: lazy(() => import('@/features/exam/pages/ExamListPage')) },
+              {
+                path: '/exam/:examSetId',
+                lazy: lazy(() => import('@/features/exam/pages/ExamSetDetailPage')),
+              },
+              {
+                path: '/result/:sessionId',
+                lazy: lazy(() => import('@/features/exam/pages/ResultPage')),
+              },
             ],
           },
           // Fullscreen exam pages — no layout
-          { path: '/exam/:examSetId', lazy: lazy(() => import('@/features/exam/pages/ExamPage')) },
           {
-            path: '/practice/part/:partNumber/set/:examSetId',
-            lazy: lazy(() => import('@/features/exam/pages/PartExamPage')),
+            path: '/exam/:examSetId/take',
+            lazy: lazy(() => import('@/features/exam/pages/ExamPage')),
           },
           {
-            path: '/result/:sessionId',
-            lazy: lazy(() => import('@/features/exam/pages/ResultPage')),
+            path: '/practice/part/:partNumber/set/:examSetId/exam',
+            lazy: lazy(() => import('@/features/exam/pages/PartExamPage')),
           },
         ],
       },

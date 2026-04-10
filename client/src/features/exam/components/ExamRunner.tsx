@@ -9,6 +9,7 @@ import { instructionService } from '@/features/admin/services/instruction.servic
 import { systemAudioService } from '@/features/admin/services/system-audio.service'
 import { queryKeys } from '@/lib/query-keys'
 import { responseService } from '@/features/exam/services/response.service'
+import { sessionService } from '@/features/exam/services/session.service'
 import { MicWaveform } from './MicWaveform'
 
 // ─── Directions text per part ─── //
@@ -401,12 +402,13 @@ function QuestionScreen({
 
 // ─── ExamRunner ─── //
 export interface ExamRunnerProps {
+  examSetId: string
   questions: Question[]
   isLoading: boolean
-  onDone: () => void
+  onDone: (sessionId: string) => void
 }
 
-export function ExamRunner({ questions, isLoading, onDone }: ExamRunnerProps) {
+export function ExamRunner({ examSetId, questions, isLoading, onDone }: ExamRunnerProps) {
   const [state, dispatch] = useReducer(reducer, {
     phases: [],
     phaseIndex: 0,
@@ -425,6 +427,16 @@ export function ExamRunner({ questions, isLoading, onDone }: ExamRunnerProps) {
     queryFn: systemAudioService.getAll,
     staleTime: Infinity,
   })
+
+  // ─ Session ─
+  const sessionIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!questions.length || sessionIdRef.current) return
+    sessionService.createSession(examSetId).then(({ sessionId }) => {
+      sessionIdRef.current = sessionId
+    })
+  }, [questions, examSetId])
 
   // ─ Recording state ─
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -546,9 +558,9 @@ export function ExamRunner({ questions, isLoading, onDone }: ExamRunnerProps) {
       audioStreamRef.current?.getTracks().forEach((t) => t.stop())
       audioStreamRef.current = null
 
-      if (blob && blob.size > 0 && question) {
+      if (blob && blob.size > 0 && question && sessionIdRef.current) {
         try {
-          await responseService.saveAudio(question.id, blob)
+          await responseService.saveAudio(sessionIdRef.current, question.id, blob)
         } catch {
           // Upload failure — still proceed to next question
         }
@@ -576,11 +588,23 @@ export function ExamRunner({ questions, isLoading, onDone }: ExamRunnerProps) {
     }
   }, [state.responseEnded])
 
+  const onDoneRef = useRef(onDone)
   useEffect(() => {
-    if (currentPhase?.kind === 'done') {
-      onDone()
+    onDoneRef.current = onDone
+  })
+
+  useEffect(() => {
+    if (currentPhase?.kind !== 'done') return
+    const sessionId = sessionIdRef.current ?? ''
+    if (sessionId) {
+      sessionService
+        .completeSession(sessionId)
+        .catch(() => {})
+        .finally(() => onDoneRef.current(sessionId))
+    } else {
+      onDoneRef.current(sessionId)
     }
-  }, [currentPhase?.kind, onDone])
+  }, [currentPhase?.kind])
 
   if (isLoading || isLoadingInstructions || isLoadingSystemAudio || !currentPhase) {
     return (

@@ -18,12 +18,18 @@ export const uploadAudio = multer({
 export class ResponseController {
   async saveAudio(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { questionId } = req.body
+      const { questionId, sessionId } = req.body
       const file = req.file
       if (!file) throw new ValidationError('audio file is required')
       if (!questionId) throw new ValidationError('questionId is required')
+      if (!sessionId) throw new ValidationError('sessionId is required')
 
-      const audioUrl = await responseService.saveAudio(questionId, file.buffer, file.mimetype)
+      const audioUrl = await responseService.saveAudio(
+        sessionId,
+        questionId,
+        file.buffer,
+        file.mimetype,
+      )
       res.status(201).json({ success: true, data: { audioUrl } })
     } catch (err) {
       next(err)

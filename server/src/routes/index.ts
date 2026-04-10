@@ -5,6 +5,7 @@ import questionRouter from './question.routes'
 import partInstructionRouter from './part-instruction.routes'
 import systemAudioRouter from './system-audio.routes'
 import responseRouter from './response.routes'
+import sessionRouter from './session.routes'
 
 const router = Router()
 
@@ -14,5 +15,6 @@ router.use('/questions', questionRouter)
 router.use('/part-instructions', partInstructionRouter)
 router.use('/system-audio', systemAudioRouter)
 router.use('/responses', responseRouter)
+router.use('/sessions', sessionRouter)
 
 export default router

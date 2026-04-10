@@ -20,9 +20,14 @@ export default function PartExamPage() {
   return (
     <MicPermissionGate>
       <ExamRunner
+        examSetId={examSetId ?? ''}
         questions={questions}
         isLoading={isLoading}
-        onDone={() => navigate('/practice', { replace: true })}
+        onDone={(sessionId) =>
+          sessionId
+            ? navigate(`/result/${sessionId}`, { replace: true })
+            : navigate('/practice', { replace: true })
+        }
       />
     </MicPermissionGate>
   )
