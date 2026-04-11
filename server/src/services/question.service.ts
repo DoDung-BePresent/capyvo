@@ -59,9 +59,10 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 async function generateAndUploadTTS(text: string, prefix: string): Promise<string> {
   const mp3 = await openai.audio.speech.create({
-    model: 'tts-1',
-    voice: 'nova',
+    model: 'tts-1-hd',
+    voice: 'onyx',
     input: text,
+    speed: 0.9,
   })
 
   const arrayBuffer = await mp3.arrayBuffer()

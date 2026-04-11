@@ -39,12 +39,13 @@ model AppSetting {
 }
 
 model User {
-  id        String   @id // Matches Supabase auth.users.id (UUID)
-  email     String   @unique
-  fullName  String?
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String   @id // Matches Supabase auth.users.id (UUID)
+  email                String   @unique
+  fullName             String?
+  role                 Role     @default(USER)
+  transcriptionCredits Int      @default(5)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   practiceSessions PracticeSession[]
 
