@@ -1,18 +1,26 @@
+import supabase from '@/lib/supabase'
 import axiosInstance from '@/lib/axios'
-import type { AuthResponse, LoginPayload } from '../types'
+import type { User } from '../types'
+import type { ApiResponse } from '@/shared/types/api'
 
 export const authService = {
-  login: async (payload: LoginPayload): Promise<AuthResponse> => {
-    const { data } = await axiosInstance.post<AuthResponse>('/auth/login', payload)
-    return data
+  loginWithGoogle: async (): Promise<void> => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+    if (error) throw error
+  },
+
+  getMe: async (): Promise<User> => {
+    const { data } = await axiosInstance.get<ApiResponse<User>>('/auth/me')
+    return data.data
   },
 
   logout: async (): Promise<void> => {
-    await axiosInstance.post('/auth/logout')
-  },
-
-  getMe: async (): Promise<AuthResponse['user']> => {
-    const { data } = await axiosInstance.get<AuthResponse['user']>('/auth/me')
-    return data
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
   },
 }

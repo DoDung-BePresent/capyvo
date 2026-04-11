@@ -1,17 +1,13 @@
+export type Role = 'USER' | 'ADMIN'
+
 export interface User {
   id: string
   email: string
-  full_name: string
-  role: 'user' | 'admin'
-  created_at: string
+  fullName: string | null
+  role: Role
+  createdAt: string
 }
 
-export interface LoginPayload {
+export interface SendOtpPayload {
   email: string
-  password: string
-}
-
-export interface AuthResponse {
-  access_token: string
-  user: User
 }

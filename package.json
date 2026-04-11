@@ -4,13 +4,20 @@
   "description": "",
   "scripts": {
     "prepare": "husky",
-    "format": "prettier --write \"**/*.{ts,tsx,js,json,css,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,css,md}\"",
+    "dev": "concurrently --kill-others-on-fail --prefix-colors \"cyan,yellow\" --names \"client,server\" \"npm run dev --prefix client\" \"npm run dev --prefix server\"",
+    "dev:client": "npm run dev --prefix client",
+    "dev:server": "npm run dev --prefix server",
+    "client": "npm --prefix client",
+    "server": "npm --prefix server"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/node": "^25.5.2",
+    "concurrently": "^9.2.1",
     "eslint": "^10.2.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.0.1",
