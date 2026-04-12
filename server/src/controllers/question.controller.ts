@@ -18,6 +18,19 @@ export const upload = multer({
   },
 })
 
+// Multer — audio uploads, max 20MB
+export const uploadAudio = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith('audio/')) {
+      cb(new Error('Only audio files are allowed'))
+      return
+    }
+    cb(null, true)
+  },
+})
+
 export class QuestionController {
   async uploadImage(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -35,6 +48,20 @@ export class QuestionController {
       if (!imageUrl) throw new Error('imageUrl is required')
       const context = await questionService.analyzeImage(imageUrl)
       res.json({ success: true, data: { context } })
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  async uploadAudio(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.file) throw new Error('No file uploaded')
+      const url = await questionService.uploadAudio(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype,
+      )
+      res.json({ success: true, data: { url } })
     } catch (err) {
       next(err)
     }

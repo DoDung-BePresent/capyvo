@@ -97,26 +97,35 @@ export interface Part2FormValues {
   imageContext?: string
 }
 
-/** Part 3: fills context once + 3 question texts (→ auto TTS) */
+/** Part 3: fills context once + 3 question texts (→ auto TTS if no audio provided) */
 export interface Part3FormValues {
   contextText: string
+  contextAudioUrl?: string
   q5: string
+  q5AudioUrl?: string
   q6: string
+  q6AudioUrl?: string
   q7: string
+  q7AudioUrl?: string
 }
 
-/** Part 4: 1 shared image + 3 question texts (→ auto TTS) */
+/** Part 4: 1 shared image + 3 question texts (→ auto TTS if no audio provided) */
 export interface Part4FormValues {
   contextText: string
+  contextAudioUrl?: string
   imageUrl: string
   imageContext?: string
   q8: string
+  q8AudioUrl?: string
   q9: string
+  q9AudioUrl?: string
   q10: string
+  q10AudioUrl?: string
 }
 
 export interface Part5FormValues {
   questionText: string
+  questionAudioUrl?: string
 }
 
 // ─── Part metadata ─────────────────────────────────────────────────────────────

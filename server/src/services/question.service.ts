@@ -19,11 +19,13 @@ export const CreatePart2Schema = z.object({
 
 export const CreatePart3Schema = z.object({
   contextText: z.string().min(1),
+  contextAudioUrl: z.string().url().optional(),
   questions: z
     .array(
       z.object({
         questionNumber: z.union([z.literal(5), z.literal(6), z.literal(7)]),
         questionText: z.string().min(1),
+        questionAudioUrl: z.string().url().optional(),
       }),
     )
     .length(3),
@@ -31,6 +33,7 @@ export const CreatePart3Schema = z.object({
 
 export const CreatePart4Schema = z.object({
   contextText: z.string().min(1),
+  contextAudioUrl: z.string().url().optional(),
   imageUrl: z.string().url(),
   imageContext: z.string().optional(),
   questions: z
@@ -38,6 +41,7 @@ export const CreatePart4Schema = z.object({
       z.object({
         questionNumber: z.union([z.literal(8), z.literal(9), z.literal(10)]),
         questionText: z.string().min(1),
+        questionAudioUrl: z.string().url().optional(),
       }),
     )
     .length(3),
@@ -45,6 +49,7 @@ export const CreatePart4Schema = z.object({
 
 export const CreatePart5Schema = z.object({
   questionText: z.string().min(1),
+  questionAudioUrl: z.string().url().optional(),
 })
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -140,11 +145,13 @@ export class QuestionService {
   async createPart3(body: unknown) {
     const dto = CreatePart3Schema.parse(body)
 
-    const contextAudioUrl = await generateAndUploadTTS(dto.contextText, 'context')
+    const contextAudioUrl =
+      dto.contextAudioUrl ?? (await generateAndUploadTTS(dto.contextText, 'context'))
 
     const questions = await Promise.all(
       dto.questions.map(async (q) => {
-        const questionAudioUrl = await generateAndUploadTTS(q.questionText, `q${q.questionNumber}`)
+        const questionAudioUrl =
+          q.questionAudioUrl ?? (await generateAndUploadTTS(q.questionText, `q${q.questionNumber}`))
         const timing = getQuestionTiming(3, q.questionNumber)
         return prisma.question.create({
           data: {
@@ -166,11 +173,13 @@ export class QuestionService {
   async createPart4(body: unknown) {
     const dto = CreatePart4Schema.parse(body)
 
-    const contextAudioUrl = await generateAndUploadTTS(dto.contextText, 'context-p4')
+    const contextAudioUrl =
+      dto.contextAudioUrl ?? (await generateAndUploadTTS(dto.contextText, 'context-p4'))
 
     const questions = await Promise.all(
       dto.questions.map(async (q) => {
-        const questionAudioUrl = await generateAndUploadTTS(q.questionText, `q${q.questionNumber}`)
+        const questionAudioUrl =
+          q.questionAudioUrl ?? (await generateAndUploadTTS(q.questionText, `q${q.questionNumber}`))
         const timing = getQuestionTiming(4, q.questionNumber)
         return prisma.question.create({
           data: {
@@ -195,7 +204,8 @@ export class QuestionService {
     const dto = CreatePart5Schema.parse(body)
     const timing = getQuestionTiming(5, 11)
 
-    const questionAudioUrl = await generateAndUploadTTS(dto.questionText, 'q11')
+    const questionAudioUrl =
+      dto.questionAudioUrl ?? (await generateAndUploadTTS(dto.questionText, 'q11'))
 
     return prisma.question.create({
       data: {
@@ -248,6 +258,24 @@ export class QuestionService {
 
   async deleteQuestion(id: string) {
     return prisma.question.delete({ where: { id } })
+  }
+
+  async uploadAudio(buffer: Buffer, originalName: string, mimeType: string): Promise<string> {
+    // const ext = originalName.split('.').pop()?.toLowerCase() ?? 'mp3'
+    const filename = `${Date.now()}-${originalName.replace(/\s+/g, '_')}`
+    const storagePath = `questions/${filename}`
+
+    const { error } = await supabaseAdmin.storage
+      .from('audio')
+      .upload(storagePath, buffer, { contentType: mimeType, upsert: false })
+
+    if (error) throw new Error(`Storage upload failed: ${error.message}`)
+
+    const {
+      data: { publicUrl },
+    } = supabaseAdmin.storage.from('audio').getPublicUrl(storagePath)
+
+    return publicUrl
   }
 
   async uploadImage(buffer: Buffer, originalName: string): Promise<string> {

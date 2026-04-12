@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { QuestionController, upload } from '@/controllers/question.controller'
+import { QuestionController, upload, uploadAudio } from '@/controllers/question.controller'
 import { authenticate } from '@/middlewares/authenticate'
 import { requireRole } from '@/middlewares/authenticate'
 
@@ -18,6 +18,11 @@ router.delete('/:id', (req, res, next) => ctrl.deleteQuestion(req, res, next))
 // Upload image → returns { url }
 router.post('/upload/image', upload.single('image'), (req, res, next) =>
   ctrl.uploadImage(req, res, next),
+)
+
+// Upload audio → returns { url }
+router.post('/upload/audio', uploadAudio.single('audio'), (req, res, next) =>
+  ctrl.uploadAudio(req, res, next),
 )
 
 // Analyze image with Vision → returns { context }

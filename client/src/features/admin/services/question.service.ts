@@ -48,10 +48,11 @@ export const questionService = {
   createPart3: async (payload: Part3FormValues): Promise<Question[]> => {
     const body = {
       contextText: payload.contextText,
+      contextAudioUrl: payload.contextAudioUrl,
       questions: [
-        { questionNumber: 5, questionText: payload.q5 },
-        { questionNumber: 6, questionText: payload.q6 },
-        { questionNumber: 7, questionText: payload.q7 },
+        { questionNumber: 5, questionText: payload.q5, questionAudioUrl: payload.q5AudioUrl },
+        { questionNumber: 6, questionText: payload.q6, questionAudioUrl: payload.q6AudioUrl },
+        { questionNumber: 7, questionText: payload.q7, questionAudioUrl: payload.q7AudioUrl },
       ],
     }
     const { data } = await axiosInstance.post<ApiResponse<Question[]>>('/questions/part/3', body)
@@ -61,12 +62,13 @@ export const questionService = {
   createPart4: async (payload: Part4FormValues): Promise<Question[]> => {
     const body = {
       contextText: payload.contextText,
+      contextAudioUrl: payload.contextAudioUrl,
       imageUrl: payload.imageUrl,
       imageContext: payload.imageContext,
       questions: [
-        { questionNumber: 8, questionText: payload.q8 },
-        { questionNumber: 9, questionText: payload.q9 },
-        { questionNumber: 10, questionText: payload.q10 },
+        { questionNumber: 8, questionText: payload.q8, questionAudioUrl: payload.q8AudioUrl },
+        { questionNumber: 9, questionText: payload.q9, questionAudioUrl: payload.q9AudioUrl },
+        { questionNumber: 10, questionText: payload.q10, questionAudioUrl: payload.q10AudioUrl },
       ],
     }
     const { data } = await axiosInstance.post<ApiResponse<Question[]>>('/questions/part/4', body)
