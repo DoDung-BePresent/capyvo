@@ -7,6 +7,7 @@ import systemAudioRouter from './system-audio.routes'
 import responseRouter from './response.routes'
 import sessionRouter from './session.routes'
 import maintenanceRouter from './maintenance.routes'
+import systemStatsRouter from './system-stats.routes'
 
 const router = Router()
 
@@ -18,5 +19,6 @@ router.use('/part-instructions', partInstructionRouter)
 router.use('/system-audio', systemAudioRouter)
 router.use('/responses', responseRouter)
 router.use('/sessions', sessionRouter)
+router.use('/system-stats', systemStatsRouter)
 
 export default router

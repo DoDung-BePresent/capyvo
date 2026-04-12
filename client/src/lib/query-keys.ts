@@ -56,4 +56,9 @@ export const queryKeys = {
   partInstructions: {
     all: () => ['part-instructions'] as const,
   },
+
+  // System stats (storage, AI cost)
+  systemStats: {
+    all: () => ['system-stats'] as const,
+  },
 }
