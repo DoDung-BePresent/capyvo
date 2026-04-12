@@ -8,6 +8,7 @@ import type {
   Part3FormValues,
   Part4FormValues,
   Part5FormValues,
+  UpdateQuestionPayload,
 } from '../types'
 
 export function useGetQuestions(partNumber: number) {
@@ -56,6 +57,21 @@ export function useDeleteQuestion(partNumber: number) {
     },
     onError: () => {
       message.error('Xóa thất bại')
+    },
+  })
+}
+
+export function useUpdateQuestion(partNumber: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateQuestionPayload }) =>
+      questionService.update(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.questions.byPart(partNumber) })
+      message.success('Cập nhật câu hỏi thành công!')
+    },
+    onError: (err: Error) => {
+      message.error(err.message || 'Có lỗi xảy ra, vui lòng thử lại')
     },
   })
 }

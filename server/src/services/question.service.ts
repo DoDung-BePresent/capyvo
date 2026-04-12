@@ -60,6 +60,18 @@ export type CreatePart3Dto = z.infer<typeof CreatePart3Schema>
 export type CreatePart4Dto = z.infer<typeof CreatePart4Schema>
 export type CreatePart5Dto = z.infer<typeof CreatePart5Schema>
 
+export const UpdateQuestionSchema = z.object({
+  contentText: z.string().min(1).optional(),
+  contextText: z.string().min(1).optional(),
+  contextAudioUrl: z.string().url().nullable().optional(),
+  questionText: z.string().min(1).optional(),
+  questionAudioUrl: z.string().url().nullable().optional(),
+  imageUrls: z.array(z.string().url()).optional(),
+  imageContext: z.string().nullable().optional(),
+})
+
+export type UpdateQuestionDto = z.infer<typeof UpdateQuestionSchema>
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -88,6 +100,13 @@ async function generateAndUploadTTS(text: string, prefix: string): Promise<strin
   } = supabaseAdmin.storage.from('audio').getPublicUrl(storagePath)
 
   return publicUrl
+}
+
+function extractStoragePath(publicUrl: string, bucket: 'audio' | 'images'): string {
+  const marker = `/object/public/${bucket}/`
+  const idx = publicUrl.indexOf(marker)
+  if (idx === -1) return publicUrl
+  return publicUrl.slice(idx + marker.length)
 }
 
 function getQuestionTiming(
@@ -293,6 +312,39 @@ export class QuestionService {
     } = supabaseAdmin.storage.from('images').getPublicUrl(storagePath)
 
     return publicUrl
+  }
+
+  async updateQuestion(id: string, body: unknown) {
+    const dto = UpdateQuestionSchema.parse(body)
+
+    const current = await prisma.question.findUniqueOrThrow({ where: { id } })
+
+    // Remove stale audio files from storage when URLs change
+    const staleAudio: string[] = []
+    if ('contextAudioUrl' in dto && dto.contextAudioUrl !== current.contextAudioUrl) {
+      if (current.contextAudioUrl)
+        staleAudio.push(extractStoragePath(current.contextAudioUrl, 'audio'))
+    }
+    if ('questionAudioUrl' in dto && dto.questionAudioUrl !== current.questionAudioUrl) {
+      if (current.questionAudioUrl)
+        staleAudio.push(extractStoragePath(current.questionAudioUrl, 'audio'))
+    }
+    if (staleAudio.length) {
+      await supabaseAdmin.storage.from('audio').remove(staleAudio)
+    }
+
+    // Remove stale images from storage when imageUrls change
+    if (dto.imageUrls) {
+      const newSet = new Set(dto.imageUrls)
+      const removed = current.imageUrls.filter((url) => !newSet.has(url))
+      if (removed.length) {
+        await supabaseAdmin.storage
+          .from('images')
+          .remove(removed.map((url) => extractStoragePath(url, 'images')))
+      }
+    }
+
+    return prisma.question.update({ where: { id }, data: dto })
   }
 
   async analyzeImage(imageUrl: string): Promise<string> {

@@ -8,6 +8,7 @@ import type {
   Part3FormValues,
   Part4FormValues,
   Part5FormValues,
+  UpdateQuestionPayload,
 } from '../types'
 
 export const questionService = {
@@ -82,6 +83,11 @@ export const questionService = {
 
   delete: async (id: string): Promise<void> => {
     await axiosInstance.delete(`/questions/${id}`)
+  },
+
+  update: async (id: string, payload: UpdateQuestionPayload): Promise<Question> => {
+    const { data } = await axiosInstance.patch<ApiResponse<Question>>(`/questions/${id}`, payload)
+    return data.data
   },
 
   analyzeImage: async (imageUrl: string): Promise<string> => {

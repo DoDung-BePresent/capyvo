@@ -127,6 +127,20 @@ export class QuestionController {
     }
   }
 
+  async updateQuestion(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params['id'] as string
+      const question = await questionService.updateQuestion(id, req.body)
+      res.json({ success: true, data: question })
+    } catch (err) {
+      if ((err as { code?: string }).code === 'P2025') {
+        next(new NotFoundError('Question'))
+      } else {
+        next(err)
+      }
+    }
+  }
+
   async deleteQuestion(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const id = req.params['id'] as string

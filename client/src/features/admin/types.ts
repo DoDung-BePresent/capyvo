@@ -128,6 +128,16 @@ export interface Part5FormValues {
   questionAudioUrl?: string
 }
 
+export interface UpdateQuestionPayload {
+  contentText?: string
+  contextText?: string
+  contextAudioUrl?: string | null
+  questionText?: string
+  questionAudioUrl?: string | null
+  imageUrls?: string[]
+  imageContext?: string | null
+}
+
 // ─── Part metadata ─────────────────────────────────────────────────────────────
 
 export const PART_META = {

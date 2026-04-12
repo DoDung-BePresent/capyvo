@@ -14,6 +14,7 @@ router.get('/practice-sets', authenticate, (req, res, next) => ctrl.getPracticeS
 router.use(authenticate, requireRole('ADMIN'))
 
 router.delete('/:id', (req, res, next) => ctrl.deleteQuestion(req, res, next))
+router.patch('/:id', (req, res, next) => ctrl.updateQuestion(req, res, next))
 
 // Upload image → returns { url }
 router.post('/upload/image', upload.single('image'), (req, res, next) =>
