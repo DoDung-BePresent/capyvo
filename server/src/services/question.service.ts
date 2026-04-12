@@ -14,6 +14,7 @@ export const CreatePart1Schema = z.object({
 export const CreatePart2Schema = z.object({
   questionNumber: z.union([z.literal(3), z.literal(4)]),
   imageUrl: z.string().url(),
+  imageContext: z.string().optional(),
 })
 
 export const CreatePart3Schema = z.object({
@@ -31,6 +32,7 @@ export const CreatePart3Schema = z.object({
 export const CreatePart4Schema = z.object({
   contextText: z.string().min(1),
   imageUrl: z.string().url(),
+  imageContext: z.string().optional(),
   questions: z
     .array(
       z.object({
@@ -129,6 +131,7 @@ export class QuestionService {
         partNumber: 2,
         questionNumber: dto.questionNumber,
         imageUrls: [dto.imageUrl],
+        imageContext: dto.imageContext,
         ...timing,
       },
     })
@@ -176,6 +179,7 @@ export class QuestionService {
             contextText: dto.contextText,
             contextAudioUrl,
             imageUrls: [dto.imageUrl],
+            imageContext: dto.imageContext,
             questionText: q.questionText,
             questionAudioUrl,
             ...timing,
@@ -261,5 +265,29 @@ export class QuestionService {
     } = supabaseAdmin.storage.from('images').getPublicUrl(storagePath)
 
     return publicUrl
+  }
+
+  async analyzeImage(imageUrl: string): Promise<string> {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: "Describe the key content of this image in English for a TOEIC speaking exam. Be specific and factual: mention people, objects, setting, actions, numbers, labels, or data visible. Keep it under 100 words. This description will be used as context for evaluating a student's spoken response about the image.",
+            },
+            {
+              type: 'image_url',
+              image_url: { url: imageUrl, detail: 'high' },
+            },
+          ],
+        },
+      ],
+      max_tokens: 200,
+    })
+
+    return response.choices[0]?.message?.content?.trim() ?? ''
   }
 }

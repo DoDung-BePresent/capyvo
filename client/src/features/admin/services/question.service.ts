@@ -62,6 +62,7 @@ export const questionService = {
     const body = {
       contextText: payload.contextText,
       imageUrl: payload.imageUrl,
+      imageContext: payload.imageContext,
       questions: [
         { questionNumber: 8, questionText: payload.q8 },
         { questionNumber: 9, questionText: payload.q9 },
@@ -79,5 +80,13 @@ export const questionService = {
 
   delete: async (id: string): Promise<void> => {
     await axiosInstance.delete(`/questions/${id}`)
+  },
+
+  analyzeImage: async (imageUrl: string): Promise<string> => {
+    const { data } = await axiosInstance.post<ApiResponse<{ context: string }>>(
+      '/questions/analyze-image',
+      { imageUrl },
+    )
+    return data.data.context
   },
 }

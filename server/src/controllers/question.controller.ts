@@ -29,6 +29,17 @@ export class QuestionController {
     }
   }
 
+  async analyzeImage(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { imageUrl } = req.body as { imageUrl?: string }
+      if (!imageUrl) throw new Error('imageUrl is required')
+      const context = await questionService.analyzeImage(imageUrl)
+      res.json({ success: true, data: { context } })
+    } catch (err) {
+      next(err)
+    }
+  }
+
   async createPart1(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const question = await questionService.createPart1(req.body)

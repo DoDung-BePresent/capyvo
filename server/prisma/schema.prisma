@@ -83,6 +83,7 @@ model Question {
   questionAudioUrl String?
   // Part 2, 4: images
   imageUrls       String[] @default([])
+  imageContext    String?  // AI-generated description of the image(s) for scoring context
   // Timing
   prepTimeSeconds     Int
   responseTimeSeconds Int

@@ -31,7 +31,7 @@ export interface AnalysisResult {
 const ANALYSIS_PROMPT = `You are a TOEIC speaking coach. Compare the reference text and the student's transcript.
 
 Reference text: {REFERENCE}
-Student transcript: {TRANSCRIPT}
+Student transcript: {TRANSCRIPT}{IMAGE_CONTEXT_BLOCK}
 
 Return a JSON object (no markdown) with this exact shape:
 {
@@ -69,6 +69,45 @@ Critical rules — ALWAYS obey:
 5. Detect word ORDER swaps — if the student said words in wrong sequence, flag as "order" category.
 
 Only include real issues. If the student read perfectly, return empty issues array and score 100.`
+
+const IMAGE_DESCRIPTION_PROMPT = `You are a TOEIC speaking coach. The student was asked to describe an image aloud.
+
+Image content: {IMAGE_CONTEXT}
+Student's spoken response: {TRANSCRIPT}
+
+Evaluate how well the student described the image. Return a JSON object (no markdown) with this exact shape:
+{
+  "score": <0-100 integer, overall quality of the description>,
+  "criteria": {
+    "accuracy": <0-100, how accurately they described what is actually visible in the image>,
+    "vocabulary": <0-100, appropriateness and richness of descriptive vocabulary>,
+    "grammar": <0-100, grammatical correctness of sentences>,
+    "fluency": <0-100, completeness and natural flow of the response>
+  },
+  "issues": [
+    {
+      "category": <"morphology"|"substitution"|"addition">,
+      "original": <what should have been said or the correct form>,
+      "spoken": <exact word(s) as spoken — copy verbatim from transcript>,
+      "note": <short explanation in Vietnamese, max 12 words>
+    }
+  ],
+  "summary": <1-2 sentences feedback in Vietnamese about the overall description quality>
+}
+
+Category rules:
+- morphology: grammatical form error (wrong tense, missing plural, wrong article). "spoken" = the incorrect word verbatim from transcript.
+- substitution: student described something inaccurately or used clearly wrong word for what is shown. "spoken" = exact word from transcript.
+- addition: student mentioned something that is clearly NOT visible in the image. "spoken" = the invented word/phrase verbatim from transcript.
+
+Critical rules:
+1. Do NOT flag omissions — students are not expected to mention every single thing in the image.
+2. Do NOT flag personal opinions or subjective interpretations as errors.
+3. "spoken" must be copied CHARACTER-FOR-CHARACTER from the transcript. Never rephrase.
+4. IGNORE capitalization.
+5. Only flag clear, objective errors. Be lenient with paraphrasing.
+
+If the description is good, return empty issues array and a high score.`
 
 class ResponseService {
   async saveAudio(
@@ -171,7 +210,7 @@ class ResponseService {
         transcript: true,
         pronunciationScore: true,
         question: {
-          select: { contentText: true, questionText: true },
+          select: { contentText: true, questionText: true, imageContext: true },
         },
       },
     })
@@ -184,7 +223,9 @@ class ResponseService {
     }
 
     const referenceText = response.question.contentText ?? response.question.questionText
-    if (!referenceText) throw new ForbiddenError('No reference text for this question type')
+    const { imageContext } = response.question
+    if (!referenceText && !imageContext)
+      throw new ForbiddenError('No reference text for this question type')
 
     // 2. Check credits
     const user = await prisma.user.findUnique({
@@ -195,11 +236,19 @@ class ResponseService {
       throw new ForbiddenError('no_credits')
     }
 
-    // 3. Call GPT-4o-mini
-    const prompt = ANALYSIS_PROMPT.replace('{REFERENCE}', referenceText).replace(
-      '{TRANSCRIPT}',
-      response.transcript,
-    )
+    // 3. Build prompt — use image description mode when there is no script reference
+    let prompt: string
+    if (referenceText) {
+      const imageContextBlock = imageContext ? `\nImage context: ${imageContext}` : ''
+      prompt = ANALYSIS_PROMPT.replace('{REFERENCE}', referenceText)
+        .replace('{TRANSCRIPT}', response.transcript)
+        .replace('{IMAGE_CONTEXT_BLOCK}', imageContextBlock)
+    } else {
+      prompt = IMAGE_DESCRIPTION_PROMPT.replace('{IMAGE_CONTEXT}', imageContext!).replace(
+        '{TRANSCRIPT}',
+        response.transcript,
+      )
+    }
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -238,7 +287,7 @@ class ResponseService {
         audioUrl: true,
         transcript: true,
         pronunciationScore: true,
-        question: { select: { contentText: true, questionText: true } },
+        question: { select: { contentText: true, questionText: true, imageContext: true } },
       },
     })
     if (!response?.audioUrl) throw new ForbiddenError('Response not found or has no audio')
@@ -252,7 +301,9 @@ class ResponseService {
     }
 
     const referenceText = response.question.contentText ?? response.question.questionText
-    if (!referenceText) throw new ForbiddenError('No reference text for this question type')
+    const { imageContext } = response.question
+    if (!referenceText && !imageContext)
+      throw new ForbiddenError('No reference text for this question type')
 
     // 2. Check credits — only 1 needed for the combined action
     const user = await prisma.user.findUnique({
@@ -284,11 +335,19 @@ class ResponseService {
       transcript = whisperResult.text
     }
 
-    // 4. Analyze
-    const prompt = ANALYSIS_PROMPT.replace('{REFERENCE}', referenceText).replace(
-      '{TRANSCRIPT}',
-      transcript,
-    )
+    // 4. Analyze — switch prompt based on question type
+    let prompt: string
+    if (referenceText) {
+      const imageContextBlock = imageContext ? `\nImage context: ${imageContext}` : ''
+      prompt = ANALYSIS_PROMPT.replace('{REFERENCE}', referenceText)
+        .replace('{TRANSCRIPT}', transcript)
+        .replace('{IMAGE_CONTEXT_BLOCK}', imageContextBlock)
+    } else {
+      prompt = IMAGE_DESCRIPTION_PROMPT.replace('{IMAGE_CONTEXT}', imageContext!).replace(
+        '{TRANSCRIPT}',
+        transcript,
+      )
+    }
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],

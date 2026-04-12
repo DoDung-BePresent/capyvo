@@ -20,6 +20,9 @@ router.post('/upload/image', upload.single('image'), (req, res, next) =>
   ctrl.uploadImage(req, res, next),
 )
 
+// Analyze image with Vision → returns { context }
+router.post('/analyze-image', (req, res, next) => ctrl.analyzeImage(req, res, next))
+
 // Create questions per part
 router.post('/part/1', (req, res, next) => ctrl.createPart1(req, res, next))
 router.post('/part/2', (req, res, next) => ctrl.createPart2(req, res, next))

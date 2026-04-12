@@ -78,6 +78,7 @@ export interface Question {
   questionText: string | null
   questionAudioUrl: string | null
   imageUrls: string[]
+  imageContext: string | null
   prepTimeSeconds: number
   responseTimeSeconds: number
   createdAt: string
@@ -92,7 +93,8 @@ export interface Part1FormValues {
 
 export interface Part2FormValues {
   questionNumber: 3 | 4
-  imageUrl: string // URL returned after upload
+  imageUrl: string
+  imageContext?: string
 }
 
 /** Part 3: fills context once + 3 question texts (→ auto TTS) */
@@ -107,6 +109,7 @@ export interface Part3FormValues {
 export interface Part4FormValues {
   contextText: string
   imageUrl: string
+  imageContext?: string
   q8: string
   q9: string
   q10: string
