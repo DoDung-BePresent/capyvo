@@ -1,4 +1,4 @@
-import { Layout, Menu, Typography } from 'antd'
+import { Layout, Menu } from 'antd'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 /**
@@ -10,9 +10,9 @@ import { HomeOutlined, BookOutlined, FileTextOutlined } from '@ant-design/icons'
  * Configs
  */
 import { SIDEBAR_WIDTHS } from '@/config'
+import { Logo } from '@/shared/components'
 
 const { Sider } = Layout
-const { Text } = Typography
 
 const MENU_ITEMS = [
   { key: '/', icon: <HomeOutlined />, label: 'Trang chủ' },
@@ -44,19 +44,7 @@ export function UserSidebar({ collapsed }: UserSidebarProps) {
       theme="light"
       style={{ height: '100vh', overflow: 'auto', position: 'sticky', top: 0 }}
     >
-      <div
-        style={{
-          padding: collapsed ? '18px 0' : '18px 24px',
-          textAlign: collapsed ? 'center' : 'left',
-        }}
-      >
-        {!collapsed && (
-          <Text style={{ fontWeight: 700, fontSize: 17, letterSpacing: 0.5, color: '#fff' }}>
-            🐹 Capyvo
-          </Text>
-        )}
-        {collapsed && <Text style={{ fontSize: 18 }}>🐹</Text>}
-      </div>
+      <Logo collapsed={collapsed} />
 
       <Menu
         theme="light"
