@@ -3,6 +3,7 @@ import { z } from 'zod'
 import prisma from '@/lib/prisma'
 import supabaseAdmin from '@/lib/supabase'
 import { ValidationError } from '@/errors/app-error'
+import { optimizeImage, compressAudio } from '@/lib/media'
 
 // ─── Zod schemas ──────────────────────────────────────────────────────────────
 
@@ -280,13 +281,14 @@ export class QuestionService {
   }
 
   async uploadAudio(buffer: Buffer, originalName: string, mimeType: string): Promise<string> {
-    // const ext = originalName.split('.').pop()?.toLowerCase() ?? 'mp3'
-    const filename = `${Date.now()}-${originalName.replace(/\s+/g, '_')}`
+    const compressed = await compressAudio(buffer, mimeType)
+    const baseName = originalName.replace(/\.[^.]+$/, '').replace(/\s+/g, '_')
+    const filename = `${Date.now()}-${baseName}.mp3`
     const storagePath = `questions/${filename}`
 
     const { error } = await supabaseAdmin.storage
       .from('audio')
-      .upload(storagePath, buffer, { contentType: mimeType, upsert: false })
+      .upload(storagePath, compressed, { contentType: 'audio/mpeg', upsert: false })
 
     if (error) throw new Error(`Storage upload failed: ${error.message}`)
 
@@ -298,12 +300,14 @@ export class QuestionService {
   }
 
   async uploadImage(buffer: Buffer, originalName: string): Promise<string> {
-    const filename = `${Date.now()}-${originalName.replace(/\s+/g, '_')}`
+    const { data: optimized, contentType, ext } = await optimizeImage(buffer)
+    const baseName = originalName.replace(/\.[^.]+$/, '').replace(/\s+/g, '_')
+    const filename = `${Date.now()}-${baseName}.${ext}`
     const storagePath = `questions/${filename}`
 
     const { error } = await supabaseAdmin.storage
       .from('images')
-      .upload(storagePath, buffer, { contentType: 'image/jpeg', upsert: false })
+      .upload(storagePath, optimized, { contentType, upsert: false })
 
     if (error) throw new Error(`Storage upload failed: ${error.message}`)
 
