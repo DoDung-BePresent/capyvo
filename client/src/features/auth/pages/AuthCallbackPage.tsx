@@ -1,16 +1,31 @@
+import { Spin } from 'antd'
+
+/**
+ * Hooks
+ */
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Spin, Typography } from 'antd'
+
+/**
+ * Libs
+ */
 import supabase from '@/lib/supabase'
+
+/**
+ * Services
+ */
+import { authService } from '../services/auth.service'
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Supabase tự động exchange code từ URL thành session
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
-        navigate('/', { replace: true })
+        authService
+          .getMe()
+          .then((user) => navigate(user.role === 'ADMIN' ? '/admin' : '/', { replace: true }))
+          .catch(() => navigate('/', { replace: true }))
       } else if (event === 'SIGNED_OUT') {
         navigate('/login', { replace: true })
       }
@@ -25,14 +40,12 @@ export default function AuthCallbackPage() {
     <div
       style={{
         display: 'flex',
-        flexDirection: 'column',
+        justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 160,
-        gap: 16,
+        minHeight: '100vh',
       }}
     >
       <Spin size="large" />
-      <Typography.Text type="secondary">Đang xác thực...</Typography.Text>
     </div>
   )
 }
