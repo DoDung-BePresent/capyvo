@@ -1,10 +1,18 @@
 import { Layout, Avatar, Dropdown, Typography, Button } from 'antd'
+
+/**
+ * Icons
+ */
 import {
   UserOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
 } from '@ant-design/icons'
+
+/**
+ * Hooks
+ */
 import { useNavigate } from 'react-router-dom'
 import { useGetMe, useLogout } from '@/features/auth/hooks/useAuth'
 import { useSession } from '@/features/auth/hooks/useSession'
@@ -40,16 +48,7 @@ export function UserHeader({ collapsed, onCollapse }: UserHeaderProps) {
   ]
 
   return (
-    <Header
-      style={{
-        background: '#fff',
-        padding: '0 20px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderBottom: '1px solid #f0f0f0',
-      }}
-    >
+    <Header className="border-b bg-white! p-1.25 px-5! flex justify-between items-center gap-3 border-[var(--ant-color-border-secondary)]">
       <Button
         type="text"
         icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}

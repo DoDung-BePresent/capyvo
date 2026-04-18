@@ -43,8 +43,12 @@ export function UserSidebar({ collapsed }: UserSidebarProps) {
       collapsedWidth={SIDEBAR_WIDTHS.collapsedWidth}
       theme="light"
       style={{ height: '100vh', overflow: 'auto', position: 'sticky', top: 0 }}
+      className="border-r border-[var(--ant-color-border-secondary)]"
     >
-      <Logo collapsed={collapsed} />
+      {/* Logo */}
+      <div className="p-5 py-4">
+        <Logo collapsed={collapsed} />
+      </div>
 
       <Menu
         theme="light"
