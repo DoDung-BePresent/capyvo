@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button, Result, Spin, Typography } from 'antd'
 import { usePaymentStatus } from '../hooks/usePayment'
 import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-keys'
 
 const { Text } = Typography
 
@@ -17,7 +18,7 @@ export default function PaymentResultPage() {
   // Khi thanh toán thành công → invalidate user cache để cập nhật isPremium
   useEffect(() => {
     if (payment?.status === 'PAID') {
-      queryClient.invalidateQueries({ queryKey: ['me'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() })
     }
   }, [payment?.status, queryClient])
 

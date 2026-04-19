@@ -1,12 +1,13 @@
-import PayOS from '@payos/node'
+import { PayOS } from '@payos/node'
 import prisma from '@/lib/prisma'
 import { AppError } from '@/errors/app-error'
 
-const payos = new PayOS(
-  process.env['PAYOS_CLIENT_ID'] ?? '',
-  process.env['PAYOS_API_KEY'] ?? '',
-  process.env['PAYOS_CHECKSUM_KEY'] ?? '',
-)
+// Constructor nhận PayOSOptions — đọc từ env nếu không truyền
+const payos = new PayOS({
+  clientId: process.env['PAYOS_CLIENT_ID'],
+  apiKey: process.env['PAYOS_API_KEY'],
+  checksumKey: process.env['PAYOS_CHECKSUM_KEY'],
+})
 
 export const PLAN_PRICE_VND = 90_000
 export const PLAN_DURATION_DAYS = 30
@@ -14,14 +15,14 @@ export const PLAN_DURATION_DAYS = 30
 export class PaymentService {
   /** Tạo payment link PayOS, lưu Payment record */
   async createPaymentLink(userId: string) {
-    // orderCode: PayOS yêu cầu số nguyên dương <= 9007199254740991
-    // Dùng timestamp ms + 3 chữ số random để tránh trùng
-    const orderCode = Number(`${Date.now()}${Math.floor(Math.random() * 900) + 100}`)
+    // orderCode: số nguyên dương, tối đa 9 chữ số
+    const orderCode =
+      Number(Date.now().toString().slice(-9)) * 1000 + Math.floor(Math.random() * 1000)
 
     const returnUrl = process.env['PAYOS_RETURN_URL'] ?? 'http://localhost:5173/payment/result'
     const cancelUrl = process.env['PAYOS_CANCEL_URL'] ?? 'http://localhost:5173/payment/cancel'
 
-    const paymentData = await payos.createPaymentLink({
+    const paymentData = await payos.paymentRequests.create({
       orderCode,
       amount: PLAN_PRICE_VND,
       description: 'Capyvo Premium 1 thang',
@@ -46,11 +47,8 @@ export class PaymentService {
   }
 
   /** Xác minh webhook từ PayOS và cập nhật subscription */
-  async handleWebhook(body: unknown, _headers: Record<string, string | string[] | undefined>) {
-    // PayOS gửi header x-payos-signature — SDK verify tự động
-    const webhookData = payos.verifyPaymentWebhookData(
-      body as Parameters<typeof payos.verifyPaymentWebhookData>[0],
-    )
+  async handleWebhook(body: unknown) {
+    const webhookData = await payos.webhooks.verify(body as never)
 
     const { orderCode, code } = webhookData
     const isSuccess = code === '00'
@@ -64,7 +62,6 @@ export class PaymentService {
 
     if (isSuccess) {
       const now = new Date()
-      // Nếu user đang còn premium → extend từ ngày hết hạn
       const user = await prisma.user.findUnique({ where: { id: payment.userId } })
       const base =
         user?.premiumExpiresAt && user.premiumExpiresAt > now ? user.premiumExpiresAt : now
@@ -98,17 +95,27 @@ export class PaymentService {
     })
     if (!payment) throw new AppError('Payment not found', 404)
 
-    // Nếu vẫn PENDING → hỏi PayOS cho chắc
+    // Nếu vẫn PENDING → hỏi PayOS trực tiếp
     if (payment.status === 'PENDING') {
-      const info = await payos.getPaymentLinkInformation(orderCode)
+      const info = await payos.paymentRequests.get(orderCode)
       if (info.status === 'PAID') {
-        // Webhook chậm → xử lý ngay
-        await this.handleWebhook(
-          { code: '00', orderCode, desc: 'success', data: info, signature: '' },
-          {},
-        )
-        const updated = await prisma.payment.findFirst({ where: { id: payment.id } })
-        return updated
+        const now = new Date()
+        const user = await prisma.user.findUnique({ where: { id: payment.userId } })
+        const base =
+          user?.premiumExpiresAt && user.premiumExpiresAt > now ? user.premiumExpiresAt : now
+        const premiumExpiresAt = new Date(base)
+        premiumExpiresAt.setDate(premiumExpiresAt.getDate() + payment.durationDays)
+        await prisma.$transaction([
+          prisma.payment.update({
+            where: { id: payment.id },
+            data: { status: 'PAID', paidAt: now, payosTransactionId: String(orderCode) },
+          }),
+          prisma.user.update({
+            where: { id: payment.userId },
+            data: { isPremium: true, premiumExpiresAt },
+          }),
+        ])
+        return prisma.payment.findFirst({ where: { id: payment.id } })
       }
     }
 

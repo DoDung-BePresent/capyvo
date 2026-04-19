@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-keys'
 import { paymentService } from '../services/payment.service'
 
 export function useCreatePaymentOrder() {
@@ -9,7 +10,7 @@ export function useCreatePaymentOrder() {
 
 export function usePaymentStatus(orderCode: number | null) {
   return useQuery({
-    queryKey: ['payment-status', orderCode],
+    queryKey: queryKeys.payments.status(orderCode!),
     queryFn: () => paymentService.getStatus(orderCode!),
     enabled: !!orderCode,
     refetchInterval: (query) => {
@@ -21,7 +22,7 @@ export function usePaymentStatus(orderCode: number | null) {
 
 export function useMyPayments() {
   return useQuery({
-    queryKey: ['my-payments'],
+    queryKey: queryKeys.payments.my(),
     queryFn: () => paymentService.getMyPayments(),
   })
 }

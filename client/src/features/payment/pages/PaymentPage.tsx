@@ -2,7 +2,8 @@ import { Button, Card, Divider, Space, Table, Tag, Typography } from 'antd'
 import { CrownOutlined, CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons'
 import { useCreatePaymentOrder, useMyPayments } from '../hooks/usePayment'
 import dayjs from 'dayjs'
-import { useAuthSync } from '@/features/auth/hooks/useAuth'
+import { useGetMe } from '@/features/auth/hooks/useAuth'
+import { useSession } from '@/features/auth/hooks/useSession'
 
 const { Title, Text } = Typography
 
@@ -14,7 +15,8 @@ const STATUS_TAG: Record<string, { color: string; label: string }> = {
 }
 
 export default function PaymentPage() {
-  const { user } = useAuthSync()
+  const { session } = useSession()
+  const { data: user } = useGetMe(session)
   const createOrder = useCreatePaymentOrder()
   const { data: payments } = useMyPayments()
 

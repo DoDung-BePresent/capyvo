@@ -61,4 +61,10 @@ export const queryKeys = {
   systemStats: {
     all: () => ['system-stats'] as const,
   },
+
+  // Payments
+  payments: {
+    my: () => ['payments', 'my'] as const,
+    status: (orderCode: number) => ['payments', 'status', orderCode] as const,
+  },
 }

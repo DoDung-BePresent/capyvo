@@ -19,10 +19,7 @@ export class PaymentController {
   /** POST /payments/webhook — PayOS gọi vào đây */
   async handleWebhook(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await paymentService.handleWebhook(
-        req.body,
-        req.headers as Record<string, string | string[] | undefined>,
-      )
+      await paymentService.handleWebhook(req.body)
       res.json({ success: true })
     } catch (err) {
       next(err)
