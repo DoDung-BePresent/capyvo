@@ -41,7 +41,7 @@ export interface PartInstruction {
 
 // ─── SystemAudio model ─────────────────────────────────────────────────────────
 
-export type SystemAudioKey = 'START_SPEAKING' | 'START_RESPONSE' | 'STOP_TALKING'
+export type SystemAudioKey = 'START_SPEAKING' | 'START_RESPONSE'
 
 export const SYSTEM_AUDIO_META: Record<SystemAudioKey, { label: string; description: string }> = {
   START_SPEAKING: {
@@ -51,10 +51,6 @@ export const SYSTEM_AUDIO_META: Record<SystemAudioKey, { label: string; descript
   START_RESPONSE: {
     label: 'Tín hiệu bắt đầu phản hồi',
     description: 'Phát khi hệ thống bắt đầu ghi âm câu trả lời',
-  },
-  STOP_TALKING: {
-    label: 'Tín hiệu dừng nói',
-    description: 'Phát khi hết giờ trả lời, thí sinh cần dừng nói',
   },
 }
 

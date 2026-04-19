@@ -208,19 +208,6 @@ export function ExamRunner({
     }
   }, [state.phaseIndex, currentPhase?.kind])
 
-  // Play STOP_TALKING sound when response ends
-  useEffect(() => {
-    if (!state.responseEnded) return
-    const audioUrl = systemAudios.find((a) => a.key === 'STOP_TALKING')?.audioUrl
-    if (!audioUrl) return
-    const audio = new Audio(audioUrl)
-    audio.play().catch(() => {})
-    return () => {
-      audio.pause()
-      audio.src = ''
-    }
-  }, [state.responseEnded, systemAudios])
-
   // When response timer ends: stop recorder → upload → advance
   useEffect(() => {
     if (!state.responseEnded) return

@@ -1,8 +1,23 @@
+import { useEffect, useRef } from 'react'
 import { Modal, Typography } from 'antd'
+import endSoundUrl from '@/assets/sounds/end-sound.mp3'
 
 const { Text, Title } = Typography
 
 export function SavingModal({ open }: { open: boolean }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const audio = new Audio(endSoundUrl)
+    audioRef.current = audio
+    audio.play().catch(() => {})
+    return () => {
+      audio.pause()
+      audio.src = ''
+      audioRef.current = null
+    }
+  }, [open])
   return (
     <Modal
       open={open}
