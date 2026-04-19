@@ -1,11 +1,14 @@
-import { Button, Card, Divider, Space, Table, Tag, Typography } from 'antd'
-import { CrownOutlined, CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons'
-import { useCreatePaymentOrder, useMyPayments } from '../hooks/usePayment'
+import { useState } from 'react'
+import { Button, Card, Col, Row, Space, Table, Tag, Typography, Flex } from 'antd'
+import { ThunderboltOutlined, ShoppingCartOutlined, CheckCircleFilled } from '@ant-design/icons'
+import { useCreateTokenOrder, useTokenPackages, useMyPayments } from '../hooks/usePayment'
 import dayjs from 'dayjs'
 import { useGetMe } from '@/features/auth/hooks/useAuth'
 import { useSession } from '@/features/auth/hooks/useSession'
+import { PageHeader } from '@/shared/components'
+import type { TokenPackage } from '../types'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 const STATUS_TAG: Record<string, { color: string; label: string }> = {
   PENDING: { color: 'processing', label: 'Đang chờ' },
@@ -17,30 +20,43 @@ const STATUS_TAG: Record<string, { color: string; label: string }> = {
 export default function PaymentPage() {
   const { session } = useSession()
   const { data: user } = useGetMe(session)
-  const createOrder = useCreatePaymentOrder()
+  const createToken = useCreateTokenOrder()
+  const { data: packages = [] } = useTokenPackages()
   const { data: payments } = useMyPayments()
 
-  const isPremium = user?.isPremium
-  const expiresAt = user?.premiumExpiresAt
+  const [selectedTokens, setSelectedTokens] = useState<number | null>(null)
+
+  const credits = user?.transcriptionCredits ?? 0
 
   const handleBuy = async () => {
-    const result = await createOrder.mutateAsync()
-    // Mở trang thanh toán PayOS trong tab mới
-    window.open(result.checkoutUrl, '_blank', 'noopener,noreferrer')
+    if (selectedTokens == null) return
+    const result = await createToken.mutateAsync(selectedTokens)
+    window.location.href = result.checkoutUrl
   }
 
+  const selectedPkg = packages.find((p) => p.tokens === selectedTokens)
+
   const columns = [
+    { title: 'Nội dung', dataIndex: 'description', key: 'description' },
     {
-      title: 'Mã đơn',
-      dataIndex: 'orderCode',
-      key: 'orderCode',
-      render: (v: number) => <Text code>{v}</Text>,
+      title: 'Token',
+      dataIndex: 'tokenAmount',
+      key: 'tokenAmount',
+      render: (v: number | null) =>
+        v ? (
+          <Space size={4}>
+            <ThunderboltOutlined style={{ color: '#faad14' }} />
+            <Text strong>{v}</Text>
+          </Space>
+        ) : (
+          '—'
+        ),
     },
     {
       title: 'Số tiền',
       dataIndex: 'amount',
       key: 'amount',
-      render: (v: number) => `${v.toLocaleString('vi-VN')} ₫`,
+      render: (v: number) => v.toLocaleString('vi-VN') + ' ₫',
     },
     {
       title: 'Trạng thái',
@@ -57,80 +73,90 @@ export default function PaymentPage() {
       key: 'paidAt',
       render: (v: string | null) => (v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—'),
     },
-    {
-      title: 'Ngày tạo',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (v: string) => dayjs(v).format('DD/MM/YYYY HH:mm'),
-    },
   ]
 
   return (
-    <div style={{ maxWidth: 720, margin: '32px auto', padding: '0 16px' }}>
-      {/* Premium status card */}
-      <Card style={{ marginBottom: 24, borderRadius: 12 }} styles={{ body: { padding: 32 } }}>
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Space align="center">
-            <CrownOutlined style={{ fontSize: 32, color: isPremium ? '#faad14' : '#bfbfbf' }} />
+    <Space direction="vertical" size={24} style={{ width: '100%' }}>
+      <PageHeader
+        title="Mua token"
+        description="Token dùng để chấm điểm AI, phân tích Speaking & Writing. Mỗi lần chấm tốn 1 token."
+      />
+      <Card styles={{ body: { padding: '16px 24px' } }}>
+        <Flex align="center" gap={12}>
+          <ThunderboltOutlined style={{ fontSize: 28, color: '#faad14' }} />
+          <div>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Token hiện tại
+            </Text>
             <div>
-              <Title level={3} style={{ margin: 0 }}>
-                {isPremium ? 'Bạn đang là thành viên Premium' : 'Nâng cấp Premium'}
-              </Title>
-              {isPremium && expiresAt && (
-                <Text type="secondary">Hết hạn: {dayjs(expiresAt).format('DD/MM/YYYY')}</Text>
-              )}
+              <Text style={{ fontSize: 24, fontWeight: 700, color: '#faad14' }}>{credits}</Text>
+              <Text type="secondary" style={{ marginLeft: 6 }}>
+                token
+              </Text>
             </div>
-          </Space>
-
-          <Divider style={{ margin: '8px 0' }} />
-
-          <Space direction="vertical" size={8}>
-            <Space>
-              <CheckCircleOutlined style={{ color: '#52c41a' }} />
-              <Text>Luyện tập không giới hạn tất cả các Part</Text>
-            </Space>
-            <Space>
-              <CheckCircleOutlined style={{ color: '#52c41a' }} />
-              <Text>Chấm điểm tự động bằng AI (Speaking + Writing)</Text>
-            </Space>
-            <Space>
-              <CheckCircleOutlined style={{ color: '#52c41a' }} />
-              <Text>Phân tích chi tiết từng câu trả lời</Text>
-            </Space>
-            <Space>
-              <ClockCircleOutlined style={{ color: '#1677ff' }} />
-              <Text strong>Chỉ 90.000 ₫ / tháng</Text>
-            </Space>
-          </Space>
-
-          {!isPremium && (
-            <Button
-              type="primary"
-              size="large"
-              icon={<CrownOutlined />}
-              loading={createOrder.isPending}
-              onClick={handleBuy}
-              style={{ marginTop: 8 }}
-            >
-              Mua Premium ngay
-            </Button>
-          )}
-          {isPremium && (
-            <Button
-              size="large"
-              icon={<CrownOutlined />}
-              loading={createOrder.isPending}
-              onClick={handleBuy}
-            >
-              Gia hạn thêm 1 tháng
-            </Button>
-          )}
-        </Space>
+          </div>
+        </Flex>
       </Card>
-
-      {/* Payment history */}
+      <div>
+        <Text strong style={{ display: 'block', marginBottom: 12 }}>
+          Chọn gói token
+        </Text>
+        <Row gutter={[12, 12]}>
+          {packages.map((pkg: TokenPackage) => {
+            const isSelected = selectedTokens === pkg.tokens
+            return (
+              <Col key={pkg.tokens} xs={24} sm={8}>
+                <Card
+                  hoverable
+                  onClick={() => setSelectedTokens(pkg.tokens)}
+                  style={{
+                    borderColor: isSelected ? 'var(--ant-color-primary)' : undefined,
+                    borderWidth: isSelected ? 2 : 1,
+                    cursor: 'pointer',
+                  }}
+                  styles={{ body: { padding: '16px 20px' } }}
+                >
+                  <Flex justify="space-between" align="center">
+                    <Space direction="vertical" size={2}>
+                      <Space size={6}>
+                        <ThunderboltOutlined style={{ color: '#faad14', fontSize: 16 }} />
+                        <Text strong style={{ fontSize: 18 }}>
+                          {pkg.tokens} token
+                        </Text>
+                      </Space>
+                      <Text strong style={{ color: 'var(--ant-color-primary)', fontSize: 15 }}>
+                        {pkg.price.toLocaleString('vi-VN')} ₫
+                      </Text>
+                    </Space>
+                    {isSelected && (
+                      <CheckCircleFilled
+                        style={{ fontSize: 20, color: 'var(--ant-color-primary)' }}
+                      />
+                    )}
+                  </Flex>
+                </Card>
+              </Col>
+            )
+          })}
+        </Row>
+      </div>
+      <Button
+        type="primary"
+        size="large"
+        icon={<ShoppingCartOutlined />}
+        loading={createToken.isPending}
+        onClick={handleBuy}
+      >
+        {selectedPkg
+          ? 'Mua ' +
+            selectedPkg.tokens +
+            ' token — ' +
+            selectedPkg.price.toLocaleString('vi-VN') +
+            ' ₫'
+          : 'Chọn gói để tiếp tục'}
+      </Button>
       {payments && payments.length > 0 && (
-        <Card title="Lịch sử thanh toán" style={{ borderRadius: 12 }}>
+        <Card title="Lịch sử thanh toán">
           <Table
             dataSource={payments}
             columns={columns}
@@ -140,6 +166,6 @@ export default function PaymentPage() {
           />
         </Card>
       )}
-    </div>
+    </Space>
   )
 }

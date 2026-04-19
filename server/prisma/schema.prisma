@@ -51,9 +51,6 @@ model User {
   fullName             String?
   role                 Role      @default(USER)
   transcriptionCredits Int       @default(5)
-  // Subscription
-  isPremium            Boolean   @default(false)
-  premiumExpiresAt     DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -166,9 +163,7 @@ model Payment {
   amount          Int           // VND
   description     String
   status          PaymentStatus @default(PENDING)
-  // Duration granted on success
-  durationDays    Int           @default(30)
-  // PayOS response data
+  tokenAmount     Int?
   checkoutUrl     String?
   payosTransactionId String?
   paidAt          DateTime?

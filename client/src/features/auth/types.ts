@@ -6,8 +6,6 @@ export interface User {
   fullName: string | null
   role: Role
   transcriptionCredits: number
-  isPremium: boolean
-  premiumExpiresAt: string | null
   createdAt: string
 }
 

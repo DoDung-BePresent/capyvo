@@ -6,7 +6,7 @@ export interface Payment {
   amount: number
   description: string
   status: PaymentStatus
-  durationDays: number
+  tokenAmount: number | null
   paidAt: string | null
   createdAt: string
 }
@@ -14,4 +14,9 @@ export interface Payment {
 export interface CreateOrderResponse {
   checkoutUrl: string
   orderCode: number
+}
+
+export interface TokenPackage {
+  tokens: number
+  price: number
 }

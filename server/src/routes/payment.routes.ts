@@ -5,14 +5,16 @@ import { PaymentController } from '@/controllers/payment.controller'
 const router = Router()
 const ctrl = new PaymentController()
 
-// Webhook từ PayOS — KHÔNG cần authenticate (PayOS gọi trực tiếp)
-// Đặt trước middleware authenticate
+// Webhook từ PayOS — không cần authenticate
 router.post('/webhook', (req, res, next) => ctrl.handleWebhook(req, res, next))
 
-// Các route còn lại cần đăng nhập
+// Public: danh sách gói token
+router.get('/token-packages', (req, res) => ctrl.getTokenPackages(req, res))
+
+// Các route cần đăng nhập
 router.use(authenticate)
 
-router.post('/create', (req, res, next) => ctrl.createPaymentLink(req, res, next))
+router.post('/create-token', (req, res, next) => ctrl.createTokenOrder(req, res, next))
 router.get('/status', (req, res, next) => ctrl.getPaymentStatus(req, res, next))
 router.get('/my', (req, res, next) => ctrl.getMyPayments(req, res, next))
 

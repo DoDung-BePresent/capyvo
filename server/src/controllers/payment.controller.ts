@@ -1,19 +1,33 @@
 import type { Request, Response, NextFunction } from 'express'
-import { PaymentService } from '@/services/payment.service'
+import { PaymentService, TOKEN_PACKAGES } from '@/services/payment.service'
 import type { AuthRequest } from '@/middlewares/authenticate'
 
 const paymentService = new PaymentService()
 
 export class PaymentController {
-  /** POST /payments/create — tạo link thanh toán */
-  async createPaymentLink(req: Request, res: Response, next: NextFunction): Promise<void> {
+  /** POST /payments/create-token — tạo link mua token */
+  async createTokenOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = (req as AuthRequest).userId
-      const result = await paymentService.createPaymentLink(userId)
+      const tokenAmount = Number(req.body.tokenAmount)
+      if (!TOKEN_PACKAGES[tokenAmount]) {
+        res.status(400).json({ success: false, message: 'Invalid token package' })
+        return
+      }
+      const result = await paymentService.createTokenOrder(userId, tokenAmount)
       res.status(201).json({ success: true, data: result })
     } catch (err) {
       next(err)
     }
+  }
+
+  /** GET /payments/token-packages — danh sách gói token */
+  getTokenPackages(_req: Request, res: Response): void {
+    const packages = Object.entries(TOKEN_PACKAGES).map(([tokens, price]) => ({
+      tokens: Number(tokens),
+      price,
+    }))
+    res.json({ success: true, data: packages })
   }
 
   /** POST /payments/webhook — PayOS gọi vào đây */
