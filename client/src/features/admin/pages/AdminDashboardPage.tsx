@@ -37,7 +37,7 @@ const recentPaymentColumns = [
     title: 'Người dùng',
     key: 'user',
     render: (r: RecentPayment) => (
-      <Space direction="vertical" size={0}>
+      <Space vertical size={0}>
         <Text strong style={{ fontSize: 13 }}>
           {r.userFullName ?? '—'}
         </Text>

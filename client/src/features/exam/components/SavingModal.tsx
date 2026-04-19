@@ -1,6 +1,6 @@
 import { Modal, Typography } from 'antd'
 
-const { Text } = Typography
+const { Text, Title } = Typography
 
 export function SavingModal({ open }: { open: boolean }) {
   return (
@@ -10,10 +10,16 @@ export function SavingModal({ open }: { open: boolean }) {
       closable={false}
       centered
       title={null}
-      styles={{ body: { padding: 0, overflow: 'hidden' } }}
+      styles={{
+        container: {
+          padding: 0,
+          overflow: 'hidden',
+        },
+      }}
+      className="border-2 border-[var(--ant-blue-4)] rounded-[5px]"
     >
-      <div style={{ padding: '18px 24px', textAlign: 'center' }}>
-        <Text style={{ fontSize: 20, fontWeight: 700 }}>Stop Talking</Text>
+      <div className="text-center py-4 bg-[var(--ant-blue-1)]!">
+        <Title level={2}>Stop Talking</Title>
       </div>
       <div style={{ padding: '28px 32px', textAlign: 'center' }}>
         <Text style={{ fontSize: 15, display: 'block', marginBottom: 10 }}>
