@@ -50,6 +50,14 @@ const router = createBrowserRouter([
                 path: '/result/:sessionId',
                 lazy: lazy(() => import('@/features/exam/pages/ResultPage')),
               },
+              {
+                path: '/payment',
+                lazy: lazy(() => import('@/features/payment/pages/PaymentPage')),
+              },
+              {
+                path: '/payment/result',
+                lazy: lazy(() => import('@/features/payment/pages/PaymentResultPage')),
+              },
             ],
           },
           // Fullscreen exam pages — no layout

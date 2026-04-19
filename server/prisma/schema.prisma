@@ -28,6 +28,13 @@ enum SessionStatus {
   ABANDONED
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELLED
+  EXPIRED
+}
+
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model AppSetting {
@@ -39,15 +46,19 @@ model AppSetting {
 }
 
 model User {
-  id                   String   @id // Matches Supabase auth.users.id (UUID)
-  email                String   @unique
+  id                   String    @id
+  email                String    @unique
   fullName             String?
-  role                 Role     @default(USER)
-  transcriptionCredits Int      @default(5)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  role                 Role      @default(USER)
+  transcriptionCredits Int       @default(5)
+  // Subscription
+  isPremium            Boolean   @default(false)
+  premiumExpiresAt     DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   practiceSessions PracticeSession[]
+  payments         Payment[]
 
   @@map("users")
 }
@@ -146,5 +157,26 @@ model UserResponse {
 
   @@unique([sessionId, questionId])
   @@map("user_responses")
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  userId          String
+  orderCode       BigInt        @unique // PayOS order code (numeric)
+  amount          Int           // VND
+  description     String
+  status          PaymentStatus @default(PENDING)
+  // Duration granted on success
+  durationDays    Int           @default(30)
+  // PayOS response data
+  checkoutUrl     String?
+  payosTransactionId String?
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("payments")
 }
 

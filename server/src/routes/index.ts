@@ -8,6 +8,7 @@ import responseRouter from './response.routes'
 import sessionRouter from './session.routes'
 import maintenanceRouter from './maintenance.routes'
 import systemStatsRouter from './system-stats.routes'
+import paymentRouter from './payment.routes'
 
 const router = Router()
 
@@ -20,5 +21,6 @@ router.use('/system-audio', systemAudioRouter)
 router.use('/responses', responseRouter)
 router.use('/sessions', sessionRouter)
 router.use('/system-stats', systemStatsRouter)
+router.use('/payments', paymentRouter)
 
 export default router
