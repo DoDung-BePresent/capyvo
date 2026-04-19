@@ -77,7 +77,7 @@ export default function PaymentResultPage() {
   }
 
   return (
-    <Space direction="vertical" size={24} style={{ width: '100%' }}>
+    <Space vertical size={24} style={{ width: '100%' }}>
       <PageHeader title="Kết quả thanh toán" />
       <Flex justify="center">
         <Result

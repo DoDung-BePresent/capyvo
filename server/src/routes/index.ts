@@ -9,6 +9,7 @@ import sessionRouter from './session.routes'
 import maintenanceRouter from './maintenance.routes'
 import systemStatsRouter from './system-stats.routes'
 import paymentRouter from './payment.routes'
+import adminDashboardRouter from './admin-dashboard.routes'
 
 const router = Router()
 
@@ -22,5 +23,6 @@ router.use('/responses', responseRouter)
 router.use('/sessions', sessionRouter)
 router.use('/system-stats', systemStatsRouter)
 router.use('/payments', paymentRouter)
+router.use('/admin/dashboard', adminDashboardRouter)
 
 export default router

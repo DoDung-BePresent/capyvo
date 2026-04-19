@@ -62,6 +62,11 @@ export const queryKeys = {
     all: () => ['system-stats'] as const,
   },
 
+  // Admin dashboard
+  adminDashboard: {
+    stats: () => ['admin', 'dashboard', 'stats'] as const,
+  },
+
   // Payments
   payments: {
     my: () => ['payments', 'my'] as const,

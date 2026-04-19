@@ -76,7 +76,7 @@ export default function PaymentPage() {
   ]
 
   return (
-    <Space direction="vertical" size={24} style={{ width: '100%' }}>
+    <Space vertical size={24} style={{ width: '100%' }}>
       <PageHeader
         title="Mua token"
         description="Token dùng để chấm điểm AI, phân tích Speaking & Writing. Mỗi lần chấm tốn 1 token."
