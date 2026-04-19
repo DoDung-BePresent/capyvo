@@ -176,7 +176,6 @@ export default function AdminDashboardPage() {
                 data={stats?.revenueSeries ?? []}
                 xField="date"
                 yField="revenue"
-                smooth
                 shapeField="smooth"
                 style={{ height: 240 }}
                 axis={{
