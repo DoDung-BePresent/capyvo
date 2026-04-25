@@ -18,11 +18,49 @@ export const upload = multer({
   },
 })
 
+// Multer — audio uploads, max 20MB
+export const uploadAudio = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith('audio/')) {
+      cb(new Error('Only audio files are allowed'))
+      return
+    }
+    cb(null, true)
+  },
+})
+
 export class QuestionController {
   async uploadImage(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.file) throw new Error('No file uploaded')
       const url = await questionService.uploadImage(req.file.buffer, req.file.originalname)
+      res.json({ success: true, data: { url } })
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  async analyzeImage(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { imageUrl } = req.body as { imageUrl?: string }
+      if (!imageUrl) throw new Error('imageUrl is required')
+      const context = await questionService.analyzeImage(imageUrl)
+      res.json({ success: true, data: { context } })
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  async uploadAudio(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.file) throw new Error('No file uploaded')
+      const url = await questionService.uploadAudio(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype,
+      )
       res.json({ success: true, data: { url } })
     } catch (err) {
       next(err)
@@ -86,6 +124,20 @@ export class QuestionController {
       res.json({ success: true, data: questions })
     } catch (err) {
       next(err)
+    }
+  }
+
+  async updateQuestion(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params['id'] as string
+      const question = await questionService.updateQuestion(id, req.body)
+      res.json({ success: true, data: question })
+    } catch (err) {
+      if ((err as { code?: string }).code === 'P2025') {
+        next(new NotFoundError('Question'))
+      } else {
+        next(err)
+      }
     }
   }
 

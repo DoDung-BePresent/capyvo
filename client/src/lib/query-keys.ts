@@ -56,4 +56,21 @@ export const queryKeys = {
   partInstructions: {
     all: () => ['part-instructions'] as const,
   },
+
+  // System stats (storage, AI cost)
+  systemStats: {
+    all: () => ['system-stats'] as const,
+  },
+
+  // Admin dashboard
+  adminDashboard: {
+    stats: () => ['admin', 'dashboard', 'stats'] as const,
+  },
+
+  // Payments
+  payments: {
+    my: () => ['payments', 'my'] as const,
+    status: (orderCode: number) => ['payments', 'status', orderCode] as const,
+    tokenPackages: () => ['payments', 'token-packages'] as const,
+  },
 }

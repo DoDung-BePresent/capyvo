@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express'
 import multer from 'multer'
 import { responseService } from '@/services/response.service'
 import { ValidationError } from '@/errors/app-error'
+import type { AuthRequest } from '@/middlewares/authenticate'
 
 export const uploadAudio = multer({
   storage: multer.memoryStorage(),
@@ -31,6 +32,39 @@ export class ResponseController {
         file.mimetype,
       )
       res.status(201).json({ success: true, data: { audioUrl } })
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  async transcribe(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params['id'] as string
+      const userId = (req as AuthRequest).userId
+      const transcript = await responseService.transcribeResponse(id, userId)
+      res.json({ success: true, data: { transcript } })
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  async analyze(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params['id'] as string
+      const userId = (req as AuthRequest).userId
+      const analysis = await responseService.analyzeResponse(id, userId)
+      res.json({ success: true, data: { analysis } })
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  async transcribeAndAnalyze(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params['id'] as string
+      const userId = (req as AuthRequest).userId
+      const result = await responseService.transcribeAndAnalyze(id, userId)
+      res.json({ success: true, data: result })
     } catch (err) {
       next(err)
     }

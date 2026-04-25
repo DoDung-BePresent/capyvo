@@ -18,12 +18,16 @@ export function buildPhases(questions: Question[]): Phase[] {
   const phases: Phase[] = []
   let lastPart = 0
   let lastContextAudioUrl: string | null | undefined = undefined
+  // When a context group uses context_read (no audio), that 45s IS the preparation time.
+  // Skip individual prep phases for all questions in that group.
+  let contextGroupHasReadPhase = false
 
   for (const q of sorted) {
     if (q.partNumber !== lastPart) {
       phases.push({ kind: 'instruction', partNumber: q.partNumber })
       lastPart = q.partNumber
       lastContextAudioUrl = undefined
+      contextGroupHasReadPhase = false
     }
 
     const isNewContextGroup =
@@ -31,10 +35,13 @@ export function buildPhases(questions: Question[]): Phase[] {
     if (isNewContextGroup) {
       if (q.contextAudioUrl) {
         phases.push({ kind: 'context', question: q })
+        contextGroupHasReadPhase = false
       } else {
-        // No audio for this context (e.g. Part 4) — signal then show image/text with reading timer
+        // No audio for this context (e.g. Part 2) — signal then show image/text with reading timer.
+        // This 45s reading phase replaces the individual prep phases.
         phases.push({ kind: 'context_read_signal', question: q, totalSeconds: 45 })
         phases.push({ kind: 'context_read', question: q, totalSeconds: 45 })
+        contextGroupHasReadPhase = true
       }
       lastContextAudioUrl = q.contextAudioUrl
     }
@@ -42,8 +49,10 @@ export function buildPhases(questions: Question[]): Phase[] {
     if (q.questionAudioUrl) {
       phases.push({ kind: 'question_audio', question: q })
     }
-    phases.push({ kind: 'prep_signal', question: q, totalSeconds: q.prepTimeSeconds })
-    phases.push({ kind: 'prep', question: q, totalSeconds: q.prepTimeSeconds })
+    if (!contextGroupHasReadPhase) {
+      phases.push({ kind: 'prep_signal', question: q, totalSeconds: q.prepTimeSeconds })
+      phases.push({ kind: 'prep', question: q, totalSeconds: q.prepTimeSeconds })
+    }
     phases.push({ kind: 'response_signal', question: q, totalSeconds: q.responseTimeSeconds })
     phases.push({ kind: 'response', question: q, totalSeconds: q.responseTimeSeconds })
   }

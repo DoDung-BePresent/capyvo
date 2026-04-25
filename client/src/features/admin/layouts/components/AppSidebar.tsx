@@ -1,4 +1,4 @@
-import { Layout, Menu, Typography } from 'antd'
+import { Layout, Menu } from 'antd'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 /**
@@ -16,8 +16,12 @@ import { PART_META } from '@/features/admin/types'
  */
 import { SIDEBAR_WIDTHS } from '@/config'
 
+/**
+ * Components
+ */
+import { Logo } from '@/shared/components'
+
 const { Sider } = Layout
-const { Text } = Typography
 
 const MENU_ITEMS = [
   {
@@ -73,12 +77,11 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
       collapsedWidth={SIDEBAR_WIDTHS.collapsedWidth}
       theme="light"
       style={{ height: '100vh', overflow: 'auto', position: 'sticky', top: 0 }}
+      className="border-r border-[var(--ant-color-border-secondary)]"
     >
       {/* Logo */}
-      <div className="p-4 px-6">
-        {!collapsed && (
-          <Text style={{ fontWeight: 700, fontSize: 17, letterSpacing: 0.5 }}>🐹 Capyvo</Text>
-        )}
+      <div className="p-5 py-4">
+        <Logo collapsed={collapsed} />
       </div>
 
       <Menu
@@ -87,7 +90,7 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
         selectedKeys={[selectedKey]}
         defaultOpenKeys={openKeys}
         items={MENU_ITEMS}
-        style={{ borderRight: 0, marginTop: 8 }}
+        style={{ borderRight: 0 }}
         onClick={({ key }) => navigate(key)}
       />
     </Sider>
