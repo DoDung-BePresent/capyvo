@@ -1,6 +1,8 @@
 import { PayOS } from '@payos/node'
 import prisma from '@/lib/prisma'
 import { AppError } from '@/errors/app-error'
+import { SubscriptionPlanId } from '@prisma/client'
+import { SubscriptionService } from './subscription.service'
 
 const payos = new PayOS({
   clientId: process.env['PAYOS_CLIENT_ID'],
@@ -19,7 +21,43 @@ function genOrderCode() {
 }
 
 export class PaymentService {
-  /** Tạo payment link mua token (credits) */
+  /** Tạo payment link mua subscription */
+  async createSubscriptionOrder(userId: string, planId: SubscriptionPlanId) {
+    const plan = await prisma.subscriptionPlan.findUnique({
+      where: { id: planId },
+    })
+
+    if (!plan || !plan.isActive) {
+      throw new AppError(`Invalid subscription plan: ${planId}`, 400)
+    }
+
+    const orderCode = genOrderCode()
+    const returnUrl = process.env['PAYOS_RETURN_URL'] ?? 'http://localhost:5173/payment/result'
+    const cancelUrl = process.env['PAYOS_CANCEL_URL'] ?? 'http://localhost:5173/payment/cancel'
+
+    const paymentData = await payos.paymentRequests.create({
+      orderCode,
+      amount: plan.price,
+      description: `Capyvo Premium ${plan.name}`,
+      returnUrl: `${returnUrl}?orderCode=${orderCode}`,
+      cancelUrl: `${cancelUrl}?orderCode=${orderCode}`,
+    })
+
+    const payment = await prisma.payment.create({
+      data: {
+        userId,
+        orderCode,
+        amount: plan.price,
+        description: `Gói ${plan.name} - Premium`,
+        checkoutUrl: paymentData.checkoutUrl,
+        status: 'PENDING',
+      },
+    })
+
+    return { checkoutUrl: paymentData.checkoutUrl, orderCode, paymentId: payment.id }
+  }
+
+  /** Tạo payment link mua token (credits) - DEPRECATED */
   async createTokenOrder(userId: string, tokenAmount: number) {
     const price = TOKEN_PACKAGES[tokenAmount]
     if (!price) throw new AppError(`Invalid token package: ${tokenAmount}`, 400)
@@ -51,7 +89,7 @@ export class PaymentService {
     return { checkoutUrl: paymentData.checkoutUrl, orderCode }
   }
 
-  /** Xác minh webhook từ PayOS và cộng token cho user */
+  /** Xác minh webhook từ PayOS */
   async handleWebhook(body: unknown) {
     const webhookData = await payos.webhooks.verify(body as never)
     const { orderCode, code } = webhookData
@@ -66,16 +104,28 @@ export class PaymentService {
 
     if (isSuccess) {
       const now = new Date()
-      await prisma.$transaction([
-        prisma.payment.update({
-          where: { id: payment.id },
-          data: { status: 'PAID', paidAt: now, payosTransactionId: String(orderCode) },
-        }),
-        prisma.user.update({
+
+      // Update payment status
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: 'PAID', paidAt: now, payosTransactionId: String(orderCode) },
+      })
+
+      // Check if this is subscription payment or token payment
+      if (payment.tokenAmount) {
+        // Old token system - DEPRECATED
+        await prisma.user.update({
           where: { id: payment.userId },
-          data: { transcriptionCredits: { increment: payment.tokenAmount ?? 0 } },
-        }),
-      ])
+          data: { transcriptionCredits: { increment: payment.tokenAmount } },
+        })
+      } else {
+        // New subscription system
+        // Determine plan from payment description
+        const planId = this.extractPlanIdFromDescription(payment.description)
+        if (planId) {
+          await SubscriptionService.createSubscription(payment.userId, planId, payment.id)
+        }
+      }
     } else {
       await prisma.payment.update({
         where: { id: payment.id },
@@ -86,6 +136,14 @@ export class PaymentService {
     return { processed: true }
   }
 
+  /** Extract plan ID from payment description */
+  private extractPlanIdFromDescription(description: string): SubscriptionPlanId | null {
+    if (description.includes('1 THÁNG')) return SubscriptionPlanId.MONTHLY
+    if (description.includes('3 THÁNG')) return SubscriptionPlanId.QUARTERLY
+    if (description.includes('6 THÁNG')) return SubscriptionPlanId.BIANNUAL
+    return null
+  }
+
   /** Kiểm tra trạng thái một order (client poll sau khi return từ PayOS) */
   async getPaymentStatus(orderCode: number, userId: string) {
     const payment = await prisma.payment.findFirst({
@@ -94,21 +152,26 @@ export class PaymentService {
     if (!payment) throw new AppError('Payment not found', 404)
 
     if (payment.status === 'PENDING') {
-      // Gọi PayOS API server-to-server bằng PAYOS_API_KEY — client không thể giả mạo response này
       const info = await payos.paymentRequests.get(orderCode)
       if (info.status === 'PAID') {
-        // Dùng updateMany với filter status=PENDING để đảm bảo idempotent:
-        // nếu webhook đã xử lý trước thì affected=0 và ta không cộng token 2 lần
         const updated = await prisma.payment.updateMany({
           where: { id: payment.id, status: 'PENDING' },
           data: { status: 'PAID', paidAt: new Date(), payosTransactionId: String(orderCode) },
         })
 
         if (updated.count > 0) {
-          await prisma.user.update({
-            where: { id: payment.userId },
-            data: { transcriptionCredits: { increment: payment.tokenAmount ?? 0 } },
-          })
+          // Handle subscription or token
+          if (payment.tokenAmount) {
+            await prisma.user.update({
+              where: { id: payment.userId },
+              data: { transcriptionCredits: { increment: payment.tokenAmount } },
+            })
+          } else {
+            const planId = this.extractPlanIdFromDescription(payment.description)
+            if (planId) {
+              await SubscriptionService.createSubscription(payment.userId, planId, payment.id)
+            }
+          }
         }
 
         const final = await prisma.payment.findUnique({ where: { id: payment.id } })

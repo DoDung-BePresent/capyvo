@@ -1,5 +1,6 @@
 import app from './app'
 import logger from '@/lib/logger'
+import { startSubscriptionCheckJob } from './jobs/check-expired-subscriptions.job'
 
 const PORT = Number(process.env.PORT) || 3000
 
@@ -7,6 +8,9 @@ const server = app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`, {
     env: process.env.NODE_ENV ?? 'development',
   })
+
+  // Start cron jobs
+  startSubscriptionCheckJob()
 })
 
 // Graceful shutdown
