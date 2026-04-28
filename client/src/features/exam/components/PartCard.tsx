@@ -1,6 +1,7 @@
 import { Card, Button, Progress } from 'antd'
 import { ArrowForward } from '@mui/icons-material'
 import { styled } from '@/shared/utils/cn'
+import { hexToRgba } from '@/shared/utils/color'
 
 interface PartCardProps {
   partNumber: number
@@ -30,17 +31,6 @@ const StyledButton = styled(
   Button,
   'relative w-full h-12 rounded-lg! inline-flex items-center justify-center gap-2 font-semibold text-base transition-all duration-150 ease-out hover:translate-y-1 shadow-[0_4px_0_0_var(--shadow-color)]! hover:shadow-none! active:shadow-none!',
 )
-
-/**
- * Chuyển hex color sang rgba với opacity
- * VD: hexToRgba('#4F46E5', 0.1) => 'rgba(79, 70, 229, 0.1)'
- */
-function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
 
 export default function PartCard({
   label,
