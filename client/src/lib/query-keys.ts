@@ -20,6 +20,7 @@ export const queryKeys = {
   // Questions
   questions: {
     byPart: (partNumber: number) => ['questions', 'part', partNumber] as const,
+    examSetsByPart: (partNumber: number) => ['questions', 'exam-sets', 'part', partNumber] as const,
     byExamSet: (examSetId: string) => ['questions', 'exam-set', examSetId] as const,
     detail: (id: string) => ['questions', 'detail', id] as const,
     pool: (questionNumber: number) => ['questions', 'pool', questionNumber] as const,

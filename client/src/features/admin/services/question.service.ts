@@ -19,6 +19,31 @@ export const questionService = {
     return data.data
   },
 
+  /**
+   * Lấy tất cả câu hỏi của một part (flat list với examSetId)
+   * Tối ưu cho UI grid questions
+   */
+  getQuestionsByPart: async (
+    partNumber: number,
+  ): Promise<(Question & { examSetId: string; examSetTitle: string })[]> => {
+    const { data } = await axiosInstance.get<
+      ApiResponse<(Question & { examSetId: string; examSetTitle: string })[]>
+    >(`/questions/part/${partNumber}/all`)
+    return data.data
+  },
+
+  /**
+   * Lấy danh sách exam sets của một part (cho filter sidebar)
+   */
+  getExamSetsByPart: async (
+    partNumber: number,
+  ): Promise<{ id: string; title: string; questionCount: number }[]> => {
+    const { data } = await axiosInstance.get<
+      ApiResponse<{ id: string; title: string; questionCount: number }[]>
+    >(`/questions/part/${partNumber}/exam-sets`)
+    return data.data
+  },
+
   getPracticeSets: async (partNumber: number): Promise<PracticeSet[]> => {
     const { data } = await axiosInstance.get<ApiResponse<PracticeSet[]>>(
       '/questions/practice-sets',

@@ -10,6 +10,14 @@ const ctrl = new QuestionController()
 router.get('/', authenticate, (req, res, next) => ctrl.getQuestions(req, res, next))
 router.get('/practice-sets', authenticate, (req, res, next) => ctrl.getPracticeSets(req, res, next))
 
+// New endpoints for optimized part practice page
+router.get('/part/:partNumber/all', authenticate, (req, res, next) =>
+  ctrl.getQuestionsByPart(req, res, next),
+)
+router.get('/part/:partNumber/exam-sets', authenticate, (req, res, next) =>
+  ctrl.getExamSetsByPart(req, res, next),
+)
+
 // The rest are admin-only
 router.use(authenticate, requireRole('ADMIN'))
 
