@@ -91,7 +91,7 @@ export function UserSidebar({ collapsed }: UserSidebarProps) {
 
       {/* Upgrade Widget */}
       <Bottom>
-        <UpgradeWidget collapsed={collapsed} onUpgrade={() => navigate('/upgrade')} />
+        <UpgradeWidget collapsed={collapsed} onUpgrade={() => navigate('/pricing')} />
       </Bottom>
     </Sider>
   )
