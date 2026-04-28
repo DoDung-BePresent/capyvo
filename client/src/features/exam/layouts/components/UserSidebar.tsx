@@ -4,12 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 /**
  * Icons
  */
-import {
-  HomeOutlined,
-  BookOutlined,
-  FileTextOutlined,
-  ThunderboltOutlined,
-} from '@ant-design/icons'
+import { ThunderboltOutlined } from '@ant-design/icons'
 
 /**
  * Configs
@@ -18,13 +13,18 @@ import { SIDEBAR_WIDTHS } from '@/config'
 import { Logo } from '@/shared/components'
 import { useGetMe } from '@/features/auth/hooks/useAuth'
 import { useSession } from '@/features/auth/hooks/useSession'
+import { Assignment, HomeFilled, RecordVoiceOver } from '@mui/icons-material'
 
 const { Sider } = Layout
 
 const MENU_ITEMS = [
-  { key: '/', icon: <HomeOutlined />, label: 'Trang chủ' },
-  { key: '/practice', icon: <BookOutlined />, label: 'Luyện theo Part' },
-  { key: '/exam', icon: <FileTextOutlined />, label: 'Thi thử' },
+  { key: '/', icon: <HomeFilled style={{ fontSize: 22 }} />, label: 'Trang chủ' },
+  {
+    key: '/practice',
+    icon: <RecordVoiceOver style={{ fontSize: 22, marginLeft: 1 }} />,
+    label: 'Luyện theo Part',
+  },
+  { key: '/exam', icon: <Assignment style={{ fontSize: 22 }} />, label: 'Thi thử' },
 ]
 
 export interface UserSidebarProps {
@@ -74,6 +74,15 @@ export function UserSidebar({ collapsed }: UserSidebarProps) {
         items={MENU_ITEMS}
         style={{ borderRight: 0, flex: 1 }}
         onClick={({ key }) => navigate(key)}
+        styles={{
+          root: {
+            paddingInline: 15,
+          },
+          item: {
+            borderRadius: 8,
+            paddingInline: 15,
+          },
+        }}
       />
 
       {/* Token widget */}

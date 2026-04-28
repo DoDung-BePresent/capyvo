@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { Layout } from 'antd'
+import { ConfigProvider, Layout } from 'antd'
 import { UserSidebar, UserHeader, UserContent, UserFooter } from './components'
 import { NetworkStatusBanner, ScheduledMaintenanceBanner } from '@/shared/components'
+import { userAntTheme } from '../config/user-ui.config'
 
 export default function UserLayout() {
   const [collapsed, setCollapsed] = useState(false)
 
   return (
-    <>
+    <ConfigProvider theme={userAntTheme}>
       <NetworkStatusBanner />
       <ScheduledMaintenanceBanner />
       <Layout hasSider style={{ height: '100vh', overflow: 'hidden' }}>
@@ -18,6 +19,6 @@ export default function UserLayout() {
           <UserFooter />
         </Layout>
       </Layout>
-    </>
+    </ConfigProvider>
   )
 }

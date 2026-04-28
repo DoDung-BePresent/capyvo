@@ -14,10 +14,7 @@ interface PartCardProps {
   onStart: () => void
 }
 
-const StyledCard = styled(
-  Card,
-  'h-full rounded-lg shadow-sm transition-all duration-300 overflow-hidden ease-out hover:-translate-y-0.5 hover:shadow-xl',
-)
+const StyledCard = styled(Card, 'h-full rounded-lg! shadow-xs overflow-hidden')
 const CardBody = styled('div', 'p-6')
 const Header = styled('div', 'flex items-center justify-between mb-4')
 const Title = styled('h3', 'text-lg font-semibold text-gray-900 mb-2 leading-snug')
@@ -31,7 +28,7 @@ const Tag = styled(
 )
 const StyledButton = styled(
   Button,
-  'w-full h-12 rounded-lg inline-flex items-center justify-center gap-2 font-semibold text-base shadow-md transition-all duration-200 hover:shadow-lg active:translate-y-0.5 active:shadow-sm',
+  'relative w-full h-12 rounded-lg! inline-flex items-center justify-center gap-2 font-semibold text-base transition-all duration-150 ease-out hover:translate-y-1 shadow-[0_4px_0_0_var(--shadow-color)]! hover:shadow-none! active:shadow-none!',
 )
 
 /**
@@ -56,7 +53,7 @@ export default function PartCard({
   onStart,
 }: PartCardProps) {
   return (
-    <StyledCard hoverable styles={{ body: { padding: 0 } }}>
+    <StyledCard styles={{ body: { padding: 0 } }}>
       <CardBody>
         {/* Header */}
         <Header>
@@ -89,12 +86,11 @@ export default function PartCard({
         {/* Progress bar */}
         {progress !== undefined && (
           <Progress
-            size="medium"
             percent={progress}
             strokeColor={color}
             railColor={hexToRgba(color, 0.1)}
             showInfo={false}
-            strokeWidth={8}
+            strokeWidth={10}
             className="mb-4!"
           />
         )}
@@ -104,10 +100,13 @@ export default function PartCard({
           size="large"
           type="primary"
           onClick={onStart}
-          style={{
-            backgroundColor: color,
-            borderColor: color,
-          }}
+          style={
+            {
+              '--shadow-color': hexToRgba(color, 0.6),
+              backgroundColor: color,
+              borderColor: color,
+            } as React.CSSProperties
+          }
         >
           Bắt đầu luyện tập
           <ArrowForward style={{ fontSize: 20 }} />
