@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Card, Empty, Flex, Spin, Typography, Button, Tag } from 'antd'
+import { Card, Empty, Flex, Spin, Typography, Tag } from 'antd'
 import { PlayCircle } from '@mui/icons-material'
 import { styled } from '@/shared/utils/cn'
+import { StyledButton } from '@/shared/components'
 import { usePartQuestions, usePartExamSets } from '@/features/exam/hooks/usePartQuestions'
 import { PART_META } from '@/features/admin/types'
 import type { PartNumber, Question } from '@/features/admin/types'
@@ -19,10 +20,6 @@ const MainContent = styled('div', 'flex-1 overflow-y-auto')
 const FilterCard = styled(Card, 'mb-4 rounded-lg! cursor-pointer')
 const QuestionCard = styled(Card, 'h-full rounded-lg! hover:shadow-lg transition-all')
 const QuestionGrid = styled('div', 'grid grid-cols-1 gap-4')
-const StyledButton = styled(
-  Button,
-  'relative w-full h-12 rounded-lg! inline-flex items-center justify-center gap-2 font-semibold text-base transition-all duration-150 ease-out hover:translate-y-1 shadow-[0_4px_0_0_var(--shadow-color)]! hover:shadow-none! active:shadow-none!',
-)
 
 interface FilterItemProps {
   id: string
@@ -106,13 +103,12 @@ function QuestionItem({ question, onPractice }: QuestionItemProps) {
           type="primary"
           icon={<PlayCircle style={{ fontSize: 18 }} />}
           onClick={onPractice}
-          style={
-            {
-              '--shadow-color': hexToRgba(COLORS.primary, 0.6),
-              backgroundColor: COLORS.primary,
-              borderColor: COLORS.primary,
-            } as React.CSSProperties
-          }
+          shadowColor={hexToRgba(COLORS.primary, 0.6)}
+          style={{
+            width: '100%',
+            backgroundColor: COLORS.primary,
+            borderColor: COLORS.primary,
+          }}
         >
           Luyện tập
         </StyledButton>

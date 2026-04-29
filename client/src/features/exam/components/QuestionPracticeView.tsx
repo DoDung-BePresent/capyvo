@@ -1,17 +1,19 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Card, Button, Typography, Tag, Flex, Progress, Space } from 'antd'
-import { Mic, Stop, Refresh } from '@mui/icons-material'
+import { Card, Typography, Tag, Flex, Space, Progress } from 'antd'
+import { Mic, Stop, Refresh, Cancel } from '@mui/icons-material'
 import { styled } from '@/shared/utils/cn'
+import { StyledButton } from '@/shared/components'
 import { useMicPermission } from '@/features/exam/hooks/useMicPermission'
 import { MicWaveform } from './MicWaveform'
 import type { Question } from '@/features/admin/types'
+import { hexToRgba } from '@/shared/utils/color'
+import { COLORS } from '@/shared/constants/user-color'
 
 const { Title, Text, Paragraph } = Typography
 
 const Container = styled('div', 'h-full flex flex-col')
 const QuestionCard = styled(Card, 'flex-1 mb-4')
 const ControlPanel = styled(Card, 'mt-auto')
-const RecordButton = styled(Button, 'w-full h-16 text-lg font-semibold')
 
 interface QuestionPracticeViewProps {
   question: Question & { examSetTitle: string }
@@ -87,7 +89,6 @@ export function QuestionPracticeView({
   useEffect(() => {
     if (recordingState !== 'preparing') return
     if (prepTimeLeft <= 0) {
-      // Use setTimeout to avoid setState in effect
       const timer = setTimeout(() => {
         startRecording()
       }, 0)
@@ -105,7 +106,6 @@ export function QuestionPracticeView({
   useEffect(() => {
     if (recordingState !== 'recording') return
     if (recordTimeLeft <= 0) {
-      // Use setTimeout to avoid setState in effect
       const timer = setTimeout(() => {
         stopRecording()
       }, 0)
@@ -130,8 +130,14 @@ export function QuestionPracticeView({
     setRecordingState('preparing')
   }
 
-  const handleReset = () => {
+  const handleCancel = () => {
     stopRecording()
+    setRecordingState('idle')
+    setPrepTimeLeft(question.prepTimeSeconds)
+    setRecordTimeLeft(question.responseTimeSeconds)
+  }
+
+  const handleReset = () => {
     setRecordingState('idle')
     setPrepTimeLeft(question.prepTimeSeconds)
     setRecordTimeLeft(question.responseTimeSeconds)
@@ -227,72 +233,133 @@ export function QuestionPracticeView({
 
       {/* Control Panel */}
       <ControlPanel>
-        <Flex vertical gap={16}>
-          {/* Status */}
-          {recordingState === 'preparing' && (
-            <div>
-              <Flex align="center" justify="space-between" style={{ marginBottom: 8 }}>
-                <Text strong>Thời gian chuẩn bị</Text>
-                <Text strong style={{ fontSize: 18, color: '#1890ff' }}>
-                  {prepTimeLeft}s
+        <Flex align="center" justify="space-between" gap={16}>
+          {/* Left: Circular countdown */}
+          <div style={{ width: 80, flexShrink: 0 }}>
+            {recordingState === 'preparing' && (
+              <Flex vertical align="center" gap={4}>
+                <Progress
+                  type="circle"
+                  percent={prepProgress}
+                  format={() => `${prepTimeLeft}s`}
+                  strokeColor="#1890ff"
+                  strokeWidth={10}
+                  size={80}
+                />
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Chuẩn bị
                 </Text>
               </Flex>
-              <Progress percent={prepProgress} showInfo={false} strokeColor="#1890ff" />
-            </div>
-          )}
-
-          {recordingState === 'recording' && (
-            <div>
-              <Flex align="center" justify="space-between" style={{ marginBottom: 8 }}>
-                <Text strong>Đang ghi âm</Text>
-                <Text strong style={{ fontSize: 18, color: '#ff4d4f' }}>
-                  {recordTimeLeft}s
+            )}
+            {recordingState === 'recording' && (
+              <Flex vertical align="center" gap={4}>
+                <Progress
+                  type="circle"
+                  percent={recordProgress}
+                  format={() => `${recordTimeLeft}s`}
+                  strokeColor="#ff4d4f"
+                  strokeWidth={10}
+                  size={80}
+                />
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Ghi âm
                 </Text>
               </Flex>
-              <Progress percent={recordProgress} showInfo={false} strokeColor="#ff4d4f" />
-              {recordingStream && (
-                <div style={{ marginTop: 12 }}>
-                  <MicWaveform stream={recordingStream} />
-                </div>
-              )}
-            </div>
-          )}
+            )}
+            {recordingState === 'idle' && <div style={{ width: 80, height: 80 }} />}
+            {recordingState === 'completed' && (
+              <Flex vertical align="center" justify="center" style={{ height: 80 }}>
+                <Text strong style={{ color: '#52c41a', fontSize: 14, textAlign: 'center' }}>
+                  ✓ Hoàn thành
+                </Text>
+              </Flex>
+            )}
+          </div>
 
-          {recordingState === 'completed' && (
-            <Flex align="center" justify="center" style={{ padding: '12px 0' }}>
-              <Text strong style={{ color: '#52c41a', fontSize: 16 }}>
-                ✓ Đã hoàn thành ghi âm
-              </Text>
-            </Flex>
-          )}
-
-          {/* Actions */}
-          <Flex gap={12}>
+          {/* Center: Waveform (only when recording) */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {recordingState === 'recording' && recordingStream && (
+              <Flex align="center" justify="center" style={{ height: 80 }}>
+                <MicWaveform color={COLORS.primary} stream={recordingStream} height={80} />
+              </Flex>
+            )}
+            {recordingState === 'preparing' && (
+              <Flex align="center" justify="center" style={{ height: 80 }}>
+                <Text type="secondary">Đang chuẩn bị...</Text>
+              </Flex>
+            )}
             {recordingState === 'idle' && (
-              <RecordButton
+              <Flex align="center" justify="center" style={{ height: 80 }}>
+                <Text type="secondary">Nhấn nút để bắt đầu</Text>
+              </Flex>
+            )}
+            {recordingState === 'completed' && (
+              <Flex align="center" justify="center" style={{ height: 80 }}>
+                <Text type="secondary">Đã lưu bài tập</Text>
+              </Flex>
+            )}
+          </div>
+
+          {/* Right: Action buttons */}
+          <Flex gap={12} style={{ flexShrink: 0 }}>
+            {recordingState === 'idle' && (
+              <StyledButton
+                size="large"
                 type="primary"
-                icon={<Mic style={{ fontSize: 24 }} />}
+                icon={<Mic style={{ fontSize: 20 }} />}
                 onClick={startPreparing}
                 disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  backgroundColor: COLORS.primary,
+                  borderColor: COLORS.primary,
+                }}
               >
                 Bắt đầu luyện tập
-              </RecordButton>
+              </StyledButton>
             )}
 
-            {recordingState === 'recording' && (
-              <RecordButton danger icon={<Stop style={{ fontSize: 24 }} />} onClick={stopRecording}>
-                Dừng ghi âm
-              </RecordButton>
+            {(recordingState === 'preparing' || recordingState === 'recording') && (
+              <>
+                <StyledButton
+                  size="large"
+                  danger
+                  icon={<Cancel style={{ fontSize: 20 }} />}
+                  onClick={handleCancel}
+                >
+                  Hủy
+                </StyledButton>
+                {/* {recordingState === 'recording' && ( */}
+                <StyledButton
+                  size="large"
+                  color="danger"
+                  variant="solid"
+                  icon={<Stop style={{ fontSize: 20 }} />}
+                  shadowColor={hexToRgba(COLORS.accent, 0.4)}
+                  onClick={stopRecording}
+                >
+                  Dừng và gửi
+                </StyledButton>
+                {/* )} */}
+              </>
             )}
 
             {recordingState === 'completed' && (
-              <RecordButton
-                icon={<Refresh style={{ fontSize: 24 }} />}
+              <StyledButton
+                size="large"
+                type="primary"
+                icon={<Refresh style={{ fontSize: 20 }} />}
                 onClick={handleReset}
                 disabled={isSubmitting}
+                shadowColor={hexToRgba(COLORS.primary, 0.6)}
+                style={{
+                  width: '100%',
+                  backgroundColor: COLORS.primary,
+                  borderColor: COLORS.primary,
+                }}
               >
                 Luyện lại
-              </RecordButton>
+              </StyledButton>
             )}
           </Flex>
         </Flex>
