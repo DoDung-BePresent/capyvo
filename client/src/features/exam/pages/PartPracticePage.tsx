@@ -7,6 +7,8 @@ import { usePartQuestions, usePartExamSets } from '@/features/exam/hooks/usePart
 import { PART_META } from '@/features/admin/types'
 import type { PartNumber, Question } from '@/features/admin/types'
 import { PageHeader } from '@/shared/components'
+import { COLORS } from '@/shared/constants/user-color'
+import { hexToRgba } from '@/shared/utils/color'
 
 const { Text, Title } = Typography
 
@@ -17,6 +19,10 @@ const MainContent = styled('div', 'flex-1 overflow-y-auto')
 const FilterCard = styled(Card, 'mb-4 rounded-lg! cursor-pointer')
 const QuestionCard = styled(Card, 'h-full rounded-lg! hover:shadow-lg transition-all')
 const QuestionGrid = styled('div', 'grid grid-cols-1 gap-4')
+const StyledButton = styled(
+  Button,
+  'relative w-full h-12 rounded-lg! inline-flex items-center justify-center gap-2 font-semibold text-base transition-all duration-150 ease-out hover:translate-y-1 shadow-[0_4px_0_0_var(--shadow-color)]! hover:shadow-none! active:shadow-none!',
+)
 
 interface FilterItemProps {
   id: string
@@ -31,7 +37,9 @@ function FilterItem({ title, questionCount, isActive, onClick }: FilterItemProps
     <FilterCard
       onClick={onClick}
       style={{
-        backgroundColor: isActive ? '#f0f5ff' : 'white',
+        backgroundColor: isActive ? hexToRgba(COLORS.primary, 0.1) : 'white',
+        borderWidth: isActive ? 2 : 0,
+        borderColor: isActive ? COLORS.primary : undefined,
       }}
       styles={{ body: { padding: '12px 16px' } }}
     >
@@ -93,14 +101,21 @@ function QuestionItem({ question, onPractice }: QuestionItemProps) {
           </Tag>
         )}
 
-        <Button
+        <StyledButton
+          size="large"
           type="primary"
           icon={<PlayCircle style={{ fontSize: 18 }} />}
           onClick={onPractice}
-          style={{ width: '100%' }}
+          style={
+            {
+              '--shadow-color': hexToRgba(COLORS.primary, 0.6),
+              backgroundColor: COLORS.primary,
+              borderColor: COLORS.primary,
+            } as React.CSSProperties
+          }
         >
           Luyện tập
-        </Button>
+        </StyledButton>
       </Flex>
     </QuestionCard>
   )
