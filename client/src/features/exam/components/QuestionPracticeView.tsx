@@ -6,10 +6,12 @@ import { StyledButton } from '@/shared/components'
 import { useMicPermission } from '@/features/exam/hooks/useMicPermission'
 import { MicWaveform } from './MicWaveform'
 import type { Question } from '@/features/admin/types'
+import { hexToRgba } from '@/shared/utils/color'
+import { COLORS } from '@/shared/constants/user-color'
 
 const { Title, Text, Paragraph } = Typography
 
-const Container = styled('div', 'h-full flex flex-col')
+const Container = styled('div', 'h-full flex gap-4 flex-col')
 const QuestionCard = styled(Card, 'flex-1 mb-4 overflow-y-auto')
 const ControlPanel = styled(Card, 'mt-auto')
 const AudioIcon = styled(
@@ -212,6 +214,30 @@ export function QuestionPracticeView({
             </Space>
           </Flex>
 
+          {/* Images */}
+          {question.imageUrls && question.imageUrls.length > 0 && (
+            <div>
+              <Title level={5} style={{ marginBottom: 12 }}>
+                Hình ảnh
+              </Title>
+              <Flex gap={12} justify="center" wrap="wrap">
+                {question.imageUrls.map((url, index) => (
+                  <img
+                    key={index}
+                    src={url}
+                    alt={`Question ${question.questionNumber}`}
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: 400,
+                      borderRadius: 8,
+                      objectFit: 'contain',
+                    }}
+                  />
+                ))}
+              </Flex>
+            </div>
+          )}
+
           {/* Context Text (Part 3, 4, 5) */}
           {question.contextText && (
             <div>
@@ -261,30 +287,6 @@ export function QuestionPracticeView({
               </Paragraph>
             </div>
           )}
-
-          {/* Images */}
-          {question.imageUrls && question.imageUrls.length > 0 && (
-            <div>
-              <Title level={5} style={{ marginBottom: 12 }}>
-                Hình ảnh
-              </Title>
-              <Flex gap={12} wrap="wrap">
-                {question.imageUrls.map((url, index) => (
-                  <img
-                    key={index}
-                    src={url}
-                    alt={`Question ${question.questionNumber}`}
-                    style={{
-                      maxWidth: '100%',
-                      maxHeight: 400,
-                      borderRadius: 8,
-                      objectFit: 'contain',
-                    }}
-                  />
-                ))}
-              </Flex>
-            </div>
-          )}
         </Flex>
       </QuestionCard>
 
@@ -300,6 +302,7 @@ export function QuestionPracticeView({
                   percent={prepProgress}
                   format={() => `${prepTimeLeft}s`}
                   strokeColor="#1890ff"
+                  strokeWidth={10}
                   size={80}
                 />
                 <Text type="secondary" style={{ fontSize: 12 }}>
@@ -314,6 +317,7 @@ export function QuestionPracticeView({
                   percent={recordProgress}
                   format={() => `${recordTimeLeft}s`}
                   strokeColor="#ff4d4f"
+                  strokeWidth={10}
                   size={80}
                 />
                 <Text type="secondary" style={{ fontSize: 12 }}>
@@ -334,7 +338,9 @@ export function QuestionPracticeView({
           {/* Center: Waveform */}
           <div style={{ flex: 1, minWidth: 0 }}>
             {recordingState === 'recording' && recordingStream && (
-              <MicWaveform stream={recordingStream} height={80} />
+              <Flex align="center" justify="center" style={{ height: 80 }}>
+                <MicWaveform color={COLORS.primary} stream={recordingStream} height={80} />
+              </Flex>
             )}
             {recordingState === 'preparing' && (
               <Flex align="center" justify="center" style={{ height: 80 }}>
@@ -362,6 +368,11 @@ export function QuestionPracticeView({
                 icon={<Mic style={{ fontSize: 20 }} />}
                 onClick={startPreparing}
                 disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  backgroundColor: COLORS.primary,
+                  borderColor: COLORS.primary,
+                }}
               >
                 Bắt đầu luyện tập
               </StyledButton>
@@ -380,9 +391,10 @@ export function QuestionPracticeView({
                 {recordingState === 'recording' && (
                   <StyledButton
                     size="large"
-                    danger
-                    type="primary"
+                    color="danger"
+                    variant="solid"
                     icon={<Stop style={{ fontSize: 20 }} />}
+                    shadowColor={hexToRgba(COLORS.accent, 0.4)}
                     onClick={stopRecording}
                   >
                     Dừng và gửi
@@ -394,9 +406,16 @@ export function QuestionPracticeView({
             {recordingState === 'completed' && (
               <StyledButton
                 size="large"
+                type="primary"
                 icon={<Refresh style={{ fontSize: 20 }} />}
                 onClick={handleReset}
                 disabled={isSubmitting}
+                shadowColor={hexToRgba(COLORS.primary, 0.6)}
+                style={{
+                  width: '100%',
+                  backgroundColor: COLORS.primary,
+                  borderColor: COLORS.primary,
+                }}
               >
                 Luyện lại
               </StyledButton>
