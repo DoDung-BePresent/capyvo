@@ -15,39 +15,48 @@ interface PageHeaderProps {
   description?: string
   breadcrumbs?: BreadcrumbItem[]
   extra?: ReactNode
+  mini?: boolean
 }
 
-export function PageHeader({ title, description, breadcrumbs, extra }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  description,
+  breadcrumbs,
+  extra,
+  mini = false,
+}: PageHeaderProps) {
   return (
     <>
       <Helmet>
         <title>{title} — Capyvo Admin</title>
       </Helmet>
 
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: mini ? 16 : 24 }}>
         {breadcrumbs && breadcrumbs.length > 0 && (
           <Breadcrumb
-            style={{ marginBottom: 8 }}
+            style={{ marginBottom: mini ? 0 : 8 }}
             items={breadcrumbs.map((b) =>
               b.href ? { title: <Link to={b.href}>{b.label}</Link> } : { title: b.label },
             )}
           />
         )}
 
-        <Flex align="center" justify="space-between" gap={16}>
-          <Space direction="vertical" size={2}>
-            <Title level={3} style={{ margin: 0 }}>
-              {title}
-            </Title>
-            {description && (
-              <Text type="secondary" style={{ fontSize: 13 }}>
-                {description}
-              </Text>
-            )}
-          </Space>
+        {!mini && (
+          <Flex align="center" justify="space-between" gap={16}>
+            <Space direction="vertical" size={2}>
+              <Title level={3} style={{ margin: 0 }}>
+                {title}
+              </Title>
+              {description && (
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  {description}
+                </Text>
+              )}
+            </Space>
 
-          {extra && <div style={{ flexShrink: 0 }}>{extra}</div>}
-        </Flex>
+            {extra && <div style={{ flexShrink: 0 }}>{extra}</div>}
+          </Flex>
+        )}
       </div>
     </>
   )
