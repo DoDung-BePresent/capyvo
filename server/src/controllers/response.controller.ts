@@ -69,4 +69,15 @@ export class ResponseController {
       next(err)
     }
   }
+
+  async getQuestionHistory(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const questionId = req.params['questionId'] as string
+      const userId = (req as AuthRequest).userId
+      const history = await responseService.getQuestionHistory(questionId, userId)
+      res.json({ success: true, data: history })
+    } catch (err) {
+      next(err)
+    }
+  }
 }

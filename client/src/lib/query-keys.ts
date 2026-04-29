@@ -46,6 +46,7 @@ export const queryKeys = {
   responses: {
     bySession: (sessionId: string) => ['responses', 'session', sessionId] as const,
     detail: (id: string) => ['responses', 'detail', id] as const,
+    questionHistory: (questionId: string) => ['responses', 'question-history', questionId] as const,
   },
 
   // System audio

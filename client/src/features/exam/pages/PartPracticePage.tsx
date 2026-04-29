@@ -145,9 +145,7 @@ export default function PartPracticePage() {
   const selectedSet = examSets.find((s) => s.id === selectedSetId)
 
   const handlePracticeQuestion = (question: Question & { examSetId: string }) => {
-    navigate(`/practice/part/${part}/set/${question.examSetId}/exam`, {
-      state: { startFromQuestion: question.questionNumber },
-    })
+    navigate(`/practice/part/${part}/question/${question.id}`)
   }
 
   if (isLoading) {

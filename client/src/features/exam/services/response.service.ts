@@ -19,4 +19,36 @@ export const responseService = {
     )
     return data.data
   },
+
+  getQuestionHistory: async (questionId: string) => {
+    const { data } = await axiosInstance.get<
+      ApiResponse<
+        Array<{
+          id: string
+          sessionId: string
+          audioUrl: string | null
+          transcript: string | null
+          pronunciationScore: {
+            score: number
+            criteria: {
+              accuracy: number
+              vocabulary: number
+              grammar: number
+              fluency: number
+            }
+            issues: Array<{
+              category: string
+              original: string
+              spoken: string
+              note: string
+            }>
+            summary: string
+          } | null
+          completedAt: string | null
+          createdAt: string
+        }>
+      >
+    >(`/responses/question/${questionId}/history`)
+    return data.data
+  },
 }

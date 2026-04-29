@@ -28,5 +28,7 @@ export function useMicPermission() {
     }
   }
 
-  return { permission, requestPermission }
+  const hasPermission = permission === 'granted'
+
+  return { permission, hasPermission, requestPermission }
 }

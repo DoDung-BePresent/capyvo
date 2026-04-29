@@ -17,4 +17,8 @@ router.post('/:id/transcribe-analyze', authenticate, (req, res, next) =>
   ctrl.transcribeAndAnalyze(req, res, next),
 )
 
+router.get('/question/:questionId/history', authenticate, (req, res, next) =>
+  ctrl.getQuestionHistory(req, res, next),
+)
+
 export default router

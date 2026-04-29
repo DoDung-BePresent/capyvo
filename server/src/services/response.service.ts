@@ -371,6 +371,40 @@ class ResponseService {
 
     return { transcript, analysis }
   }
+
+  async getQuestionHistory(questionId: string, userId: string) {
+    const responses = await prisma.userResponse.findMany({
+      where: {
+        questionId,
+        session: { userId, status: 'COMPLETED' },
+      },
+      select: {
+        id: true,
+        audioUrl: true,
+        transcript: true,
+        pronunciationScore: true,
+        createdAt: true,
+        session: {
+          select: {
+            id: true,
+            completedAt: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10, // Limit to 10 most recent attempts
+    })
+
+    return responses.map((r) => ({
+      id: r.id,
+      sessionId: r.session.id,
+      audioUrl: r.audioUrl,
+      transcript: r.transcript,
+      pronunciationScore: r.pronunciationScore as unknown as AnalysisResult | null,
+      completedAt: r.session.completedAt,
+      createdAt: r.createdAt,
+    }))
+  }
 }
 
 export const responseService = new ResponseService()
