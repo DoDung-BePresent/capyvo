@@ -115,7 +115,7 @@ class ResponseService {
     questionId: string,
     buffer: Buffer,
     mimeType: string,
-  ): Promise<string> {
+  ): Promise<{ audioUrl: string; responseId: string }> {
     const ext = mimeType.includes('ogg') ? 'ogg' : mimeType.includes('mp4') ? 'mp4' : 'webm'
     const filename = `${Date.now()}-${questionId}.${ext}`
     const storagePath = `responses/${filename}`
@@ -130,13 +130,13 @@ class ResponseService {
       data: { publicUrl },
     } = supabaseAdmin.storage.from('audio').getPublicUrl(storagePath)
 
-    await prisma.userResponse.upsert({
+    const response = await prisma.userResponse.upsert({
       where: { sessionId_questionId: { sessionId, questionId } },
       create: { sessionId, questionId, audioUrl: publicUrl },
       update: { audioUrl: publicUrl },
     })
 
-    return publicUrl
+    return { audioUrl: publicUrl, responseId: response.id }
   }
 
   async transcribeResponse(responseId: string, userId: string): Promise<string> {
@@ -376,7 +376,7 @@ class ResponseService {
     const responses = await prisma.userResponse.findMany({
       where: {
         questionId,
-        session: { userId, status: 'COMPLETED' },
+        session: { userId },
       },
       select: {
         id: true,

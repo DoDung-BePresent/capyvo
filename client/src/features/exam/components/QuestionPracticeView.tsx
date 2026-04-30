@@ -1,19 +1,22 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Card, Typography, Tag, Flex, Space, Progress, Tooltip } from 'antd'
+import { Card, Typography, Tag, Flex, Space, Progress, Tooltip, message } from 'antd'
 import { Mic, Stop, Refresh, Cancel, VolumeUp } from '@mui/icons-material'
 import { styled } from '@/shared/utils/cn'
 import { StyledButton } from '@/shared/components'
 import { useMicPermission } from '@/features/exam/hooks/useMicPermission'
+import { useTranscribeAndAnalyze } from '@/features/exam/hooks/useTranscribeAndAnalyze'
 import { MicWaveform } from './MicWaveform'
-import type { Question } from '@/features/admin/types'
+import { ResultView } from './ResultView'
+import type { Question, PartNumber } from '@/features/admin/types'
+import type { AnalysisResult } from '@/features/exam/services/session.service'
 import { hexToRgba } from '@/shared/utils/color'
 import { COLORS } from '@/shared/constants/user-color'
 
 const { Title, Text, Paragraph } = Typography
 
 const Container = styled('div', 'h-full flex gap-4 flex-col')
-const QuestionCard = styled(Card, 'flex-1 mb-4 overflow-y-auto')
-const ControlPanel = styled(Card, 'mt-auto')
+const QuestionCard = styled(Card, 'flex-1 rounded-lg! mb-4 overflow-y-auto')
+const ControlPanel = styled(Card, 'mt-auto rounded-lg!')
 const AudioIcon = styled(
   'button',
   'inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors cursor-pointer border-0',
@@ -21,15 +24,17 @@ const AudioIcon = styled(
 
 interface QuestionPracticeViewProps {
   question: Question & { examSetTitle: string }
-  onRecordingComplete: (audioBlob: Blob) => void
+  onRecordingComplete: (audioBlob: Blob) => Promise<{ responseId: string }>
+  onAnalysisComplete?: () => void
   isSubmitting?: boolean
 }
 
-type RecordingState = 'idle' | 'preparing' | 'recording' | 'completed'
+type RecordingState = 'idle' | 'preparing' | 'recording' | 'completed' | 'analyzing' | 'result'
 
 export function QuestionPracticeView({
   question,
   onRecordingComplete,
+  onAnalysisComplete,
   isSubmitting = false,
 }: QuestionPracticeViewProps) {
   const { hasPermission, requestPermission } = useMicPermission()
@@ -38,9 +43,32 @@ export function QuestionPracticeView({
   const [recordTimeLeft, setRecordTimeLeft] = useState(question.responseTimeSeconds)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [recordingStream, setRecordingStream] = useState<MediaStream | null>(null)
+  const [analysisResult, setAnalysisResult] = useState<{
+    transcript: string
+    analysis: AnalysisResult
+  } | null>(null)
 
   const contextAudioRef = useRef<HTMLAudioElement>(null!)
   const questionAudioRef = useRef<HTMLAudioElement>(null!)
+
+  const { mutate: transcribeAndAnalyze, isPending: isAnalyzing } = useTranscribeAndAnalyze({
+    onSuccess: (data) => {
+      console.log('✅ Analysis complete:', data)
+      setAnalysisResult(data)
+      setRecordingState('result')
+      onAnalysisComplete?.()
+    },
+    onError: (error: unknown) => {
+      console.error('❌ Analysis error:', error)
+      const err = error as { response?: { data?: { error?: string } } }
+      if (err.response?.data?.error === 'no_credits') {
+        message.error('Bạn đã hết credits. Vui lòng nạp thêm!')
+      } else {
+        message.error('Lỗi khi phân tích')
+      }
+      setRecordingState('completed')
+    },
+  })
 
   // Auto-play audio sequence when question loads
   useEffect(() => {
@@ -94,12 +122,26 @@ export function QuestionPracticeView({
         }
       }
 
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
+        console.log('🎤 Recording stopped')
         const blob = new Blob(chunks, { type: 'audio/webm' })
-        onRecordingComplete(blob)
-        setRecordingState('completed')
+        console.log('📦 Audio blob created:', blob.size, 'bytes')
         stream.getTracks().forEach((track) => track.stop())
         setRecordingStream(null)
+
+        // Save audio and get response ID
+        setRecordingState('analyzing')
+        console.log('💾 Saving audio...')
+        try {
+          const result = await onRecordingComplete(blob)
+          console.log('✅ Audio saved, responseId:', result.responseId)
+          // Auto transcribe and analyze
+          console.log('🔄 Starting transcribe & analyze...')
+          transcribeAndAnalyze(result.responseId)
+        } catch (error) {
+          console.error('❌ Failed to save audio:', error)
+          setRecordingState('completed')
+        }
       }
 
       recorder.start()
@@ -109,7 +151,7 @@ export function QuestionPracticeView({
       console.error('Failed to start recording:', error)
       setRecordingState('idle')
     }
-  }, [onRecordingComplete])
+  }, [onRecordingComplete, transcribeAndAnalyze])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -174,6 +216,11 @@ export function QuestionPracticeView({
     setRecordingState('idle')
     setPrepTimeLeft(question.prepTimeSeconds)
     setRecordTimeLeft(question.responseTimeSeconds)
+    setAnalysisResult(null)
+  }
+
+  const getReferenceText = () => {
+    return question.contentText || question.questionText || undefined
   }
 
   const playAudio = (audioRef: React.RefObject<HTMLAudioElement>) => {
@@ -197,103 +244,116 @@ export function QuestionPracticeView({
         <audio ref={questionAudioRef} src={question.questionAudioUrl} preload="auto" />
       )}
 
-      {/* Question Content */}
-      <QuestionCard>
-        <Flex vertical gap={16}>
-          {/* Header */}
-          <Flex align="center" justify="space-between">
-            <Space>
-              <Tag color="blue" style={{ fontSize: 14, padding: '4px 12px' }}>
-                Câu {question.questionNumber}
-              </Tag>
-              <Text type="secondary">{question.examSetTitle}</Text>
-            </Space>
-            <Space>
-              <Tag>{question.prepTimeSeconds}s chuẩn bị</Tag>
-              <Tag>{question.responseTimeSeconds}s trả lời</Tag>
-            </Space>
+      {/* Show Result View when analyzing or analysis is complete */}
+      {(recordingState === 'analyzing' || recordingState === 'result') && (
+        <ResultView
+          partNumber={question.partNumber as PartNumber}
+          transcript={analysisResult?.transcript}
+          analysis={analysisResult?.analysis}
+          referenceText={getReferenceText()}
+          isLoading={isAnalyzing}
+        />
+      )}
+
+      {/* Show Question Content when not in analyzing/result state */}
+      {recordingState !== 'analyzing' && recordingState !== 'result' && (
+        <QuestionCard>
+          <Flex vertical gap={16}>
+            {/* Header */}
+            <Flex align="center" justify="space-between">
+              <Space>
+                <Tag color="blue" style={{ fontSize: 14, padding: '4px 12px' }}>
+                  Câu {question.questionNumber}
+                </Tag>
+                <Text type="secondary">{question.examSetTitle}</Text>
+              </Space>
+              <Space>
+                <Tag>{question.prepTimeSeconds}s chuẩn bị</Tag>
+                <Tag>{question.responseTimeSeconds}s trả lời</Tag>
+              </Space>
+            </Flex>
+
+            {/* Images */}
+            {question.imageUrls && question.imageUrls.length > 0 && (
+              <div>
+                <Title level={5} style={{ marginBottom: 12 }}>
+                  Hình ảnh
+                </Title>
+                <Flex gap={12} justify="center" wrap="wrap">
+                  {question.imageUrls.map((url, index) => (
+                    <img
+                      key={index}
+                      src={url}
+                      alt={`Question ${question.questionNumber}`}
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: 400,
+                        borderRadius: 8,
+                        objectFit: 'contain',
+                      }}
+                    />
+                  ))}
+                </Flex>
+              </div>
+            )}
+
+            {/* Context Text (Part 3, 4, 5) */}
+            {question.contextText && (
+              <div>
+                <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
+                  <Title level={5} style={{ margin: 0 }}>
+                    Ngữ cảnh
+                  </Title>
+                  {question.contextAudioUrl && (
+                    <Tooltip title="Phát audio ngữ cảnh">
+                      <AudioIcon onClick={() => playAudio(contextAudioRef)}>
+                        <VolumeUp style={{ fontSize: 18, color: '#1890ff' }} />
+                      </AudioIcon>
+                    </Tooltip>
+                  )}
+                </Flex>
+                <Paragraph
+                  style={{
+                    fontSize: 15,
+                    lineHeight: 1.8,
+                    backgroundColor: '#f5f5f5',
+                    padding: 16,
+                    borderRadius: 8,
+                  }}
+                >
+                  {question.contextText}
+                </Paragraph>
+              </div>
+            )}
+
+            {/* Question Text */}
+            {(question.contentText || question.questionText) && (
+              <div>
+                <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
+                  <Title level={5} style={{ margin: 0 }}>
+                    Câu hỏi
+                  </Title>
+                  {question.questionAudioUrl && (
+                    <Tooltip title="Phát audio câu hỏi">
+                      <AudioIcon onClick={() => playAudio(questionAudioRef)}>
+                        <VolumeUp style={{ fontSize: 18, color: '#1890ff' }} />
+                      </AudioIcon>
+                    </Tooltip>
+                  )}
+                </Flex>
+                <Paragraph style={{ fontSize: 16, lineHeight: 1.8 }}>
+                  {question.contentText || question.questionText}
+                </Paragraph>
+              </div>
+            )}
           </Flex>
-
-          {/* Images */}
-          {question.imageUrls && question.imageUrls.length > 0 && (
-            <div>
-              <Title level={5} style={{ marginBottom: 12 }}>
-                Hình ảnh
-              </Title>
-              <Flex gap={12} justify="center" wrap="wrap">
-                {question.imageUrls.map((url, index) => (
-                  <img
-                    key={index}
-                    src={url}
-                    alt={`Question ${question.questionNumber}`}
-                    style={{
-                      maxWidth: '100%',
-                      maxHeight: 400,
-                      borderRadius: 8,
-                      objectFit: 'contain',
-                    }}
-                  />
-                ))}
-              </Flex>
-            </div>
-          )}
-
-          {/* Context Text (Part 3, 4, 5) */}
-          {question.contextText && (
-            <div>
-              <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
-                <Title level={5} style={{ margin: 0 }}>
-                  Ngữ cảnh
-                </Title>
-                {question.contextAudioUrl && (
-                  <Tooltip title="Phát audio ngữ cảnh">
-                    <AudioIcon onClick={() => playAudio(contextAudioRef)}>
-                      <VolumeUp style={{ fontSize: 18, color: '#1890ff' }} />
-                    </AudioIcon>
-                  </Tooltip>
-                )}
-              </Flex>
-              <Paragraph
-                style={{
-                  fontSize: 15,
-                  lineHeight: 1.8,
-                  backgroundColor: '#f5f5f5',
-                  padding: 16,
-                  borderRadius: 8,
-                }}
-              >
-                {question.contextText}
-              </Paragraph>
-            </div>
-          )}
-
-          {/* Question Text */}
-          {(question.contentText || question.questionText) && (
-            <div>
-              <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
-                <Title level={5} style={{ margin: 0 }}>
-                  Câu hỏi
-                </Title>
-                {question.questionAudioUrl && (
-                  <Tooltip title="Phát audio câu hỏi">
-                    <AudioIcon onClick={() => playAudio(questionAudioRef)}>
-                      <VolumeUp style={{ fontSize: 18, color: '#1890ff' }} />
-                    </AudioIcon>
-                  </Tooltip>
-                )}
-              </Flex>
-              <Paragraph style={{ fontSize: 16, lineHeight: 1.8 }}>
-                {question.contentText || question.questionText}
-              </Paragraph>
-            </div>
-          )}
-        </Flex>
-      </QuestionCard>
+        </QuestionCard>
+      )}
 
       {/* Control Panel */}
       <ControlPanel>
         <Flex align="center" justify="space-between" gap={16}>
-          {/* Left: Circular countdown */}
+          {/* Left: Circular countdown (only for prep/record states) */}
           <div style={{ width: 80, flexShrink: 0 }}>
             {recordingState === 'preparing' && (
               <Flex vertical align="center" gap={4}>
@@ -325,13 +385,8 @@ export function QuestionPracticeView({
                 </Text>
               </Flex>
             )}
-            {recordingState === 'idle' && <div style={{ width: 80, height: 80 }} />}
-            {recordingState === 'completed' && (
-              <Flex vertical align="center" justify="center" style={{ height: 80 }}>
-                <Text strong style={{ color: '#52c41a', fontSize: 14, textAlign: 'center' }}>
-                  ✓ Hoàn thành
-                </Text>
-              </Flex>
+            {(recordingState === 'idle' || recordingState === 'completed') && (
+              <div style={{ width: 80, height: 80 }} />
             )}
           </div>
 
@@ -410,6 +465,23 @@ export function QuestionPracticeView({
                 icon={<Refresh style={{ fontSize: 20 }} />}
                 onClick={handleReset}
                 disabled={isSubmitting}
+                shadowColor={hexToRgba(COLORS.primary, 0.6)}
+                style={{
+                  width: '100%',
+                  backgroundColor: COLORS.primary,
+                  borderColor: COLORS.primary,
+                }}
+              >
+                Luyện lại
+              </StyledButton>
+            )}
+
+            {recordingState === 'result' && (
+              <StyledButton
+                size="large"
+                type="primary"
+                icon={<Refresh style={{ fontSize: 20 }} />}
+                onClick={handleReset}
                 shadowColor={hexToRgba(COLORS.primary, 0.6)}
                 style={{
                   width: '100%',

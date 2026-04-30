@@ -25,13 +25,13 @@ export class ResponseController {
       if (!questionId) throw new ValidationError('questionId is required')
       if (!sessionId) throw new ValidationError('sessionId is required')
 
-      const audioUrl = await responseService.saveAudio(
+      const result = await responseService.saveAudio(
         sessionId,
         questionId,
         file.buffer,
         file.mimetype,
       )
-      res.status(201).json({ success: true, data: { audioUrl } })
+      res.status(201).json({ success: true, data: result })
     } catch (err) {
       next(err)
     }

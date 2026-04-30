@@ -13,8 +13,8 @@ const { Text, Paragraph } = Typography
 
 const Container = styled('div', 'h-full flex flex-col')
 const Header = styled('div', 'mb-4 pb-4 border-b border-gray-200')
-const HistoryList = styled('div', 'flex-1 overflow-y-auto space-y-3')
-const HistoryCard = styled(Card, 'hover:shadow-md transition-shadow')
+const HistoryList = styled('div', 'flex-1 overflow-y-auto space-y-3!')
+const HistoryCard = styled(Card, 'hover:shadow-md rounded-lg! transition-shadow')
 
 interface PracticeHistoryPanelProps {
   questionId: string | null

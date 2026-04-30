@@ -43,28 +43,35 @@ export default function QuestionPracticePage() {
 
   const saveAudioMutation = useMutation({
     mutationFn: async (audioBlob: Blob) => {
+      console.log('💾 saveAudioMutation called with blob:', audioBlob.size, 'bytes')
       let sid = sessionId
       if (!sid) {
+        console.log('🆕 Creating new session...')
         const { sessionId: newSessionId } = await sessionService.createSession(
           question!.examSetId ?? '',
           part,
         )
         sid = newSessionId
+        console.log('✅ Session created:', sid)
         setSessionId(sid)
       }
-      return await responseService.saveAudio(sid, questionId!, audioBlob)
+      console.log('📤 Calling responseService.saveAudio...')
+      const result = await responseService.saveAudio(sid, questionId!, audioBlob)
+      console.log('✅ saveAudio result:', result)
+      return { responseId: result.responseId, ...result }
     },
-    onSuccess: () => {
-      message.success('Đã lưu bài tập')
+    onSuccess: (data) => {
+      console.log('✅ saveAudioMutation success:', data)
       queryClient.invalidateQueries({ queryKey: queryKeys.responses.questionHistory(questionId!) })
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('❌ saveAudioMutation error:', error)
       message.error('Lỗi khi lưu bài tập')
     },
   })
 
   const handleRecordingComplete = async (audioBlob: Blob) => {
-    await saveAudioMutation.mutateAsync(audioBlob)
+    return await saveAudioMutation.mutateAsync(audioBlob)
   }
 
   const meta = PART_META[part]
@@ -114,6 +121,11 @@ export default function QuestionPracticePage() {
               key={question.id}
               question={question}
               onRecordingComplete={handleRecordingComplete}
+              onAnalysisComplete={() => {
+                queryClient.invalidateQueries({
+                  queryKey: queryKeys.responses.questionHistory(questionId!),
+                })
+              }}
               isSubmitting={saveAudioMutation.isPending}
             />
           </LeftContent>

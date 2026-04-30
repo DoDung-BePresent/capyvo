@@ -6,17 +6,15 @@ export const responseService = {
     sessionId: string,
     questionId: string,
     blob: Blob,
-  ): Promise<{ audioUrl: string }> => {
+  ): Promise<{ audioUrl: string; responseId: string }> => {
     const ext = blob.type.includes('ogg') ? 'ogg' : blob.type.includes('mp4') ? 'mp4' : 'webm'
     const form = new FormData()
     form.append('audio', blob, `response-${questionId}.${ext}`)
     form.append('questionId', questionId)
     form.append('sessionId', sessionId)
-    const { data } = await axiosInstance.post<ApiResponse<{ audioUrl: string }>>(
-      '/responses/audio',
-      form,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
-    )
+    const { data } = await axiosInstance.post<
+      ApiResponse<{ audioUrl: string; responseId: string }>
+    >('/responses/audio', form, { headers: { 'Content-Type': 'multipart/form-data' } })
     return data.data
   },
 
