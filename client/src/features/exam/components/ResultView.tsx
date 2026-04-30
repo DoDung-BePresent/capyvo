@@ -19,6 +19,8 @@ const ERROR_COLORS: Record<string, { bg: string; border: string; text: string }>
   pronunciation: { bg: '#e6f7ff', border: '#91d5ff', text: '#096dd9' }, // Xanh dương nhạt
   substitution: { bg: '#f9f0ff', border: '#d3adf7', text: '#531dab' }, // Tím nhạt
   order: { bg: '#fff0f6', border: '#ffadd2', text: '#c41d7f' }, // Hồng nhạt
+  grammar: { bg: '#fffbe6', border: '#ffe58f', text: '#d48806' }, // Vàng nhạt
+  vocabulary: { bg: '#e6fffb', border: '#87e8de', text: '#08979c' }, // Xanh ngọc nhạt
 }
 
 const ERROR_LABELS: Record<string, string> = {
@@ -28,6 +30,8 @@ const ERROR_LABELS: Record<string, string> = {
   pronunciation: 'Phát âm',
   substitution: 'Thay thế',
   order: 'Sai thứ tự',
+  grammar: 'Ngữ pháp',
+  vocabulary: 'Từ vựng',
 }
 
 // Thang điểm theo part
@@ -161,14 +165,18 @@ export function ResultView({
             return <span key={index}>{segment.text}</span>
           }
 
-          const colors = ERROR_COLORS[segment.issue.category]
+          const colors = ERROR_COLORS[segment.issue.category] || {
+            bg: '#f5f5f5',
+            border: '#d9d9d9',
+            text: '#595959',
+          }
           return (
             <Tooltip
               key={index}
               title={
                 <div>
                   <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                    {ERROR_LABELS[segment.issue.category]}
+                    {ERROR_LABELS[segment.issue.category] || segment.issue.category}
                   </div>
                   {segment.issue.original && (
                     <div style={{ marginBottom: 4 }}>
@@ -325,7 +333,11 @@ export function ResultView({
                       const hasError = analysis.issues.some((issue) => issue.category === key)
                       if (!hasError) return null
 
-                      const colors = ERROR_COLORS[key]
+                      const colors = ERROR_COLORS[key] || {
+                        bg: '#f5f5f5',
+                        border: '#d9d9d9',
+                        text: '#595959',
+                      }
                       return (
                         <Tag
                           key={key}

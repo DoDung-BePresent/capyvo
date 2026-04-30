@@ -95,6 +95,12 @@ const IMAGE_DESCRIPTION_PROMPT = `You are a TOEIC speaking coach. The student wa
 Image content: {IMAGE_CONTEXT}
 Student's spoken response: {TRANSCRIPT}
 
+IMPORTANT CONTEXT:
+- Part 2: 30 seconds response time (approximately 80-100 words maximum)
+- Part 4: 15 seconds response time (approximately 40-60 words maximum)
+- Students CANNOT say more due to strict time limits
+- Evaluate based on what they CAN achieve in the given time, not ideal length
+
 Evaluate how well the student described the image. Return a JSON object (no markdown) with this exact shape:
 {
   "score": <0-{MAX_SCORE} number with 1 decimal place, overall quality score on the {MAX_SCORE}-point scale>,
@@ -123,18 +129,28 @@ Category rules:
 - addition: student mentioned something that is clearly NOT visible in the image. "spoken" = the invented word/phrase verbatim from transcript.
 
 Critical rules:
-1. Do NOT flag omissions — students are not expected to mention every single thing in the image.
-2. Do NOT flag personal opinions or subjective interpretations as errors.
-3. "spoken" must be copied CHARACTER-FOR-CHARACTER from the transcript. Never rephrase.
-4. IGNORE capitalization.
-5. Only flag clear, objective errors. Be lenient with paraphrasing.
+1. Do NOT flag omissions — students are not expected to mention every single thing in the image due to time limits.
+2. Do NOT penalize for brevity or lack of detail if the description covers key elements.
+3. Do NOT suggest "adding more details" — time limits prevent this.
+4. Do NOT flag personal opinions or subjective interpretations as errors.
+5. "spoken" must be copied CHARACTER-FOR-CHARACTER from the transcript. Never rephrase.
+6. IGNORE capitalization.
+7. Only flag clear, objective errors. Be lenient with paraphrasing.
+8. A concise, accurate description of main elements deserves a high score.
 
-If the description is good, return empty issues array and a high score.`
+If the description accurately covers the main visible elements with good grammar, return high score even if brief.`
 
 const PART35_QUESTION_RESPONSE_PROMPT = `You are a TOEIC speaking coach evaluating a Part 3 or Part 5 response. The student was asked to answer a question or express their opinion.
 
 Question: {REFERENCE}
 Student's spoken response: {TRANSCRIPT}
+
+IMPORTANT CONTEXT - Time limits:
+- Part 3 (Questions 1-6): 15 seconds response time (approximately 40-60 words maximum)
+- Part 3 (Question 7): 30 seconds response time (approximately 80-100 words maximum)
+- Part 5: 30 seconds response time (approximately 80-100 words maximum)
+- Students CANNOT say more due to strict time limits
+- Evaluate based on the actual length of the transcript and what is achievable in the time given
 
 Evaluate the quality of the response. Return a JSON object (no markdown) with this exact shape:
 {
@@ -160,23 +176,28 @@ CRITICAL RULES for Part 3 & 5 (Question Response):
 1. The "score" field must be between 0 and {MAX_SCORE} (e.g., 2.5 for a 3-point scale, 3.5 for a 5-point scale). Do NOT return 0-100.
 2. This is a QUESTION RESPONSE task — evaluate content quality, NOT whether they match a reference text.
 3. Do NOT compare word-by-word with the question. The question is just the prompt, not a text to read or match.
-4. Focus on: relevance to question, vocabulary range, grammar accuracy, coherence, completeness.
-5. "spoken" must be copied CHARACTER-FOR-CHARACTER from the transcript.
-6. "original" should be a suggested improvement, not a "correct answer" (there is no single correct answer).
-7. Be lenient with paraphrasing and different ways of expressing ideas.
+4. JUDGE APPROPRIATENESS based on transcript length:
+   - If transcript is 40-60 words: This is likely a 15-second response. Do NOT penalize for brevity.
+   - If transcript is 80-100+ words: This is likely a 30-second response. Can expect more detail.
+5. Do NOT suggest "expanding" or "adding more information" for short responses (40-60 words).
+6. Focus on: relevance to question, vocabulary appropriateness, grammar accuracy, coherence within the given time.
+7. "spoken" must be copied CHARACTER-FOR-CHARACTER from the transcript.
+8. "original" should be a suggested improvement, not a "correct answer" (there is no single correct answer).
+9. Be lenient with paraphrasing and different ways of expressing ideas.
+10. A concise, clear, grammatically correct response that directly answers the question deserves a high score.
 
 Category rules:
 - morphology: grammatical form error (wrong tense, missing plural, wrong article, subject-verb agreement). "spoken" = incorrect phrase verbatim.
 - grammar: sentence structure error (word order, missing words, run-on sentences, fragments). "spoken" = problematic phrase verbatim.
 - vocabulary: inappropriate word choice, repetition, unclear expression, or unnatural phrasing. "spoken" = the word/phrase verbatim. "original" = better alternative.
 
-Scoring guidelines:
-- Excellent (90-100% of MAX_SCORE): Clear, well-organized, varied vocabulary, minimal errors, fully addresses question
-- Good (70-89% of MAX_SCORE): Addresses question, some variety, few errors, mostly clear
-- Fair (50-69% of MAX_SCORE): Basic response, limited vocabulary, several errors, partially addresses question
-- Poor (<50% of MAX_SCORE): Unclear, very limited vocabulary, many errors, doesn't address question well
+Scoring guidelines (adjusted for time constraints):
+- Excellent (90-100% of MAX_SCORE): Directly answers question, clear and grammatically correct, appropriate vocabulary, good flow. Length is appropriate for time limit.
+- Good (70-89% of MAX_SCORE): Answers question, mostly clear, few minor errors, adequate vocabulary. May be brief but complete.
+- Fair (50-69% of MAX_SCORE): Partially addresses question, some errors that don't prevent understanding, basic vocabulary.
+- Poor (<50% of MAX_SCORE): Doesn't address question well, many errors that impede understanding, very limited vocabulary.
 
-Be encouraging and constructive. Only flag significant errors that impact communication or clarity.`
+Be encouraging and realistic. A short but accurate, grammatically correct response is BETTER than a long response with many errors. Only flag significant errors that impact communication or clarity.`
 
 class ResponseService {
   private async checkSubscriptionAccess(userId: string): Promise<void> {
