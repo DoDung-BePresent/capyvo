@@ -247,10 +247,9 @@ class ResponseService {
       data: { publicUrl },
     } = supabaseAdmin.storage.from('audio').getPublicUrl(storagePath)
 
-    const response = await prisma.userResponse.upsert({
-      where: { sessionId_questionId: { sessionId, questionId } },
-      create: { sessionId, questionId, audioUrl: publicUrl },
-      update: { audioUrl: publicUrl },
+    // Always create new response for each practice attempt
+    const response = await prisma.userResponse.create({
+      data: { sessionId, questionId, audioUrl: publicUrl },
     })
 
     return { audioUrl: publicUrl, responseId: response.id }
