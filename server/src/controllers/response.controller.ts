@@ -17,6 +17,16 @@ export const uploadAudio = multer({
 })
 
 export class ResponseController {
+  async checkCredits(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = (req as AuthRequest).userId
+      const result = await responseService.checkUserCredits(userId)
+      res.json({ success: true, data: result })
+    } catch (err) {
+      next(err)
+    }
+  }
+
   async saveAudio(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { questionId, sessionId } = req.body

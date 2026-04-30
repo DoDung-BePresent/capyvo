@@ -2,6 +2,7 @@ import { Card, Typography, Flex, Progress, Tag, Tooltip, Space, Skeleton } from 
 import { styled } from '@/shared/utils/cn'
 import type { AnalysisResult } from '@/features/exam/services/session.service'
 import type { PartNumber } from '@/features/admin/types'
+import { AudioPlayButton } from './AudioPlayButton'
 
 const { Title, Text, Paragraph } = Typography
 
@@ -43,6 +44,7 @@ interface ResultViewProps {
   transcript?: string
   analysis?: AnalysisResult
   referenceText?: string
+  audioUrl?: string
   isLoading?: boolean
 }
 
@@ -51,6 +53,7 @@ export function ResultView({
   transcript,
   analysis,
   referenceText,
+  audioUrl,
   isLoading = false,
 }: ResultViewProps) {
   const scale = SCORE_SCALES[partNumber]
@@ -295,9 +298,12 @@ export function ResultView({
               {/* Transcript with errors */}
               <div>
                 <Flex align="center" justify="space-between" style={{ marginBottom: 8 }}>
-                  <Title level={5} style={{ margin: 0 }}>
-                    Phiên âm của bạn
-                  </Title>
+                  <Flex align="center" gap={8}>
+                    <Title level={5} style={{ margin: 0 }}>
+                      Phiên âm của bạn
+                    </Title>
+                    {audioUrl && <AudioPlayButton audioUrl={audioUrl} />}
+                  </Flex>
                   {analysis.issues.length > 0 && (
                     <Tag color="orange">{analysis.issues.length} lỗi</Tag>
                   )}

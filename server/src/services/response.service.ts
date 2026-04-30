@@ -28,6 +28,68 @@ export interface AnalysisResult {
   summary: string // 1-2 sentence feedback in Vietnamese
 }
 
+const PART1_READ_ALOUD_PROMPT = `You are a TOEIC speaking coach evaluating a read-aloud task (Part 1). The student must read the reference text exactly as written.
+
+Reference text (what the student MUST read): {REFERENCE}
+Student's actual reading (transcript): {TRANSCRIPT}
+
+Return a JSON object (no markdown) with this exact shape:
+{
+  "score": <0-{MAX_SCORE} number with 1 decimal place, overall reading accuracy on the {MAX_SCORE}-point scale>,
+  "criteria": {
+    "accuracy": <0-100, percentage of words read exactly as written>,
+    "vocabulary": <0-100, always 100 for Part 1 since vocabulary choice is not evaluated>,
+    "grammar": <0-100, always 100 for Part 1 since grammar is not evaluated>,
+    "fluency": <0-100, smoothness and natural pace of reading>
+  },
+  "issues": [
+    {
+      "category": <"omission"|"addition"|"morphology"|"pronunciation"|"substitution"|"order">,
+      "original": <word(s) from reference text — copy verbatim>,
+      "spoken": <word(s) as they appear in the transcript — copy verbatim>,
+      "note": <short explanation in Vietnamese, max 12 words>
+    }
+  ],
+  "summary": <1-2 sentences feedback in Vietnamese about reading accuracy>
+}
+
+CRITICAL RULES for Part 1 (Read Aloud):
+1. The "score" field must be between 0 and {MAX_SCORE} (e.g., 2.5 for a 3-point scale). Do NOT return 0-100.
+2. This is a READ ALOUD task — the student must read the reference text EXACTLY. Do NOT suggest improvements or additions.
+3. ONLY flag errors where the student deviated from the reference text.
+4. Do NOT flag omissions of words that are NOT in the reference text.
+5. Do NOT suggest the student should have said something that is NOT in the reference text.
+6. IGNORE capitalization entirely. "city hall" and "City Hall" are IDENTICAL.
+7. IGNORE minor punctuation differences (commas, apostrophes).
+8. "spoken" must be copied CHARACTER-FOR-CHARACTER from the transcript.
+9. "original" must be copied CHARACTER-FOR-CHARACTER from the reference text.
+10. NUMBERS AND SYMBOLS: Accept natural spoken forms. Examples:
+    - "$15" can be read as "fifteen dollars" or "dollar fifteen" — BOTH ARE CORRECT
+    - "15" can be read as "fifteen" — CORRECT
+    - "1st" can be read as "first" — CORRECT
+    - "&" can be read as "and" — CORRECT
+    - "%" can be read as "percent" — CORRECT
+    - Do NOT flag these as pronunciation errors unless the number itself is wrong (e.g., "fifteen" for "50")
+11. DATES: Accept multiple formats:
+    - "Saturday and Sunday" = "Saturday, Sunday" = "Saturday & Sunday" — ALL CORRECT
+    - "next Saturday" = "this Saturday" if contextually equivalent — CORRECT
+
+Category rules:
+- omission: student skipped a word that IS in the reference. "spoken" = surrounding phrase from transcript for UI anchoring.
+- addition: student added a word that is NOT in the reference. "spoken" = the extra word(s) verbatim from transcript.
+- morphology: wrong word form (dollar→dollars, is→are). "spoken" = wrong word verbatim from transcript.
+- pronunciation: number/symbol read differently (15→fifteen, $→dollar). "spoken" = wrong form verbatim from transcript.
+- substitution: different word with different meaning. "spoken" = what was said verbatim from transcript.
+- order: words said in wrong order. "original" = correct phrase from reference. "spoken" = swapped phrase verbatim from transcript.
+
+Scoring guidelines for Part 1:
+- Perfect reading (0-2 minor errors): {MAX_SCORE} points
+- Good reading (3-5 errors): 70-80% of {MAX_SCORE}
+- Fair reading (6-10 errors): 50-70% of {MAX_SCORE}
+- Poor reading (>10 errors): below 50% of {MAX_SCORE}
+
+If the student read perfectly, return empty issues array and score {MAX_SCORE}.`
+
 const ANALYSIS_PROMPT = `You are a TOEIC speaking coach. Compare the reference text and the student's transcript.
 
 Reference text: {REFERENCE}
@@ -114,6 +176,22 @@ Critical rules:
 If the description is good, return empty issues array and a high score.`
 
 class ResponseService {
+  async checkUserCredits(userId: string): Promise<{ hasCredits: boolean; credits: number }> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { transcriptionCredits: true },
+    })
+
+    if (!user) {
+      throw new ForbiddenError('User not found')
+    }
+
+    return {
+      hasCredits: user.transcriptionCredits > 0,
+      credits: user.transcriptionCredits,
+    }
+  }
+
   async saveAudio(
     sessionId: string,
     questionId: string,
@@ -247,18 +325,25 @@ class ResponseService {
     // 3. Determine score scale based on part number
     const maxScore = partNumber === 5 ? 5 : 3
 
-    // 4. Build prompt — use image description mode when there is no script reference
+    // 4. Build prompt — use Part 1 specific prompt for read-aloud, general prompt for others
     let prompt: string
-    if (referenceText) {
+    if (partNumber === 1 && referenceText) {
+      // Part 1: Read aloud - strict comparison with reference
+      prompt = PART1_READ_ALOUD_PROMPT.replace('{REFERENCE}', referenceText)
+        .replace('{TRANSCRIPT}', response.transcript)
+        .replace(/{MAX_SCORE}/g, maxScore.toString())
+    } else if (referenceText) {
+      // Other parts with reference text
       const imageContextBlock = imageContext ? `\nImage context: ${imageContext}` : ''
       prompt = ANALYSIS_PROMPT.replace('{REFERENCE}', referenceText)
         .replace('{TRANSCRIPT}', response.transcript)
         .replace('{IMAGE_CONTEXT_BLOCK}', imageContextBlock)
-        .replace('{MAX_SCORE}', maxScore.toString())
+        .replace(/{MAX_SCORE}/g, maxScore.toString())
     } else {
+      // Image description mode
       prompt = IMAGE_DESCRIPTION_PROMPT.replace('{IMAGE_CONTEXT}', imageContext!)
         .replace('{TRANSCRIPT}', response.transcript)
-        .replace('{MAX_SCORE}', maxScore.toString())
+        .replace(/{MAX_SCORE}/g, maxScore.toString())
     }
 
     const completion = await openai.chat.completions.create({
@@ -317,12 +402,16 @@ class ResponseService {
     if (!referenceText && !imageContext)
       throw new ForbiddenError('No reference text for this question type')
 
-    // 2. Check credits — only 1 needed for the combined action
+    // 2. Check credits FIRST — fail fast before doing any work
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { transcriptionCredits: true },
     })
-    if (!user || user.transcriptionCredits <= 0) throw new ForbiddenError('no_credits')
+    if (!user || user.transcriptionCredits <= 0) {
+      // Delete the response record since we can't process it
+      await prisma.userResponse.delete({ where: { id: responseId } })
+      throw new ForbiddenError('no_credits')
+    }
 
     // 3. Transcribe (use cached transcript if already exists)
     let transcript = response.transcript
@@ -350,18 +439,25 @@ class ResponseService {
     // 4. Determine score scale based on part number
     const maxScore = partNumber === 5 ? 5 : 3
 
-    // 5. Analyze — switch prompt based on question type
+    // 5. Analyze — switch prompt based on question type and part number
     let prompt: string
-    if (referenceText) {
+    if (partNumber === 1 && referenceText) {
+      // Part 1: Read aloud - strict comparison with reference
+      prompt = PART1_READ_ALOUD_PROMPT.replace('{REFERENCE}', referenceText)
+        .replace('{TRANSCRIPT}', transcript)
+        .replace(/{MAX_SCORE}/g, maxScore.toString())
+    } else if (referenceText) {
+      // Other parts with reference text
       const imageContextBlock = imageContext ? `\nImage context: ${imageContext}` : ''
       prompt = ANALYSIS_PROMPT.replace('{REFERENCE}', referenceText)
         .replace('{TRANSCRIPT}', transcript)
         .replace('{IMAGE_CONTEXT_BLOCK}', imageContextBlock)
-        .replace('{MAX_SCORE}', maxScore.toString())
+        .replace(/{MAX_SCORE}/g, maxScore.toString())
     } else {
+      // Image description mode
       prompt = IMAGE_DESCRIPTION_PROMPT.replace('{IMAGE_CONTEXT}', imageContext!)
         .replace('{TRANSCRIPT}', transcript)
-        .replace('{MAX_SCORE}', maxScore.toString())
+        .replace(/{MAX_SCORE}/g, maxScore.toString())
     }
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
