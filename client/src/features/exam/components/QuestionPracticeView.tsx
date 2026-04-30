@@ -11,6 +11,7 @@ import type { Question, PartNumber } from '@/features/admin/types'
 import type { AnalysisResult } from '@/features/exam/services/session.service'
 import { hexToRgba } from '@/shared/utils/color'
 import { COLORS } from '@/shared/constants/user-color'
+import buttonRecordSound from '@/assets/sounds/button-record-sound.mp3'
 
 const { Title, Text, Paragraph } = Typography
 
@@ -50,6 +51,7 @@ export function QuestionPracticeView({
 
   const contextAudioRef = useRef<HTMLAudioElement>(null!)
   const questionAudioRef = useRef<HTMLAudioElement>(null!)
+  const startSoundRef = useRef<HTMLAudioElement>(null!)
 
   const { mutate: transcribeAndAnalyze, isPending: isAnalyzing } = useTranscribeAndAnalyze({
     onSuccess: (data) => {
@@ -200,9 +202,19 @@ export function QuestionPracticeView({
       return
     }
 
+    // Play start sound
+    if (startSoundRef.current) {
+      startSoundRef.current.currentTime = 0
+      startSoundRef.current.play().catch((error) => console.log('Sound play failed:', error))
+    }
+
     setPrepTimeLeft(question.prepTimeSeconds)
     setRecordTimeLeft(question.responseTimeSeconds)
     setRecordingState('preparing')
+  }
+
+  const skipPreparation = () => {
+    startRecording()
   }
 
   const handleCancel = () => {
@@ -243,6 +255,8 @@ export function QuestionPracticeView({
       {question.questionAudioUrl && (
         <audio ref={questionAudioRef} src={question.questionAudioUrl} preload="auto" />
       )}
+      {/* Start sound */}
+      <audio ref={startSoundRef} src={buttonRecordSound} preload="auto" />
 
       {/* Show Result View when analyzing or analysis is complete */}
       {(recordingState === 'analyzing' || recordingState === 'result') && (
@@ -443,6 +457,21 @@ export function QuestionPracticeView({
                 >
                   Hủy
                 </StyledButton>
+                {recordingState === 'preparing' && (
+                  <StyledButton
+                    size="large"
+                    type="primary"
+                    onClick={skipPreparation}
+                    shadowColor={hexToRgba(COLORS.secondary, 0.6)}
+                    style={{
+                      width: '100%',
+                      backgroundColor: COLORS.secondary,
+                      borderColor: COLORS.secondary,
+                    }}
+                  >
+                    Bỏ qua
+                  </StyledButton>
+                )}
                 {recordingState === 'recording' && (
                   <StyledButton
                     size="large"
