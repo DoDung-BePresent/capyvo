@@ -90,50 +90,6 @@ Scoring guidelines for Part 1:
 
 If the student read perfectly, return empty issues array and score {MAX_SCORE}.`
 
-const ANALYSIS_PROMPT = `You are a TOEIC speaking coach. Compare the reference text and the student's transcript.
-
-Reference text: {REFERENCE}
-Student transcript: {TRANSCRIPT}{IMAGE_CONTEXT_BLOCK}
-
-Return a JSON object (no markdown) with this exact shape:
-{
-  "score": <0-{MAX_SCORE} number with 1 decimal place, overall score on the {MAX_SCORE}-point scale>,
-  "criteria": {
-    "accuracy": <0-100, how many words were read exactly as written>,
-    "vocabulary": <0-100, correct word choice, penalize substitutions>,
-    "grammar": <0-100, correct word forms, penalize morphology and order errors>,
-    "fluency": <0-100, completeness of reading, penalize omissions and additions>
-  },
-  "issues": [
-    {
-      "category": <"omission"|"addition"|"morphology"|"pronunciation"|"substitution"|"order">,
-      "original": <word(s) from reference — copy verbatim>,
-      "spoken": <word(s) as they appear in the transcript — copy verbatim>,
-      "note": <short explanation in Vietnamese, max 12 words>
-    }
-  ],
-  "summary": <1-2 sentences feedback in Vietnamese>
-}
-
-CRITICAL: The "score" field must be a number between 0 and {MAX_SCORE} (e.g., 2.5 for a {MAX_SCORE}-point scale). Do NOT return a 0-100 score.
-
-Category rules:
-- omission: student skipped a word. "spoken" = the 2-3 word phrase from the transcript surrounding the gap (for UI anchoring).
-- addition: student added a word not in reference. "spoken" = the extra word(s) verbatim from transcript.
-- morphology: wrong word form (dollar→dollars, is→are, go→went). "spoken" = wrong word verbatim from transcript.
-- pronunciation: number/symbol read differently (15→fifteen, $→dollar, &→and, 1st→first). "spoken" = wrong form verbatim from transcript.
-- substitution: different word/phrase with different meaning. "spoken" = what was said verbatim from transcript.
-- order: words said in wrong order (e.g. "Sunday and Saturday" instead of "Saturday and Sunday"). "original" = correct phrase from reference. "spoken" = swapped phrase verbatim from transcript.
-
-Critical rules — ALWAYS obey:
-1. IGNORE capitalization entirely. "city hall" and "City Hall" are IDENTICAL — do NOT flag this as an error. Ever.
-2. IGNORE minor punctuation differences (commas, apostrophes in contractions like we'd vs we would).
-3. "spoken" must be copied CHARACTER-FOR-CHARACTER from the transcript. Never rephrase or normalize.
-4. "original" must be copied CHARACTER-FOR-CHARACTER from the reference text.
-5. Detect word ORDER swaps — if the student said words in wrong sequence, flag as "order" category.
-
-Only include real issues. If the student read perfectly, return empty issues array and score {MAX_SCORE}.`
-
 const IMAGE_DESCRIPTION_PROMPT = `You are a TOEIC speaking coach. The student was asked to describe an image aloud.
 
 Image content: {IMAGE_CONTEXT}
@@ -174,6 +130,53 @@ Critical rules:
 5. Only flag clear, objective errors. Be lenient with paraphrasing.
 
 If the description is good, return empty issues array and a high score.`
+
+const PART35_QUESTION_RESPONSE_PROMPT = `You are a TOEIC speaking coach evaluating a Part 3 or Part 5 response. The student was asked to answer a question or express their opinion.
+
+Question: {REFERENCE}
+Student's spoken response: {TRANSCRIPT}
+
+Evaluate the quality of the response. Return a JSON object (no markdown) with this exact shape:
+{
+  "score": <0-{MAX_SCORE} number with 1 decimal place, overall quality score on the {MAX_SCORE}-point scale>,
+  "criteria": {
+    "accuracy": <0-100, how well the response addresses the question and stays on topic>,
+    "vocabulary": <0-100, range and appropriateness of vocabulary used>,
+    "grammar": <0-100, grammatical correctness and sentence structure>,
+    "fluency": <0-100, coherence, organization, and natural flow of ideas>
+  },
+  "issues": [
+    {
+      "category": <"morphology"|"grammar"|"vocabulary">,
+      "original": <suggested correction or better alternative>,
+      "spoken": <exact word(s)/phrase as spoken — copy verbatim from transcript>,
+      "note": <short explanation in Vietnamese, max 12 words>
+    }
+  ],
+  "summary": <1-2 sentences feedback in Vietnamese about the overall response quality>
+}
+
+CRITICAL RULES for Part 3 & 5 (Question Response):
+1. The "score" field must be between 0 and {MAX_SCORE} (e.g., 2.5 for a 3-point scale, 3.5 for a 5-point scale). Do NOT return 0-100.
+2. This is a QUESTION RESPONSE task — evaluate content quality, NOT whether they match a reference text.
+3. Do NOT compare word-by-word with the question. The question is just the prompt, not a text to read or match.
+4. Focus on: relevance to question, vocabulary range, grammar accuracy, coherence, completeness.
+5. "spoken" must be copied CHARACTER-FOR-CHARACTER from the transcript.
+6. "original" should be a suggested improvement, not a "correct answer" (there is no single correct answer).
+7. Be lenient with paraphrasing and different ways of expressing ideas.
+
+Category rules:
+- morphology: grammatical form error (wrong tense, missing plural, wrong article, subject-verb agreement). "spoken" = incorrect phrase verbatim.
+- grammar: sentence structure error (word order, missing words, run-on sentences, fragments). "spoken" = problematic phrase verbatim.
+- vocabulary: inappropriate word choice, repetition, unclear expression, or unnatural phrasing. "spoken" = the word/phrase verbatim. "original" = better alternative.
+
+Scoring guidelines:
+- Excellent (90-100% of MAX_SCORE): Clear, well-organized, varied vocabulary, minimal errors, fully addresses question
+- Good (70-89% of MAX_SCORE): Addresses question, some variety, few errors, mostly clear
+- Fair (50-69% of MAX_SCORE): Basic response, limited vocabulary, several errors, partially addresses question
+- Poor (<50% of MAX_SCORE): Unclear, very limited vocabulary, many errors, doesn't address question well
+
+Be encouraging and constructive. Only flag significant errors that impact communication or clarity.`
 
 class ResponseService {
   private async checkSubscriptionAccess(userId: string): Promise<void> {
@@ -341,25 +344,25 @@ class ResponseService {
     // 3. Determine score scale based on part number
     const maxScore = partNumber === 5 ? 5 : 3
 
-    // 4. Build prompt — use Part 1 specific prompt for read-aloud, general prompt for others
+    // 4. Build prompt — select based on part number and question type
     let prompt: string
     if (partNumber === 1 && referenceText) {
       // Part 1: Read aloud - strict comparison with reference
       prompt = PART1_READ_ALOUD_PROMPT.replace('{REFERENCE}', referenceText)
         .replace('{TRANSCRIPT}', response.transcript)
         .replace(/{MAX_SCORE}/g, maxScore.toString())
-    } else if (referenceText) {
-      // Other parts with reference text
-      const imageContextBlock = imageContext ? `\nImage context: ${imageContext}` : ''
-      prompt = ANALYSIS_PROMPT.replace('{REFERENCE}', referenceText)
+    } else if ((partNumber === 3 || partNumber === 5) && referenceText) {
+      // Part 3 & 5: Question/Opinion response - evaluate content quality
+      prompt = PART35_QUESTION_RESPONSE_PROMPT.replace('{REFERENCE}', referenceText)
         .replace('{TRANSCRIPT}', response.transcript)
-        .replace('{IMAGE_CONTEXT_BLOCK}', imageContextBlock)
+        .replace(/{MAX_SCORE}/g, maxScore.toString())
+    } else if (imageContext) {
+      // Image description mode (Part 2, 4)
+      prompt = IMAGE_DESCRIPTION_PROMPT.replace('{IMAGE_CONTEXT}', imageContext)
+        .replace('{TRANSCRIPT}', response.transcript)
         .replace(/{MAX_SCORE}/g, maxScore.toString())
     } else {
-      // Image description mode
-      prompt = IMAGE_DESCRIPTION_PROMPT.replace('{IMAGE_CONTEXT}', imageContext!)
-        .replace('{TRANSCRIPT}', response.transcript)
-        .replace(/{MAX_SCORE}/g, maxScore.toString())
+      throw new ForbiddenError('No reference text or image context for this question type')
     }
 
     const completion = await openai.chat.completions.create({
@@ -448,18 +451,18 @@ class ResponseService {
       prompt = PART1_READ_ALOUD_PROMPT.replace('{REFERENCE}', referenceText)
         .replace('{TRANSCRIPT}', transcript)
         .replace(/{MAX_SCORE}/g, maxScore.toString())
-    } else if (referenceText) {
-      // Other parts with reference text
-      const imageContextBlock = imageContext ? `\nImage context: ${imageContext}` : ''
-      prompt = ANALYSIS_PROMPT.replace('{REFERENCE}', referenceText)
+    } else if ((partNumber === 3 || partNumber === 5) && referenceText) {
+      // Part 3 & 5: Question/Opinion response - evaluate content quality
+      prompt = PART35_QUESTION_RESPONSE_PROMPT.replace('{REFERENCE}', referenceText)
         .replace('{TRANSCRIPT}', transcript)
-        .replace('{IMAGE_CONTEXT_BLOCK}', imageContextBlock)
+        .replace(/{MAX_SCORE}/g, maxScore.toString())
+    } else if (imageContext) {
+      // Image description mode (Part 2, 4)
+      prompt = IMAGE_DESCRIPTION_PROMPT.replace('{IMAGE_CONTEXT}', imageContext)
+        .replace('{TRANSCRIPT}', transcript)
         .replace(/{MAX_SCORE}/g, maxScore.toString())
     } else {
-      // Image description mode
-      prompt = IMAGE_DESCRIPTION_PROMPT.replace('{IMAGE_CONTEXT}', imageContext!)
-        .replace('{TRANSCRIPT}', transcript)
-        .replace(/{MAX_SCORE}/g, maxScore.toString())
+      throw new ForbiddenError('No reference text or image context for this question type')
     }
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
