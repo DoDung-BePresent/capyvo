@@ -2,6 +2,12 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-keys'
 import { paymentService } from '../services/payment.service'
 
+export function useCreateSubscriptionOrder() {
+  return useMutation({
+    mutationFn: (planId: string) => paymentService.createSubscriptionOrder(planId),
+  })
+}
+
 export function useCreateTokenOrder() {
   return useMutation({
     mutationFn: (tokenAmount: number) => paymentService.createTokenOrder(tokenAmount),

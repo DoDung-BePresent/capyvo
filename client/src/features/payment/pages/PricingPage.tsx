@@ -1,11 +1,11 @@
-import { Row, Col } from 'antd'
-import { useNavigate } from 'react-router-dom'
+import { Row, Col, message } from 'antd'
 import { PageHeader } from '@/shared/components'
 import PricingCard, { type PricingPlan } from '@/features/payment/components/PricingCard'
+import { useCreateSubscriptionOrder } from '@/features/payment/hooks/usePayment'
 
 const PRICING_PLANS: PricingPlan[] = [
   {
-    id: 'monthly',
+    id: 'MONTHLY',
     name: '1 THÁNG',
     duration: '30 NGÀY',
     price: 90000,
@@ -20,7 +20,7 @@ const PRICING_PLANS: PricingPlan[] = [
     color: '#7C3AED', // Purple
   },
   {
-    id: 'quarterly',
+    id: 'QUARTERLY',
     name: '3 THÁNG',
     duration: '90 NGÀY',
     price: 255000,
@@ -37,7 +37,7 @@ const PRICING_PLANS: PricingPlan[] = [
     discount: 'Tiết kiệm 5%',
   },
   {
-    id: 'biannual',
+    id: 'BIANNUAL',
     name: '6 THÁNG',
     duration: '180 NGÀY',
     price: 480000,
@@ -55,12 +55,17 @@ const PRICING_PLANS: PricingPlan[] = [
 ]
 
 export default function PricingPage() {
-  const navigate = useNavigate()
+  const { mutateAsync: createOrder, isPending } = useCreateSubscriptionOrder()
 
-  const handleSelectPlan = (planId: string) => {
-    // TODO: Navigate to checkout or open payment modal
-    console.log('Selected plan:', planId)
-    navigate(`/payment/checkout?plan=${planId}`)
+  const handleSelectPlan = async (planId: string) => {
+    try {
+      const result = await createOrder(planId)
+      // Redirect to PayOS checkout page
+      window.location.href = result.checkoutUrl
+    } catch (error) {
+      console.error('Failed to create order:', error)
+      message.error('Không thể tạo đơn hàng. Vui lòng thử lại.')
+    }
   }
 
   return (
@@ -73,7 +78,7 @@ export default function PricingPage() {
       <Row gutter={[24, 24]} justify="center">
         {PRICING_PLANS.map((plan) => (
           <Col key={plan.id} xs={24} sm={12} lg={8}>
-            <PricingCard plan={plan} onSelect={handleSelectPlan} />
+            <PricingCard plan={plan} onSelect={handleSelectPlan} isLoading={isPending} />
           </Col>
         ))}
       </Row>

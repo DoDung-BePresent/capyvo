@@ -53,7 +53,7 @@ export class SubscriptionService {
   }
 
   /**
-   * Tạo subscription mới
+   * Tạo subscription mới hoặc gia hạn subscription hiện tại
    */
   static async createSubscription(userId: string, planId: SubscriptionPlanId, paymentId?: string) {
     const plan = await this.getPlanById(planId)
@@ -61,8 +61,27 @@ export class SubscriptionService {
       throw new Error('Plan not found')
     }
 
-    const startDate = new Date()
-    const endDate = addDays(startDate, plan.durationDays)
+    // Check if user has existing active subscription
+    const existingSubscription = await this.getCurrentSubscription(userId)
+
+    let startDate: Date
+    let endDate: Date
+
+    if (existingSubscription && existingSubscription.endDate > new Date()) {
+      // User has active subscription - extend from current end date
+      startDate = existingSubscription.endDate
+      endDate = addDays(startDate, plan.durationDays)
+      console.log(
+        `Extending subscription for user ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`,
+      )
+    } else {
+      // No active subscription - start from now
+      startDate = new Date()
+      endDate = addDays(startDate, plan.durationDays)
+      console.log(
+        `Creating new subscription for user ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`,
+      )
+    }
 
     const subscription = await prisma.subscription.create({
       data: {
@@ -71,7 +90,6 @@ export class SubscriptionService {
         status: SubscriptionStatus.ACTIVE,
         startDate,
         endDate,
-        autoRenew: false,
       },
       include: {
         plan: true,
@@ -127,7 +145,6 @@ export class SubscriptionService {
         status: SubscriptionStatus.ACTIVE,
         startDate,
         endDate,
-        autoRenew: subscription.autoRenew,
       },
       include: {
         plan: true,
@@ -154,7 +171,6 @@ export class SubscriptionService {
       where: { id: subscriptionId },
       data: {
         status: SubscriptionStatus.CANCELLED,
-        autoRenew: false,
       },
       include: {
         plan: true,

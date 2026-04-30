@@ -218,8 +218,6 @@ model Subscription {
   startDate DateTime           @default(now())
   endDate   DateTime
   
-  autoRenew Boolean            @default(false)
-  
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
 

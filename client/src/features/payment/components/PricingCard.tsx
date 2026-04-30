@@ -19,6 +19,7 @@ export interface PricingPlan {
 interface PricingCardProps {
   plan: PricingPlan
   onSelect: (planId: string) => void
+  isLoading?: boolean
 }
 
 const StyledCard = styled(
@@ -59,7 +60,7 @@ const StyledButton = styled(
   'relative w-full h-12 rounded-xl! inline-flex items-center justify-center gap-2 font-bold text-base transition-all duration-150 ease-out hover:translate-y-1 shadow-[0_4px_0_0_var(--shadow-color)]! hover:shadow-none! active:shadow-none!',
 )
 
-export default function PricingCard({ plan, onSelect }: PricingCardProps) {
+export default function PricingCard({ plan, onSelect, isLoading = false }: PricingCardProps) {
   const isPopular = plan.isPopular
 
   return (
@@ -120,6 +121,7 @@ export default function PricingCard({ plan, onSelect }: PricingCardProps) {
       <StyledButton
         type={isPopular ? 'primary' : 'default'}
         size="large"
+        loading={isLoading}
         onClick={() => onSelect(plan.id)}
         style={
           isPopular

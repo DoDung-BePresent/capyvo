@@ -57,7 +57,6 @@ export class SubscriptionController {
           startDate: subscription.startDate,
           endDate: subscription.endDate,
           daysRemaining,
-          autoRenew: subscription.autoRenew,
         },
       })
     } catch (error) {
@@ -86,7 +85,6 @@ export class SubscriptionController {
         status: sub.status,
         startDate: sub.startDate,
         endDate: sub.endDate,
-        autoRenew: sub.autoRenew,
         createdAt: sub.createdAt,
       }))
 

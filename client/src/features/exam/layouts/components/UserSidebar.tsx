@@ -17,6 +17,12 @@ import { SIDEBAR_WIDTHS } from '@/config'
 import { styled } from '@/shared/utils/cn'
 
 /**
+ * Hooks
+ */
+import { useGetMe } from '@/features/auth/hooks/useAuth'
+import { useSession } from '@/features/auth/hooks/useSession'
+
+/**
  * Components
  */
 import { Logo } from '@/shared/components'
@@ -43,11 +49,20 @@ export interface UserSidebarProps {
 export function UserSidebar({ collapsed }: UserSidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { session } = useSession()
+  const { data: user } = useGetMe(session)
 
   const selectedKey =
     location.pathname === '/'
       ? '/'
       : (MENU_ITEMS.slice(1).find((m) => location.pathname.startsWith(m.key))?.key ?? '/')
+
+  // Calculate days remaining
+  const daysRemaining = user?.premiumUntil
+    ? Math.ceil(
+        (new Date(user.premiumUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
+      )
+    : null
 
   return (
     <Sider
@@ -80,7 +95,7 @@ export function UserSidebar({ collapsed }: UserSidebarProps) {
         onClick={({ key }) => navigate(key)}
         styles={{
           root: {
-            paddingInline: 15,
+            paddingInline: collapsed ? 7 : 15,
           },
           item: {
             borderRadius: 8,
@@ -91,7 +106,12 @@ export function UserSidebar({ collapsed }: UserSidebarProps) {
 
       {/* Upgrade Widget */}
       <Bottom>
-        <UpgradeWidget collapsed={collapsed} onUpgrade={() => navigate('/pricing')} />
+        <UpgradeWidget
+          collapsed={collapsed}
+          onUpgrade={() => navigate('/pricing')}
+          isPremium={user?.isPremium}
+          daysRemaining={daysRemaining}
+        />
       </Bottom>
     </Sider>
   )

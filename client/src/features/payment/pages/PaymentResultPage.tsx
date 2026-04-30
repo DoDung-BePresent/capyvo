@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Button, Flex, Result, Space, Spin, Typography } from 'antd'
+import { Button, Flex, Result, Space, Spin, Typography, message } from 'antd'
 import { usePaymentStatus } from '../hooks/usePayment'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-keys'
@@ -16,10 +16,10 @@ export default function PaymentResultPage() {
 
   const { data: payment, isLoading } = usePaymentStatus(orderCode)
 
-  // Khi thanh toán thành công → invalidate user cache để cập nhật subscription
   useEffect(() => {
     if (payment?.status === 'PAID') {
       queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() })
+      message.success('Thanh toán thành công! Gói đăng ký đã được kích hoạt.')
     }
   }, [payment?.status, queryClient])
 
@@ -31,7 +31,7 @@ export default function PaymentResultPage() {
           <Result
             status="error"
             title="Không tìm thấy đơn hàng"
-            extra={<Button onClick={() => navigate('/payment')}>Quay lại</Button>}
+            extra={<Button onClick={() => navigate('/pricing')}>Quay lại</Button>}
           />
         </Flex>
       </>
@@ -40,39 +40,19 @@ export default function PaymentResultPage() {
 
   if (isLoading || payment?.status === 'PENDING') {
     return (
-      <>
-        <PageHeader title="Kết quả thanh toán" />
-        <Flex vertical align="center" gap={16} style={{ marginTop: 80 }}>
-          <Spin size="large" />
-          <Text type="secondary">Đang kiểm tra trạng thái thanh toán…</Text>
-        </Flex>
-      </>
+      <Flex vertical align="center" gap={16} style={{ marginTop: 80 }}>
+        <Spin size="large" />
+        <Text type="secondary">Đang kiểm tra trạng thái thanh toán…</Text>
+      </Flex>
     )
   }
 
   if (payment?.status === 'PAID') {
     return (
-      <Space direction="vertical" size={24} style={{ width: '100%' }}>
-        <PageHeader
-          title="Kết quả thanh toán"
-          description="Xác nhận giao dịch từ hệ thống thanh toán."
-        />
-        <Flex justify="center">
-          <Result
-            status="success"
-            title="Thanh toán thành công!"
-            subTitle={`${payment.tokenAmount ?? 0} token đã được cộng vào tài khoản. Chúc bạn luyện tập hiệu quả!`}
-            extra={[
-              <Button type="primary" onClick={() => navigate('/')} key="home">
-                Bắt đầu luyện tập
-              </Button>,
-              <Button onClick={() => navigate('/payment')} key="payment">
-                Mua thêm token
-              </Button>,
-            ]}
-          />
-        </Flex>
-      </Space>
+      <Flex vertical align="center" gap={16} style={{ marginTop: 80 }}>
+        <Spin size="large" />
+        <Text type="secondary">Thanh toán thành công!</Text>
+      </Flex>
     )
   }
 
@@ -85,7 +65,7 @@ export default function PaymentResultPage() {
           title="Thanh toán chưa hoàn tất"
           subTitle="Đơn hàng của bạn đã bị huỷ hoặc hết hạn."
           extra={
-            <Button type="primary" onClick={() => navigate('/payment')}>
+            <Button type="primary" onClick={() => navigate('/pricing')}>
               Thử lại
             </Button>
           }
