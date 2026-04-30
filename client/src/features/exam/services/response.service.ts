@@ -2,10 +2,10 @@ import axiosInstance from '@/lib/axios'
 import type { ApiResponse } from '@/shared/types/api'
 
 export const responseService = {
-  checkCredits: async () => {
-    const { data } = await axiosInstance.get<ApiResponse<{ hasCredits: boolean; credits: number }>>(
-      '/responses/check-credits',
-    )
+  checkSubscription: async () => {
+    const { data } = await axiosInstance.get<
+      ApiResponse<{ hasAccess: boolean; isPremium: boolean; daysRemaining: number | null }>
+    >('/responses/check-subscription')
     return data.data
   },
 

@@ -176,19 +176,54 @@ Critical rules:
 If the description is good, return empty issues array and a high score.`
 
 class ResponseService {
-  async checkUserCredits(userId: string): Promise<{ hasCredits: boolean; credits: number }> {
+  private async checkSubscriptionAccess(userId: string): Promise<void> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { transcriptionCredits: true },
+      select: { isPremium: true, premiumUntil: true },
     })
 
     if (!user) {
       throw new ForbiddenError('User not found')
     }
 
+    const now = new Date()
+    const hasAccess = user.isPremium && user.premiumUntil && user.premiumUntil > now
+
+    if (!hasAccess) {
+      throw new ForbiddenError('subscription_expired')
+    }
+  }
+
+  async checkUserSubscription(userId: string): Promise<{
+    hasAccess: boolean
+    isPremium: boolean
+    daysRemaining: number | null
+  }> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        isPremium: true,
+        premiumUntil: true,
+      },
+    })
+
+    if (!user) {
+      throw new ForbiddenError('User not found')
+    }
+
+    const now = new Date()
+    const hasAccess = user.isPremium && user.premiumUntil && user.premiumUntil > now
+
+    let daysRemaining = null
+    if (user.premiumUntil) {
+      const diff = user.premiumUntil.getTime() - now.getTime()
+      daysRemaining = Math.ceil(diff / (1000 * 60 * 60 * 24))
+    }
+
     return {
-      hasCredits: user.transcriptionCredits > 0,
-      credits: user.transcriptionCredits,
+      hasAccess: hasAccess || false,
+      isPremium: user.isPremium,
+      daysRemaining: daysRemaining,
     }
   }
 
@@ -237,14 +272,8 @@ class ResponseService {
     // If already transcribed, return cached result
     if (response.transcript) return response.transcript
 
-    // 2. Check credits (server-side gate — no Whisper call if 0 credits)
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { transcriptionCredits: true },
-    })
-    if (!user || user.transcriptionCredits <= 0) {
-      throw new ForbiddenError('no_credits')
-    }
+    // 2. Check subscription access
+    await this.checkSubscriptionAccess(userId)
 
     // 3. Download audio from Supabase Storage
     const urlPath = new URL(response.audioUrl).pathname
@@ -268,17 +297,11 @@ class ResponseService {
     })
     const transcript = result.text
 
-    // 5. Atomic: decrement credit + save transcript
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: userId },
-        data: { transcriptionCredits: { decrement: 1 } },
-      }),
-      prisma.userResponse.update({
-        where: { id: responseId },
-        data: { transcript },
-      }),
-    ])
+    // 5. Save transcript
+    await prisma.userResponse.update({
+      where: { id: responseId },
+      data: { transcript },
+    })
 
     return transcript
   }
@@ -313,14 +336,8 @@ class ResponseService {
     if (!referenceText && !imageContext)
       throw new ForbiddenError('No reference text for this question type')
 
-    // 2. Check credits
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { transcriptionCredits: true },
-    })
-    if (!user || user.transcriptionCredits <= 0) {
-      throw new ForbiddenError('no_credits')
-    }
+    // 2. Check subscription access
+    await this.checkSubscriptionAccess(userId)
 
     // 3. Determine score scale based on part number
     const maxScore = partNumber === 5 ? 5 : 3
@@ -356,17 +373,11 @@ class ResponseService {
     const raw = completion.choices[0]?.message?.content ?? '{}'
     const analysis = JSON.parse(raw) as AnalysisResult
 
-    // 5. Atomic: decrement credit + save analysis
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: userId },
-        data: { transcriptionCredits: { decrement: 1 } },
-      }),
-      prisma.userResponse.update({
-        where: { id: responseId },
-        data: { pronunciationScore: analysis as object },
-      }),
-    ])
+    // 5. Save analysis
+    await prisma.userResponse.update({
+      where: { id: responseId },
+      data: { pronunciationScore: analysis as object },
+    })
 
     return analysis
   }
@@ -402,16 +413,8 @@ class ResponseService {
     if (!referenceText && !imageContext)
       throw new ForbiddenError('No reference text for this question type')
 
-    // 2. Check credits FIRST — fail fast before doing any work
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { transcriptionCredits: true },
-    })
-    if (!user || user.transcriptionCredits <= 0) {
-      // Delete the response record since we can't process it
-      await prisma.userResponse.delete({ where: { id: responseId } })
-      throw new ForbiddenError('no_credits')
-    }
+    // 2. Check subscription access FIRST — fail fast before doing any work
+    await this.checkSubscriptionAccess(userId)
 
     // 3. Transcribe (use cached transcript if already exists)
     let transcript = response.transcript
@@ -468,17 +471,11 @@ class ResponseService {
     const raw = completion.choices[0]?.message?.content ?? '{}'
     const analysis = JSON.parse(raw) as AnalysisResult
 
-    // 6. Atomic: decrement 1 credit + save transcript + save analysis
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: userId },
-        data: { transcriptionCredits: { decrement: 1 } },
-      }),
-      prisma.userResponse.update({
-        where: { id: responseId },
-        data: { transcript, pronunciationScore: analysis as object },
-      }),
-    ])
+    // 6. Save transcript + analysis
+    await prisma.userResponse.update({
+      where: { id: responseId },
+      data: { transcript, pronunciationScore: analysis as object },
+    })
 
     return { transcript, analysis }
   }

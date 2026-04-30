@@ -53,27 +53,27 @@ export function QuestionPracticeView({
     audioUrl?: string
   } | null>(null)
   const [isCancelled, setIsCancelled] = useState(false)
-  const [hasCredits, setHasCredits] = useState(true)
-  const [credits, setCredits] = useState(0)
+  const [hasAccess, setHasAccess] = useState(true)
+  const [daysRemaining, setDaysRemaining] = useState<number | null>(null)
 
   const contextAudioRef = useRef<HTMLAudioElement>(null!)
   const questionAudioRef = useRef<HTMLAudioElement>(null!)
   const startSoundRef = useRef<HTMLAudioElement>(null!)
 
-  // Check credits on mount
+  // Check subscription on mount
   useEffect(() => {
-    const checkCredits = async () => {
+    const checkSubscription = async () => {
       try {
-        const result = await responseService.checkCredits()
-        setHasCredits(result.hasCredits)
-        setCredits(result.credits)
+        const result = await responseService.checkSubscription()
+        setHasAccess(result.hasAccess)
+        setDaysRemaining(result.daysRemaining)
       } catch (error) {
-        console.error('Failed to check credits:', error)
-        // Assume has credits if check fails to not block user
-        setHasCredits(true)
+        console.error('Failed to check subscription:', error)
+        // Assume has access if check fails to not block user
+        setHasAccess(true)
       }
     }
-    checkCredits()
+    checkSubscription()
   }, [])
 
   const { mutate: transcribeAndAnalyze, isPending: isAnalyzing } = useTranscribeAndAnalyze({
@@ -405,16 +405,20 @@ export function QuestionPracticeView({
 
       {/* Control Panel */}
       <ControlPanel>
-        {!hasCredits ? (
-          <Flex align="center" justify="center" gap={8}>
-            <Text type="secondary" style={{ fontSize: 13, textAlign: 'center' }}>
-              Bạn đã hết credits ({credits} credits còn lại)
-            </Text>
-            <Link to="/pricing">
-              <Button type="link" style={{ padding: 0, height: 'auto' }}>
-                Nạp thêm credits
-              </Button>
-            </Link>
+        {!hasAccess ? (
+          <Flex align="center" justify="center" gap={8} style={{ padding: '16px' }}>
+            <Flex vertical align="center" gap={8}>
+              <Text type="secondary" style={{ fontSize: 13, textAlign: 'center' }}>
+                {daysRemaining !== null && daysRemaining < 0
+                  ? 'Gói đăng ký của bạn đã hết hạn'
+                  : 'Bạn chưa có gói đăng ký'}
+              </Text>
+              <Link to="/pricing">
+                <Button type="link" style={{ padding: 0, height: 'auto' }}>
+                  {daysRemaining !== null && daysRemaining < 0 ? 'Gia hạn ngay' : 'Mua gói ngay'}
+                </Button>
+              </Link>
+            </Flex>
           </Flex>
         ) : (
           <Flex align="center" justify="space-between" gap={16}>

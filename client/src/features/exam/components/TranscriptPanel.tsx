@@ -1,15 +1,8 @@
 import type { CSSProperties } from 'react'
 import { Button, Divider, message, Skeleton, Space, Tag, Tooltip, Typography } from 'antd'
-import {
-  AudioOutlined,
-  CheckCircleOutlined,
-  ExperimentOutlined,
-  InfoCircleOutlined,
-} from '@ant-design/icons'
+import { AudioOutlined, CheckCircleOutlined, ExperimentOutlined } from '@ant-design/icons'
 import { useTranscribeAndAnalyze } from '@/features/exam/hooks/useTranscribeAndAnalyze'
 import { useAnalyze } from '@/features/exam/hooks/useAnalyze'
-import { useGetMe } from '@/features/auth/hooks/useAuth'
-import { useSession } from '@/features/auth/hooks/useSession'
 import type {
   AnalysisResult,
   AnalysisIssue,
@@ -99,17 +92,6 @@ const WORD_STYLES: Record<AnalysisIssue['category'], CSSProperties> = {
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-
-function CreditBadge({ credits, cost = 1 }: { credits: number; cost?: number }) {
-  if (credits < cost) return <Tag color="red">Hết credit</Tag>
-  return (
-    <Tooltip title={`Tốn ${cost} credit. Còn: ${credits}`}>
-      <Tag color={credits <= cost ? 'orange' : 'blue'}>
-        {credits} credit <InfoCircleOutlined style={{ marginLeft: 3 }} />
-      </Tag>
-    </Tooltip>
-  )
-}
 
 function ScoreCircle({ score }: { score: number }) {
   const color = score >= 85 ? '#52c41a' : score >= 65 ? '#faad14' : '#ff4d4f'
@@ -302,6 +284,7 @@ function AnnotatedTranscript({
 interface TranscriptPanelProps {
   responseId: string
   sessionId: string
+  partNumber: number
   transcript: string | null
   analysis: AnalysisResult | null
   hasReferenceText: boolean
@@ -310,44 +293,44 @@ interface TranscriptPanelProps {
 export function TranscriptPanel({
   responseId,
   sessionId,
+  partNumber,
   transcript,
   analysis,
   hasReferenceText,
 }: TranscriptPanelProps) {
-  const { session } = useSession()
-  const { data: user } = useGetMe(session)
-  const { mutate: transcribeAndAnalyze, isPending: isCombinedPending } =
-    useTranscribeAndAnalyze(sessionId)
+  const { mutate: transcribeAndAnalyze, isPending: isCombinedPending } = useTranscribeAndAnalyze()
   const { mutate: analyze, isPending: isAnalyzing } = useAnalyze(sessionId)
 
-  const credits = user?.transcriptionCredits ?? 0
-  const creditCost = 1
   const isPending = isCombinedPending || isAnalyzing
 
   function handleAnalyze() {
-    if (credits < creditCost) {
-      message.warning('Bạn hết credit. Vui lòng nâng cấp để tiếp tục.')
-      return
-    }
     if (!transcript) {
-      transcribeAndAnalyze(responseId, {
-        onError: (err: unknown) => {
-          const reason = (err as { response?: { data?: { error?: { message?: string } } } })
-            ?.response?.data?.error?.message
-          message.error(
-            reason === 'no_credits' ? 'Bạn hết credit phân tích.' : 'Không thể phân tích audio.',
-          )
+      transcribeAndAnalyze(
+        { responseId, partNumber },
+        {
+          onError: (err: unknown) => {
+            const reason = (err as { response?: { data?: { error?: { message?: string } } } })
+              ?.response?.data?.error?.message
+            message.error(
+              reason === 'subscription_expired'
+                ? 'Gói đăng ký đã hết hạn.'
+                : 'Không thể phân tích audio.',
+            )
+          },
         },
-      })
+      )
     } else {
-      analyze(responseId, {
-        onError: (err: unknown) => {
-          const reason = (err as { response?: { data?: { error?: { message?: string } } } })
-            ?.response?.data?.error?.message
-          if (reason === 'no_credits') message.warning('Bạn hết credit phân tích.')
-          else message.error('Không thể phân tích. Vui lòng thử lại.')
+      analyze(
+        { responseId, partNumber },
+        {
+          onError: (err: unknown) => {
+            const reason = (err as { response?: { data?: { error?: { message?: string } } } })
+              ?.response?.data?.error?.message
+            if (reason === 'subscription_expired') message.warning('Gói đăng ký đã hết hạn.')
+            else message.error('Không thể phân tích. Vui lòng thử lại.')
+          },
         },
-      })
+      )
     }
   }
 
@@ -376,14 +359,12 @@ export function TranscriptPanel({
             Chưa có bản phân tích giọng
           </Text>
           <Space>
-            <CreditBadge credits={credits} cost={creditCost} />
             <Button
               size="small"
               type="primary"
               ghost
               icon={<ExperimentOutlined />}
               loading={isPending}
-              disabled={credits < creditCost}
               onClick={handleAnalyze}
             >
               Phân tích
@@ -415,12 +396,10 @@ export function TranscriptPanel({
         </Text>
         {!analysis && hasReferenceText && (
           <Space>
-            <CreditBadge credits={credits} cost={creditCost} />
             <Button
               size="small"
               icon={<ExperimentOutlined />}
               loading={isAnalyzing}
-              disabled={credits < creditCost}
               onClick={handleAnalyze}
             >
               Phân tích

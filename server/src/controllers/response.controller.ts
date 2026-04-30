@@ -17,10 +17,10 @@ export const uploadAudio = multer({
 })
 
 export class ResponseController {
-  async checkCredits(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async checkSubscription(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = (req as AuthRequest).userId
-      const result = await responseService.checkUserCredits(userId)
+      const result = await responseService.checkUserSubscription(userId)
       res.json({ success: true, data: result })
     } catch (err) {
       next(err)

@@ -16,7 +16,7 @@ export default function PaymentResultPage() {
 
   const { data: payment, isLoading } = usePaymentStatus(orderCode)
 
-  // Khi thanh toán thành công → invalidate user cache để cập nhật transcriptionCredits
+  // Khi thanh toán thành công → invalidate user cache để cập nhật subscription
   useEffect(() => {
     if (payment?.status === 'PAID') {
       queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() })

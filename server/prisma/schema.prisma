@@ -62,7 +62,6 @@ model User {
   email                String    @unique
   fullName             String?
   role                 Role      @default(USER)
-  transcriptionCredits Int       @default(5) // Deprecated - sẽ xóa sau khi migrate
   
   // Subscription fields
   isPremium            Boolean   @default(false)

@@ -128,6 +128,7 @@ export default function ResultPage() {
                 <TranscriptPanel
                   responseId={item.id}
                   sessionId={session.id}
+                  partNumber={question.partNumber}
                   transcript={item.transcript ?? null}
                   analysis={item.pronunciationScore ?? null}
                   hasReferenceText={!!(question.contentText ?? question.questionText)}

@@ -111,20 +111,10 @@ export class PaymentService {
         data: { status: 'PAID', paidAt: now, payosTransactionId: String(orderCode) },
       })
 
-      // Check if this is subscription payment or token payment
-      if (payment.tokenAmount) {
-        // Old token system - DEPRECATED
-        await prisma.user.update({
-          where: { id: payment.userId },
-          data: { transcriptionCredits: { increment: payment.tokenAmount } },
-        })
-      } else {
-        // New subscription system
-        // Determine plan from payment description
-        const planId = this.extractPlanIdFromDescription(payment.description)
-        if (planId) {
-          await SubscriptionService.createSubscription(payment.userId, planId, payment.id)
-        }
+      // Handle subscription payment
+      const planId = this.extractPlanIdFromDescription(payment.description)
+      if (planId) {
+        await SubscriptionService.createSubscription(payment.userId, planId, payment.id)
       }
     } else {
       await prisma.payment.update({
@@ -160,17 +150,10 @@ export class PaymentService {
         })
 
         if (updated.count > 0) {
-          // Handle subscription or token
-          if (payment.tokenAmount) {
-            await prisma.user.update({
-              where: { id: payment.userId },
-              data: { transcriptionCredits: { increment: payment.tokenAmount } },
-            })
-          } else {
-            const planId = this.extractPlanIdFromDescription(payment.description)
-            if (planId) {
-              await SubscriptionService.createSubscription(payment.userId, planId, payment.id)
-            }
+          // Handle subscription payment
+          const planId = this.extractPlanIdFromDescription(payment.description)
+          if (planId) {
+            await SubscriptionService.createSubscription(payment.userId, planId, payment.id)
           }
         }
 

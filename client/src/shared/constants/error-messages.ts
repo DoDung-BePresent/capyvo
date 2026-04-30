@@ -1,6 +1,6 @@
 export const ERROR_MESSAGES: Record<string, string> = {
-  no_credits: 'Bạn đã hết credits. Vui lòng nạp thêm để tiếp tục!',
-  insufficient_credits: 'Credits không đủ để thực hiện thao tác này.',
+  subscription_expired: 'Gói đăng ký của bạn đã hết hạn. Vui lòng gia hạn để tiếp tục!',
+  no_subscription: 'Bạn chưa có gói đăng ký. Vui lòng mua gói để sử dụng tính năng này!',
   transcription_failed: 'Không thể chuyển đổi giọng nói thành văn bản. Vui lòng thử lại!',
   analysis_failed: 'Không thể phân tích bài làm. Vui lòng thử lại!',
   audio_upload_failed: 'Không thể tải lên file âm thanh. Vui lòng thử lại!',

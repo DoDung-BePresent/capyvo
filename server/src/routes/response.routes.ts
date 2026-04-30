@@ -5,7 +5,9 @@ import { ResponseController, uploadAudio } from '@/controllers/response.controll
 const router = Router()
 const ctrl = new ResponseController()
 
-router.get('/check-credits', authenticate, (req, res, next) => ctrl.checkCredits(req, res, next))
+router.get('/check-subscription', authenticate, (req, res, next) =>
+  ctrl.checkSubscription(req, res, next),
+)
 
 router.post('/audio', authenticate, uploadAudio.single('audio'), (req, res, next) =>
   ctrl.saveAudio(req, res, next),
