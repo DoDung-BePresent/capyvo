@@ -225,7 +225,7 @@ export function ResultView({
                   '0%': normalizedScore >= scale.max * 0.8 ? '#52c41a' : '#1890ff',
                   '100%': normalizedScore >= scale.max * 0.8 ? '#73d13d' : '#40a9ff',
                 }}
-                strokeWidth={8}
+                strokeWidth={10}
                 size={160}
               />
               <Text type="secondary" style={{ fontSize: 13, textAlign: 'center' }}>
