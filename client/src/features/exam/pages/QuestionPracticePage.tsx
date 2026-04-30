@@ -6,10 +6,11 @@ import { styled } from '@/shared/utils/cn'
 
 import { questionService } from '@/features/admin/services/question.service'
 import { responseService } from '@/features/exam/services/response.service'
-import { sessionService } from '@/features/exam/services/session.service'
+import { sessionService, type AnalysisResult } from '@/features/exam/services/session.service'
 import { queryKeys } from '@/lib/query-keys'
 import { QuestionPracticeView } from '../components/QuestionPracticeView'
 import { PracticeHistoryPanel } from '../components/PracticeHistoryPanel'
+import { ResultView } from '../components/ResultView'
 import { MicPermissionGate } from '../components/MicPermissionGate'
 import { PageHeader } from '@/shared/components'
 import { PART_META, type PartNumber } from '@/features/admin/types'
@@ -25,6 +26,10 @@ export default function QuestionPracticePage() {
   const part = Number(partNumber) as PartNumber
 
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [selectedHistory, setSelectedHistory] = useState<{
+    transcript: string
+    analysis: AnalysisResult
+  } | null>(null)
 
   const { data: question, isLoading } = useQuery({
     queryKey: queryKeys.questions.detail(questionId ?? ''),
@@ -74,6 +79,14 @@ export default function QuestionPracticePage() {
     return await saveAudioMutation.mutateAsync(audioBlob)
   }
 
+  const handleSelectHistory = (history: { transcript: string; analysis: AnalysisResult }) => {
+    setSelectedHistory(history)
+  }
+
+  const getReferenceText = () => {
+    return question?.contentText || question?.questionText || undefined
+  }
+
   const meta = PART_META[part]
 
   if (isLoading || !question) {
@@ -117,21 +130,34 @@ export default function QuestionPracticePage() {
             ]}
           />
           <LeftContent>
-            <QuestionPracticeView
-              key={question.id}
-              question={question}
-              onRecordingComplete={handleRecordingComplete}
-              onAnalysisComplete={() => {
-                queryClient.invalidateQueries({
-                  queryKey: queryKeys.responses.questionHistory(questionId!),
-                })
-              }}
-              isSubmitting={saveAudioMutation.isPending}
-            />
+            {selectedHistory ? (
+              <ResultView
+                partNumber={part}
+                transcript={selectedHistory.transcript}
+                analysis={selectedHistory.analysis}
+                referenceText={getReferenceText()}
+              />
+            ) : (
+              <QuestionPracticeView
+                key={question.id}
+                question={question}
+                onRecordingComplete={handleRecordingComplete}
+                onAnalysisComplete={() => {
+                  queryClient.invalidateQueries({
+                    queryKey: queryKeys.responses.questionHistory(questionId!),
+                  })
+                }}
+                isSubmitting={saveAudioMutation.isPending}
+              />
+            )}
           </LeftContent>
         </LeftPanel>
         <RightPanel>
-          <PracticeHistoryPanel questionId={questionId ?? null} />
+          <PracticeHistoryPanel
+            questionId={questionId ?? null}
+            partNumber={part}
+            onSelectHistory={handleSelectHistory}
+          />
         </RightPanel>
       </PageContainer>
     </MicPermissionGate>

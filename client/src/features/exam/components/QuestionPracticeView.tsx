@@ -137,7 +137,7 @@ export function QuestionPracticeView({
           console.log('✅ Audio saved, responseId:', result.responseId)
           // Auto transcribe and analyze
           console.log('🔄 Starting transcribe & analyze...')
-          transcribeAndAnalyze(result.responseId)
+          transcribeAndAnalyze({ responseId: result.responseId, partNumber: question.partNumber })
         } catch (error) {
           console.error('❌ Failed to save audio:', error)
           setRecordingState('completed')
@@ -151,7 +151,7 @@ export function QuestionPracticeView({
       console.error('Failed to start recording:', error)
       setRecordingState('idle')
     }
-  }, [onRecordingComplete, transcribeAndAnalyze])
+  }, [onRecordingComplete, transcribeAndAnalyze, question.partNumber])
 
   // Cleanup on unmount
   useEffect(() => {

@@ -35,7 +35,7 @@ Student transcript: {TRANSCRIPT}{IMAGE_CONTEXT_BLOCK}
 
 Return a JSON object (no markdown) with this exact shape:
 {
-  "score": <0-100 integer, overall reading accuracy>,
+  "score": <0-{MAX_SCORE} number with 1 decimal place, overall score on the {MAX_SCORE}-point scale>,
   "criteria": {
     "accuracy": <0-100, how many words were read exactly as written>,
     "vocabulary": <0-100, correct word choice, penalize substitutions>,
@@ -53,6 +53,8 @@ Return a JSON object (no markdown) with this exact shape:
   "summary": <1-2 sentences feedback in Vietnamese>
 }
 
+CRITICAL: The "score" field must be a number between 0 and {MAX_SCORE} (e.g., 2.5 for a {MAX_SCORE}-point scale). Do NOT return a 0-100 score.
+
 Category rules:
 - omission: student skipped a word. "spoken" = the 2-3 word phrase from the transcript surrounding the gap (for UI anchoring).
 - addition: student added a word not in reference. "spoken" = the extra word(s) verbatim from transcript.
@@ -68,7 +70,7 @@ Critical rules — ALWAYS obey:
 4. "original" must be copied CHARACTER-FOR-CHARACTER from the reference text.
 5. Detect word ORDER swaps — if the student said words in wrong sequence, flag as "order" category.
 
-Only include real issues. If the student read perfectly, return empty issues array and score 100.`
+Only include real issues. If the student read perfectly, return empty issues array and score {MAX_SCORE}.`
 
 const IMAGE_DESCRIPTION_PROMPT = `You are a TOEIC speaking coach. The student was asked to describe an image aloud.
 
@@ -77,7 +79,7 @@ Student's spoken response: {TRANSCRIPT}
 
 Evaluate how well the student described the image. Return a JSON object (no markdown) with this exact shape:
 {
-  "score": <0-100 integer, overall quality of the description>,
+  "score": <0-{MAX_SCORE} number with 1 decimal place, overall quality score on the {MAX_SCORE}-point scale>,
   "criteria": {
     "accuracy": <0-100, how accurately they described what is actually visible in the image>,
     "vocabulary": <0-100, appropriateness and richness of descriptive vocabulary>,
@@ -94,6 +96,8 @@ Evaluate how well the student described the image. Return a JSON object (no mark
   ],
   "summary": <1-2 sentences feedback in Vietnamese about the overall description quality>
 }
+
+CRITICAL: The "score" field must be a number between 0 and {MAX_SCORE} (e.g., 2.5 for a {MAX_SCORE}-point scale). Do NOT return a 0-100 score.
 
 Category rules:
 - morphology: grammatical form error (wrong tense, missing plural, wrong article). "spoken" = the incorrect word verbatim from transcript.
@@ -201,7 +205,11 @@ class ResponseService {
     return transcript
   }
 
-  async analyzeResponse(responseId: string, userId: string): Promise<AnalysisResult> {
+  async analyzeResponse(
+    responseId: string,
+    userId: string,
+    partNumber: number,
+  ): Promise<AnalysisResult> {
     // 1. Verify + get transcript and reference text
     const response = await prisma.userResponse.findFirst({
       where: { id: responseId, session: { userId } },
@@ -236,18 +244,21 @@ class ResponseService {
       throw new ForbiddenError('no_credits')
     }
 
-    // 3. Build prompt — use image description mode when there is no script reference
+    // 3. Determine score scale based on part number
+    const maxScore = partNumber === 5 ? 5 : 3
+
+    // 4. Build prompt — use image description mode when there is no script reference
     let prompt: string
     if (referenceText) {
       const imageContextBlock = imageContext ? `\nImage context: ${imageContext}` : ''
       prompt = ANALYSIS_PROMPT.replace('{REFERENCE}', referenceText)
         .replace('{TRANSCRIPT}', response.transcript)
         .replace('{IMAGE_CONTEXT_BLOCK}', imageContextBlock)
+        .replace('{MAX_SCORE}', maxScore.toString())
     } else {
-      prompt = IMAGE_DESCRIPTION_PROMPT.replace('{IMAGE_CONTEXT}', imageContext!).replace(
-        '{TRANSCRIPT}',
-        response.transcript,
-      )
+      prompt = IMAGE_DESCRIPTION_PROMPT.replace('{IMAGE_CONTEXT}', imageContext!)
+        .replace('{TRANSCRIPT}', response.transcript)
+        .replace('{MAX_SCORE}', maxScore.toString())
     }
 
     const completion = await openai.chat.completions.create({
@@ -260,7 +271,7 @@ class ResponseService {
     const raw = completion.choices[0]?.message?.content ?? '{}'
     const analysis = JSON.parse(raw) as AnalysisResult
 
-    // 4. Atomic: decrement credit + save analysis
+    // 5. Atomic: decrement credit + save analysis
     await prisma.$transaction([
       prisma.user.update({
         where: { id: userId },
@@ -278,6 +289,7 @@ class ResponseService {
   async transcribeAndAnalyze(
     responseId: string,
     userId: string,
+    partNumber: number,
   ): Promise<{ transcript: string; analysis: AnalysisResult }> {
     // 1. Verify response and get audioUrl + reference text
     const response = await prisma.userResponse.findFirst({
@@ -335,18 +347,21 @@ class ResponseService {
       transcript = whisperResult.text
     }
 
-    // 4. Analyze — switch prompt based on question type
+    // 4. Determine score scale based on part number
+    const maxScore = partNumber === 5 ? 5 : 3
+
+    // 5. Analyze — switch prompt based on question type
     let prompt: string
     if (referenceText) {
       const imageContextBlock = imageContext ? `\nImage context: ${imageContext}` : ''
       prompt = ANALYSIS_PROMPT.replace('{REFERENCE}', referenceText)
         .replace('{TRANSCRIPT}', transcript)
         .replace('{IMAGE_CONTEXT_BLOCK}', imageContextBlock)
+        .replace('{MAX_SCORE}', maxScore.toString())
     } else {
-      prompt = IMAGE_DESCRIPTION_PROMPT.replace('{IMAGE_CONTEXT}', imageContext!).replace(
-        '{TRANSCRIPT}',
-        transcript,
-      )
+      prompt = IMAGE_DESCRIPTION_PROMPT.replace('{IMAGE_CONTEXT}', imageContext!)
+        .replace('{TRANSCRIPT}', transcript)
+        .replace('{MAX_SCORE}', maxScore.toString())
     }
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -357,7 +372,7 @@ class ResponseService {
     const raw = completion.choices[0]?.message?.content ?? '{}'
     const analysis = JSON.parse(raw) as AnalysisResult
 
-    // 5. Atomic: decrement 1 credit + save transcript + save analysis
+    // 6. Atomic: decrement 1 credit + save transcript + save analysis
     await prisma.$transaction([
       prisma.user.update({
         where: { id: userId },

@@ -52,7 +52,9 @@ export class ResponseController {
     try {
       const id = req.params['id'] as string
       const userId = (req as AuthRequest).userId
-      const analysis = await responseService.analyzeResponse(id, userId)
+      const { partNumber } = req.body
+      if (!partNumber) throw new ValidationError('partNumber is required')
+      const analysis = await responseService.analyzeResponse(id, userId, partNumber)
       res.json({ success: true, data: { analysis } })
     } catch (err) {
       next(err)
@@ -63,7 +65,9 @@ export class ResponseController {
     try {
       const id = req.params['id'] as string
       const userId = (req as AuthRequest).userId
-      const result = await responseService.transcribeAndAnalyze(id, userId)
+      const { partNumber } = req.body
+      if (!partNumber) throw new ValidationError('partNumber is required')
+      const result = await responseService.transcribeAndAnalyze(id, userId, partNumber)
       res.json({ success: true, data: result })
     } catch (err) {
       next(err)

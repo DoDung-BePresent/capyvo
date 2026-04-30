@@ -69,8 +69,12 @@ export function ResultView({
                 <div style={{ width: '100%', marginTop: 8 }}>
                   <Space direction="vertical" size={8} style={{ width: '100%' }}>
                     <Skeleton.Input active size="small" style={{ width: '100%' }} />
-                    <Skeleton.Input active size="small" style={{ width: '100%' }} />
-                    <Skeleton.Input active size="small" style={{ width: '100%' }} />
+                    {partNumber !== 1 && (
+                      <>
+                        <Skeleton.Input active size="small" style={{ width: '100%' }} />
+                        <Skeleton.Input active size="small" style={{ width: '100%' }} />
+                      </>
+                    )}
                     <Skeleton.Input active size="small" style={{ width: '100%' }} />
                   </Space>
                 </div>
@@ -102,7 +106,7 @@ export function ResultView({
     )
   }
 
-  const normalizedScore = Math.round((analysis.score / 100) * scale.max * 10) / 10
+  const normalizedScore = analysis.score // Use score directly from API (already on correct scale)
 
   // Render transcript với highlight lỗi
   const renderHighlightedTranscript = () => {
@@ -237,18 +241,22 @@ export function ResultView({
                       {analysis.criteria.accuracy}%
                     </Text>
                   </Flex>
-                  <Flex justify="space-between">
-                    <Text style={{ fontSize: 12 }}>Từ vựng</Text>
-                    <Text strong style={{ fontSize: 12 }}>
-                      {analysis.criteria.vocabulary}%
-                    </Text>
-                  </Flex>
-                  <Flex justify="space-between">
-                    <Text style={{ fontSize: 12 }}>Ngữ pháp</Text>
-                    <Text strong style={{ fontSize: 12 }}>
-                      {analysis.criteria.grammar}%
-                    </Text>
-                  </Flex>
+                  {partNumber !== 1 && (
+                    <>
+                      <Flex justify="space-between">
+                        <Text style={{ fontSize: 12 }}>Từ vựng</Text>
+                        <Text strong style={{ fontSize: 12 }}>
+                          {analysis.criteria.vocabulary}%
+                        </Text>
+                      </Flex>
+                      <Flex justify="space-between">
+                        <Text style={{ fontSize: 12 }}>Ngữ pháp</Text>
+                        <Text strong style={{ fontSize: 12 }}>
+                          {analysis.criteria.grammar}%
+                        </Text>
+                      </Flex>
+                    </>
+                  )}
                   <Flex justify="space-between">
                     <Text style={{ fontSize: 12 }}>Độ trôi chảy</Text>
                     <Text strong style={{ fontSize: 12 }}>
