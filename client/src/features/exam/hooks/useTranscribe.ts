@@ -28,7 +28,7 @@ export function useTranscribe(sessionId: string) {
           }
         },
       )
-      // Refetch /me to update credit count in header
+      // Refetch /me to update subscription status in header
       queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() })
     },
   })

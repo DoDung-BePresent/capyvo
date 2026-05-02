@@ -4,29 +4,43 @@ import { useNavigate, useLocation } from 'react-router-dom'
 /**
  * Icons
  */
-import {
-  HomeOutlined,
-  BookOutlined,
-  FileTextOutlined,
-  ThunderboltOutlined,
-} from '@ant-design/icons'
+import { Assignment, HomeFilled, RecordVoiceOver } from '@mui/icons-material'
 
 /**
  * Configs
  */
 import { SIDEBAR_WIDTHS } from '@/config'
-import { Logo } from '@/shared/components'
+
+/**
+ * Utils
+ */
+import { styled } from '@/shared/utils/cn'
+
+/**
+ * Hooks
+ */
 import { useGetMe } from '@/features/auth/hooks/useAuth'
 import { useSession } from '@/features/auth/hooks/useSession'
+
+/**
+ * Components
+ */
+import { Logo } from '@/shared/components'
+import { UpgradeWidget } from './UpgradeWidget'
 
 const { Sider } = Layout
 
 const MENU_ITEMS = [
-  { key: '/', icon: <HomeOutlined />, label: 'Trang chủ' },
-  { key: '/practice', icon: <BookOutlined />, label: 'Luyện theo Part' },
-  { key: '/exam', icon: <FileTextOutlined />, label: 'Thi thử' },
+  { key: '/', icon: <HomeFilled style={{ fontSize: 22 }} />, label: 'Trang chủ' },
+  {
+    key: '/practice',
+    icon: <RecordVoiceOver style={{ fontSize: 22, marginLeft: 1 }} />,
+    label: 'Luyện theo Part',
+  },
+  { key: '/exam', icon: <Assignment style={{ fontSize: 22 }} />, label: 'Thi thử' },
 ]
 
+const Bottom = styled('div', 'absolute bottom-0 w-full')
 export interface UserSidebarProps {
   collapsed: boolean
   onCollapse: (v: boolean) => void
@@ -43,7 +57,12 @@ export function UserSidebar({ collapsed }: UserSidebarProps) {
       ? '/'
       : (MENU_ITEMS.slice(1).find((m) => location.pathname.startsWith(m.key))?.key ?? '/')
 
-  const credits = user?.transcriptionCredits ?? 0
+  // Calculate days remaining
+  const daysRemaining = user?.premiumUntil
+    ? Math.ceil(
+        (new Date(user.premiumUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
+      )
+    : null
 
   return (
     <Sider
@@ -74,49 +93,26 @@ export function UserSidebar({ collapsed }: UserSidebarProps) {
         items={MENU_ITEMS}
         style={{ borderRight: 0, flex: 1 }}
         onClick={({ key }) => navigate(key)}
+        styles={{
+          root: {
+            paddingInline: collapsed ? 7 : 15,
+          },
+          item: {
+            borderRadius: 8,
+            paddingInline: 15,
+          },
+        }}
       />
 
-      {/* Token widget */}
-      <div
-        style={{
-          padding: collapsed ? '12px 8px' : '12px 16px',
-          borderTop: '1px solid var(--ant-color-border-secondary)',
-          cursor: 'pointer',
-          transition: 'background 0.2s',
-        }}
-        onClick={() => navigate('/payment')}
-        onMouseEnter={(e) =>
-          ((e.currentTarget as HTMLDivElement).style.background =
-            'var(--ant-color-fill-quaternary)')
-        }
-        onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.background = 'transparent')}
-      >
-        {collapsed ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <ThunderboltOutlined style={{ fontSize: 18, color: '#faad14' }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#faad14' }}>{credits}</span>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <ThunderboltOutlined style={{ fontSize: 16, color: '#faad14' }} />
-              <div>
-                <div
-                  style={{ fontSize: 11, color: 'var(--ant-color-text-tertiary)', lineHeight: 1.2 }}
-                >
-                  Token còn lại
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#faad14', lineHeight: 1.4 }}>
-                  {credits}
-                </div>
-              </div>
-            </div>
-            <span style={{ fontSize: 12, color: 'var(--ant-color-primary)', fontWeight: 500 }}>
-              + Mua
-            </span>
-          </div>
-        )}
-      </div>
+      {/* Upgrade Widget */}
+      <Bottom>
+        <UpgradeWidget
+          collapsed={collapsed}
+          onUpgrade={() => navigate('/pricing')}
+          isPremium={user?.isPremium}
+          daysRemaining={daysRemaining}
+        />
+      </Bottom>
     </Sider>
   )
 }

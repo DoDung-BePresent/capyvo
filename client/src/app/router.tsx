@@ -58,6 +58,10 @@ const router = createBrowserRouter([
                 path: '/payment/result',
                 lazy: lazy(() => import('@/features/payment/pages/PaymentResultPage')),
               },
+              {
+                path: '/pricing',
+                lazy: lazy(() => import('@/features/payment/pages/PricingPage')),
+              },
             ],
           },
           // Fullscreen exam pages — no layout
@@ -68,6 +72,10 @@ const router = createBrowserRouter([
           {
             path: '/practice/part/:partNumber/set/:examSetId/exam',
             lazy: lazy(() => import('@/features/exam/pages/PartExamPage')),
+          },
+          {
+            path: '/practice/part/:partNumber/question/:questionId',
+            lazy: lazy(() => import('@/features/exam/pages/QuestionPracticePage')),
           },
         ],
       },

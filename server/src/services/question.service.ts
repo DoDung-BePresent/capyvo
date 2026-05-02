@@ -374,4 +374,72 @@ export class QuestionService {
 
     return response.choices[0]?.message?.content?.trim() ?? ''
   }
+
+  /**
+   * Lấy tất cả câu hỏi của một part (flat list với examSetId)
+   * Tối ưu cho UI grid questions
+   */
+  async getQuestionsByPart(partNumber: number) {
+    const questions = await prisma.question.findMany({
+      where: {
+        partNumber,
+        examSetId: { not: null },
+        examSet: { isPublished: true },
+      },
+      include: {
+        examSet: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+      },
+      orderBy: [{ examSetId: 'asc' }, { questionNumber: 'asc' }],
+    })
+
+    return questions.map((q) => ({
+      ...q,
+      examSetId: q.examSet?.id ?? '',
+      examSetTitle: q.examSet?.title ?? '',
+      examSet: undefined, // Remove nested object
+    }))
+  }
+
+  /**
+   * Lấy danh sách exam sets của một part (cho filter sidebar)
+   */
+  async getExamSetsByPart(partNumber: number) {
+    const examSets = await prisma.examSet.findMany({
+      where: {
+        isPublished: true,
+        questions: {
+          some: {
+            partNumber,
+          },
+        },
+      },
+      select: {
+        id: true,
+        title: true,
+        _count: {
+          select: {
+            questions: {
+              where: {
+                partNumber,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
+
+    return examSets.map((set) => ({
+      id: set.id,
+      title: set.title,
+      questionCount: set._count.questions,
+    }))
+  }
 }

@@ -1,11 +1,12 @@
 import type { Request, Response, NextFunction } from 'express'
 import { PaymentService, TOKEN_PACKAGES } from '@/services/payment.service'
 import type { AuthRequest } from '@/middlewares/authenticate'
+import { SubscriptionPlanId } from '@prisma/client'
 
 const paymentService = new PaymentService()
 
 export class PaymentController {
-  /** POST /payments/create-token — tạo link mua token */
+  /** POST /payments/create-token — tạo link mua token (DEPRECATED) */
   async createTokenOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = (req as AuthRequest).userId
@@ -21,7 +22,32 @@ export class PaymentController {
     }
   }
 
-  /** GET /payments/token-packages — danh sách gói token */
+  /** POST /payments/create-subscription — tạo link mua subscription */
+  async createSubscriptionOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = (req as AuthRequest).userId
+      const { planId } = req.body
+
+      if (!planId) {
+        res.status(400).json({ success: false, message: 'Plan ID is required' })
+        return
+      }
+
+      // Convert planId to enum
+      const planIdEnum = planId.toUpperCase() as SubscriptionPlanId
+      if (!Object.values(SubscriptionPlanId).includes(planIdEnum)) {
+        res.status(400).json({ success: false, message: 'Invalid plan ID' })
+        return
+      }
+
+      const result = await paymentService.createSubscriptionOrder(userId, planIdEnum)
+      res.status(201).json({ success: true, data: result })
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  /** GET /payments/token-packages — danh sách gói token (DEPRECATED) */
   getTokenPackages(_req: Request, res: Response): void {
     const packages = Object.entries(TOKEN_PACKAGES).map(([tokens, price]) => ({
       tokens: Number(tokens),

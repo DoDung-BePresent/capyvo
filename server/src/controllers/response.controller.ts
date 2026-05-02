@@ -17,6 +17,16 @@ export const uploadAudio = multer({
 })
 
 export class ResponseController {
+  async checkSubscription(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = (req as AuthRequest).userId
+      const result = await responseService.checkUserSubscription(userId)
+      res.json({ success: true, data: result })
+    } catch (err) {
+      next(err)
+    }
+  }
+
   async saveAudio(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { questionId, sessionId } = req.body
@@ -25,13 +35,13 @@ export class ResponseController {
       if (!questionId) throw new ValidationError('questionId is required')
       if (!sessionId) throw new ValidationError('sessionId is required')
 
-      const audioUrl = await responseService.saveAudio(
+      const result = await responseService.saveAudio(
         sessionId,
         questionId,
         file.buffer,
         file.mimetype,
       )
-      res.status(201).json({ success: true, data: { audioUrl } })
+      res.status(201).json({ success: true, data: result })
     } catch (err) {
       next(err)
     }
@@ -52,7 +62,9 @@ export class ResponseController {
     try {
       const id = req.params['id'] as string
       const userId = (req as AuthRequest).userId
-      const analysis = await responseService.analyzeResponse(id, userId)
+      const { partNumber } = req.body
+      if (!partNumber) throw new ValidationError('partNumber is required')
+      const analysis = await responseService.analyzeResponse(id, userId, partNumber)
       res.json({ success: true, data: { analysis } })
     } catch (err) {
       next(err)
@@ -63,8 +75,21 @@ export class ResponseController {
     try {
       const id = req.params['id'] as string
       const userId = (req as AuthRequest).userId
-      const result = await responseService.transcribeAndAnalyze(id, userId)
+      const { partNumber } = req.body
+      if (!partNumber) throw new ValidationError('partNumber is required')
+      const result = await responseService.transcribeAndAnalyze(id, userId, partNumber)
       res.json({ success: true, data: result })
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  async getQuestionHistory(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const questionId = req.params['questionId'] as string
+      const userId = (req as AuthRequest).userId
+      const history = await responseService.getQuestionHistory(questionId, userId)
+      res.json({ success: true, data: history })
     } catch (err) {
       next(err)
     }

@@ -2,6 +2,14 @@ import axiosInstance from '@/lib/axios'
 import type { CreateOrderResponse, Payment, TokenPackage } from '../types'
 
 export const paymentService = {
+  async createSubscriptionOrder(planId: string): Promise<CreateOrderResponse> {
+    const res = await axiosInstance.post<{ success: boolean; data: CreateOrderResponse }>(
+      '/payments/create-subscription',
+      { planId },
+    )
+    return res.data.data
+  },
+
   async createTokenOrder(tokenAmount: number): Promise<CreateOrderResponse> {
     const res = await axiosInstance.post<{ success: boolean; data: CreateOrderResponse }>(
       '/payments/create-token',

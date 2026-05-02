@@ -4,17 +4,23 @@ import type { ApiResponse } from '@/shared/types/api'
 import type { AnalysisResult, SessionDetail } from '@/features/exam/services/session.service'
 import { queryKeys } from '@/lib/query-keys'
 
+interface AnalyzeParams {
+  responseId: string
+  partNumber: number
+}
+
 export function useAnalyze(sessionId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (responseId: string): Promise<AnalysisResult> => {
+    mutationFn: async ({ responseId, partNumber }: AnalyzeParams): Promise<AnalysisResult> => {
       const { data } = await axiosInstance.post<ApiResponse<{ analysis: AnalysisResult }>>(
         `/responses/${responseId}/analyze`,
+        { partNumber },
       )
       return data.data.analysis
     },
-    onSuccess: (analysis, responseId) => {
+    onSuccess: (analysis, { responseId }) => {
       queryClient.setQueryData(
         queryKeys.practiceSessions.detail(sessionId),
         (old: SessionDetail | undefined) => {

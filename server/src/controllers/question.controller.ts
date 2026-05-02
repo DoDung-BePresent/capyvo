@@ -168,4 +168,40 @@ export class QuestionController {
       next(err)
     }
   }
+
+  /**
+   * GET /api/questions/part/:partNumber/all
+   * Lấy tất cả câu hỏi của một part (flat list)
+   */
+  async getQuestionsByPart(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const partNumber = Number(req.params['partNumber'])
+      if (!partNumber || partNumber < 1 || partNumber > 5) {
+        res.status(400).json({ success: false, message: 'partNumber must be 1–5' })
+        return
+      }
+      const questions = await questionService.getQuestionsByPart(partNumber)
+      res.json({ success: true, data: questions })
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  /**
+   * GET /api/questions/part/:partNumber/exam-sets
+   * Lấy danh sách exam sets của một part
+   */
+  async getExamSetsByPart(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const partNumber = Number(req.params['partNumber'])
+      if (!partNumber || partNumber < 1 || partNumber > 5) {
+        res.status(400).json({ success: false, message: 'partNumber must be 1–5' })
+        return
+      }
+      const examSets = await questionService.getExamSetsByPart(partNumber)
+      res.json({ success: true, data: examSets })
+    } catch (err) {
+      next(err)
+    }
+  }
 }
