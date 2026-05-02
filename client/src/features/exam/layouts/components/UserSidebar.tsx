@@ -1,25 +1,46 @@
-import { Layout, Menu, Typography } from 'antd'
+import { Layout, Menu } from 'antd'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 /**
  * Icons
  */
-import { HomeOutlined, BookOutlined, FileTextOutlined } from '@ant-design/icons'
+import { Assignment, HomeFilled, RecordVoiceOver } from '@mui/icons-material'
 
 /**
  * Configs
  */
 import { SIDEBAR_WIDTHS } from '@/config'
 
+/**
+ * Utils
+ */
+import { styled } from '@/shared/utils/cn'
+
+/**
+ * Hooks
+ */
+import { useGetMe } from '@/features/auth/hooks/useAuth'
+import { useSession } from '@/features/auth/hooks/useSession'
+
+/**
+ * Components
+ */
+import { Logo } from '@/shared/components'
+import { UpgradeWidget } from './UpgradeWidget'
+
 const { Sider } = Layout
-const { Text } = Typography
 
 const MENU_ITEMS = [
-  { key: '/', icon: <HomeOutlined />, label: 'Trang chủ' },
-  { key: '/practice', icon: <BookOutlined />, label: 'Luyện theo Part' },
-  { key: '/exam', icon: <FileTextOutlined />, label: 'Thi thử' },
+  { key: '/', icon: <HomeFilled style={{ fontSize: 22 }} />, label: 'Trang chủ' },
+  {
+    key: '/practice',
+    icon: <RecordVoiceOver style={{ fontSize: 22, marginLeft: 1 }} />,
+    label: 'Luyện theo Part',
+  },
+  { key: '/exam', icon: <Assignment style={{ fontSize: 22 }} />, label: 'Thi thử' },
 ]
 
+const Bottom = styled('div', 'absolute bottom-0 w-full')
 export interface UserSidebarProps {
   collapsed: boolean
   onCollapse: (v: boolean) => void
@@ -28,11 +49,20 @@ export interface UserSidebarProps {
 export function UserSidebar({ collapsed }: UserSidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { session } = useSession()
+  const { data: user } = useGetMe(session)
 
   const selectedKey =
     location.pathname === '/'
       ? '/'
       : (MENU_ITEMS.slice(1).find((m) => location.pathname.startsWith(m.key))?.key ?? '/')
+
+  // Calculate days remaining
+  const daysRemaining = user?.premiumUntil
+    ? Math.ceil(
+        (new Date(user.premiumUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
+      )
+    : null
 
   return (
     <Sider
@@ -42,20 +72,18 @@ export function UserSidebar({ collapsed }: UserSidebarProps) {
       width={SIDEBAR_WIDTHS.width}
       collapsedWidth={SIDEBAR_WIDTHS.collapsedWidth}
       theme="light"
-      style={{ height: '100vh', overflow: 'auto', position: 'sticky', top: 0 }}
+      style={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'sticky',
+        top: 0,
+      }}
+      className="border-r border-(--ant-color-border-secondary)"
     >
-      <div
-        style={{
-          padding: collapsed ? '18px 0' : '18px 24px',
-          textAlign: collapsed ? 'center' : 'left',
-        }}
-      >
-        {!collapsed && (
-          <Text style={{ fontWeight: 700, fontSize: 17, letterSpacing: 0.5, color: '#fff' }}>
-            🐹 Capyvo
-          </Text>
-        )}
-        {collapsed && <Text style={{ fontSize: 18 }}>🐹</Text>}
+      {/* Logo */}
+      <div className="p-5 py-4">
+        <Logo collapsed={collapsed} />
       </div>
 
       <Menu
@@ -63,9 +91,28 @@ export function UserSidebar({ collapsed }: UserSidebarProps) {
         mode="inline"
         selectedKeys={[selectedKey]}
         items={MENU_ITEMS}
-        style={{ borderRight: 0 }}
+        style={{ borderRight: 0, flex: 1 }}
         onClick={({ key }) => navigate(key)}
+        styles={{
+          root: {
+            paddingInline: collapsed ? 7 : 15,
+          },
+          item: {
+            borderRadius: 8,
+            paddingInline: 15,
+          },
+        }}
       />
+
+      {/* Upgrade Widget */}
+      <Bottom>
+        <UpgradeWidget
+          collapsed={collapsed}
+          onUpgrade={() => navigate('/pricing')}
+          isPremium={user?.isPremium}
+          daysRemaining={daysRemaining}
+        />
+      </Bottom>
     </Sider>
   )
 }

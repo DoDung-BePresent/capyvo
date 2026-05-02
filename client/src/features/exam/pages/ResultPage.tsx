@@ -7,6 +7,7 @@ import { sessionService } from '@/features/exam/services/session.service'
 import { queryKeys } from '@/lib/query-keys'
 import { PART_META } from '@/features/admin/types'
 import { WavesurferPlayer } from '@/features/exam/components/WavesurferPlayer'
+import { TranscriptPanel } from '@/features/exam/components/TranscriptPanel'
 import { PageHeader } from '@/shared/components'
 
 const { Text } = Typography
@@ -120,6 +121,18 @@ export default function ResultPage() {
                 <Text type="secondary" style={{ fontSize: 13 }}>
                   Không có bản ghi âm cho câu này
                 </Text>
+              )}
+
+              {/* Transcript + diff */}
+              {item.audioUrl && (
+                <TranscriptPanel
+                  responseId={item.id}
+                  sessionId={session.id}
+                  partNumber={question.partNumber}
+                  transcript={item.transcript ?? null}
+                  analysis={item.pronunciationScore ?? null}
+                  hasReferenceText={!!(question.contentText ?? question.questionText)}
+                />
               )}
             </Card>
           )

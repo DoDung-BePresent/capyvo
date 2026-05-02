@@ -1,6 +1,27 @@
 import axiosInstance from '@/lib/axios'
 import type { ApiResponse } from '@/shared/types/api'
 
+export interface ScoringCriteria {
+  accuracy: number
+  vocabulary: number
+  grammar: number
+  fluency: number
+}
+
+export interface AnalysisIssue {
+  category: 'omission' | 'addition' | 'morphology' | 'pronunciation' | 'substitution' | 'order'
+  original: string
+  spoken: string
+  note: string
+}
+
+export interface AnalysisResult {
+  score: number
+  criteria: ScoringCriteria
+  issues: AnalysisIssue[]
+  summary: string
+}
+
 export interface SessionSummary {
   id: string
   examSetId: string
@@ -15,6 +36,8 @@ export interface ResponseItem {
   id: string
   questionId: string
   audioUrl: string | null
+  transcript: string | null
+  pronunciationScore: AnalysisResult | null
   question: {
     id: string
     partNumber: number

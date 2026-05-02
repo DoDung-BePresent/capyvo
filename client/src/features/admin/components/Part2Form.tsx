@@ -1,7 +1,12 @@
-import { Form, Segmented } from 'antd'
+import { useState } from 'react'
+import { Form, Input, Segmented, Spin, Typography } from 'antd'
 import type { FormInstance } from 'antd'
+import { RobotOutlined } from '@ant-design/icons'
 import ImageUpload from './ImageUpload'
+import { questionService } from '../services/question.service'
 import type { Part2FormValues } from '../types'
+
+const { Text } = Typography
 
 interface Props {
   form?: FormInstance
@@ -9,6 +14,25 @@ interface Props {
 }
 
 export default function Part2Form({ form, onSubmit }: Props) {
+  const [analyzing, setAnalyzing] = useState(false)
+
+  async function handleImageChange(url: string | undefined) {
+    form?.setFieldValue('imageUrl', url)
+    if (!url) {
+      form?.setFieldValue('imageContext', undefined)
+      return
+    }
+    setAnalyzing(true)
+    try {
+      const context = await questionService.analyzeImage(url)
+      form?.setFieldValue('imageContext', context)
+    } catch {
+      // silently fail — user can type manually
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
   return (
     <Form
       layout="vertical"
@@ -16,11 +40,7 @@ export default function Part2Form({ form, onSubmit }: Props) {
       requiredMark={false}
       size="large"
       form={form}
-      styles={{
-        label: {
-          height: 22,
-        },
-      }}
+      styles={{ label: { height: 22 } }}
     >
       <Form.Item label="Số câu" name="questionNumber" rules={[{ required: true }]} initialValue={3}>
         <Segmented
@@ -37,7 +57,25 @@ export default function Part2Form({ form, onSubmit }: Props) {
         name="imageUrl"
         rules={[{ required: true, message: 'Vui lòng tải ảnh lên' }]}
       >
-        <ImageUpload />
+        <ImageUpload onChange={handleImageChange} />
+      </Form.Item>
+
+      <Form.Item
+        label={
+          <span>
+            Mô tả hình ảnh (cho AI chấm bài){' '}
+            {analyzing && <Spin size="small" style={{ marginLeft: 6 }} />}
+          </span>
+        }
+        name="imageContext"
+        extra={
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            <RobotOutlined style={{ marginRight: 4 }} />
+            Tự động điền bằng AI sau khi upload. Chỉnh sửa nếu cần thiết.
+          </Text>
+        }
+      >
+        <Input.TextArea rows={4} placeholder="AI sẽ tự mô tả hình ảnh sau khi upload..." />
       </Form.Item>
     </Form>
   )

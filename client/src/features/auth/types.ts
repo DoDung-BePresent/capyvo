@@ -5,6 +5,8 @@ export interface User {
   email: string
   fullName: string | null
   role: Role
+  isPremium: boolean
+  premiumUntil: string | null
   createdAt: string
 }
 

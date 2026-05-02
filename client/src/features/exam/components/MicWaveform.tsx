@@ -10,10 +10,10 @@ export interface MicWaveformProps {
 
 export function MicWaveform({
   stream,
-  height = 106,
-  color = '#818cf8',
-  barWidth = 18,
-  barGap = 10,
+  height = 80,
+  color = '#ff4d4f',
+  barWidth = 4,
+  barGap = 6,
 }: MicWaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -23,7 +23,7 @@ export function MicWaveform({
 
     const audioCtx = new AudioContext()
     const analyser = audioCtx.createAnalyser()
-    analyser.fftSize = 1024
+    analyser.fftSize = 256
     analyser.smoothingTimeConstant = 0.8
 
     const source = audioCtx.createMediaStreamSource(stream)
@@ -61,11 +61,14 @@ export function MicWaveform({
 
         // 128 = silence → amplitude 0, bars are just a thin line
         const amplitude = maxDev / 128
-        const barH = Math.max(3, Math.pow(amplitude, 0.5) * H * 0.9)
+        const barH = Math.max(8, Math.pow(amplitude, 0.6) * H * 0.7)
 
         const x = i * step
+        const radius = barWidth / 2
+
+        // Draw rounded rectangle
         ctx.beginPath()
-        ctx.roundRect(x, midY - barH / 2, barWidth, barH, 2)
+        ctx.roundRect(x, midY - barH / 2, barWidth, barH, radius)
         ctx.fill()
       }
     }
@@ -80,11 +83,20 @@ export function MicWaveform({
   }, [stream, height, color, barWidth, barGap])
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={800}
-      height={height}
-      style={{ width: '100%', height: `${height}px`, display: 'block' }}
-    />
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: `${height}px`,
+      }}
+    >
+      <canvas
+        ref={canvasRef}
+        width={300}
+        height={height}
+        style={{ width: '300px', height: `${height}px`, display: 'block' }}
+      />
+    </div>
   )
 }

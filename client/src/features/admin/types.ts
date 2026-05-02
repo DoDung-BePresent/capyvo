@@ -41,7 +41,7 @@ export interface PartInstruction {
 
 // ─── SystemAudio model ─────────────────────────────────────────────────────────
 
-export type SystemAudioKey = 'START_SPEAKING' | 'START_RESPONSE' | 'STOP_TALKING'
+export type SystemAudioKey = 'START_SPEAKING' | 'START_RESPONSE'
 
 export const SYSTEM_AUDIO_META: Record<SystemAudioKey, { label: string; description: string }> = {
   START_SPEAKING: {
@@ -51,10 +51,6 @@ export const SYSTEM_AUDIO_META: Record<SystemAudioKey, { label: string; descript
   START_RESPONSE: {
     label: 'Tín hiệu bắt đầu phản hồi',
     description: 'Phát khi hệ thống bắt đầu ghi âm câu trả lời',
-  },
-  STOP_TALKING: {
-    label: 'Tín hiệu dừng nói',
-    description: 'Phát khi hết giờ trả lời, thí sinh cần dừng nói',
   },
 }
 
@@ -78,6 +74,7 @@ export interface Question {
   questionText: string | null
   questionAudioUrl: string | null
   imageUrls: string[]
+  imageContext: string | null
   prepTimeSeconds: number
   responseTimeSeconds: number
   createdAt: string
@@ -92,28 +89,49 @@ export interface Part1FormValues {
 
 export interface Part2FormValues {
   questionNumber: 3 | 4
-  imageUrl: string // URL returned after upload
+  imageUrl: string
+  imageContext?: string
 }
 
-/** Part 3: fills context once + 3 question texts (→ auto TTS) */
+/** Part 3: fills context once + 3 question texts (→ auto TTS if no audio provided) */
 export interface Part3FormValues {
   contextText: string
+  contextAudioUrl?: string
   q5: string
+  q5AudioUrl?: string
   q6: string
+  q6AudioUrl?: string
   q7: string
+  q7AudioUrl?: string
 }
 
-/** Part 4: 1 shared image + 3 question texts (→ auto TTS) */
+/** Part 4: 1 shared image + 3 question texts (→ auto TTS if no audio provided) */
 export interface Part4FormValues {
   contextText: string
+  contextAudioUrl?: string
   imageUrl: string
+  imageContext?: string
   q8: string
+  q8AudioUrl?: string
   q9: string
+  q9AudioUrl?: string
   q10: string
+  q10AudioUrl?: string
 }
 
 export interface Part5FormValues {
   questionText: string
+  questionAudioUrl?: string
+}
+
+export interface UpdateQuestionPayload {
+  contentText?: string
+  contextText?: string
+  contextAudioUrl?: string | null
+  questionText?: string
+  questionAudioUrl?: string | null
+  imageUrls?: string[]
+  imageContext?: string | null
 }
 
 // ─── Part metadata ─────────────────────────────────────────────────────────────

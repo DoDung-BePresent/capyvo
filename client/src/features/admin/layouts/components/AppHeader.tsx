@@ -3,13 +3,17 @@ import {
   Avatar,
   Dropdown,
   Typography,
-  theme,
   Button,
   Switch,
   Tooltip,
   Badge,
   App,
+  Space,
 } from 'antd'
+
+/**
+ * Icons
+ */
 import {
   UserOutlined,
   LogoutOutlined,
@@ -18,11 +22,19 @@ import {
   ToolOutlined,
   CalendarOutlined,
 } from '@ant-design/icons'
+
+/**
+ * Hooks
+ */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGetMe, useLogout } from '@/features/auth/hooks/useAuth'
 import { useSession } from '@/features/auth/hooks/useSession'
 import { useMaintenance, useMaintenanceMutation } from '@/shared/hooks/useMaintenance'
+
+/**
+ * Components
+ */
 import { MaintenanceScheduleModal } from '@/features/admin/components/MaintenanceScheduleModal'
 
 const { Header } = Layout
@@ -42,9 +54,6 @@ export function AppHeader({ collapsed, onCollapse }: AppHeaderProps) {
   const { mutate: setMaintenance, isPending } = useMaintenanceMutation()
   const { modal } = App.useApp()
   const [scheduleOpen, setScheduleOpen] = useState(false)
-  const {
-    token: { colorBgContainer },
-  } = theme.useToken()
 
   function handleMaintenanceToggle(checked: boolean) {
     modal.confirm({
@@ -77,24 +86,14 @@ export function AppHeader({ collapsed, onCollapse }: AppHeaderProps) {
 
   return (
     <>
-      <Header
-        style={{
-          background: colorBgContainer,
-          padding: 5,
-          paddingInline: 20,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
+      <Header className="border-b bg-white! p-1.25 px-5! flex justify-between items-center gap-3 border-[var(--ant-color-border-secondary)]">
         <Button
           type="text"
           icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
           onClick={() => onCollapse(!collapsed)}
           style={{ fontSize: 16, color: '#666' }}
         />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
+        <Space size={12}>
           <Tooltip title={isMaintenance ? 'Đang bảo trì — click để tắt' : 'Bật chế độ bảo trì'}>
             <Switch
               checkedChildren={<ToolOutlined />}
@@ -118,7 +117,7 @@ export function AppHeader({ collapsed, onCollapse }: AppHeaderProps) {
           <Dropdown menu={{ items: menuItems }} trigger={['click']} placement="bottomRight">
             <Avatar shape="square" icon={<UserOutlined />} style={{ cursor: 'pointer' }} />
           </Dropdown>
-        </div>
+        </Space>
       </Header>
 
       <MaintenanceScheduleModal open={scheduleOpen} onClose={() => setScheduleOpen(false)} />

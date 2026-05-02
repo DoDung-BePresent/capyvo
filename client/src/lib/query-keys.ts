@@ -20,6 +20,7 @@ export const queryKeys = {
   // Questions
   questions: {
     byPart: (partNumber: number) => ['questions', 'part', partNumber] as const,
+    examSetsByPart: (partNumber: number) => ['questions', 'exam-sets', 'part', partNumber] as const,
     byExamSet: (examSetId: string) => ['questions', 'exam-set', examSetId] as const,
     detail: (id: string) => ['questions', 'detail', id] as const,
     pool: (questionNumber: number) => ['questions', 'pool', questionNumber] as const,
@@ -45,6 +46,7 @@ export const queryKeys = {
   responses: {
     bySession: (sessionId: string) => ['responses', 'session', sessionId] as const,
     detail: (id: string) => ['responses', 'detail', id] as const,
+    questionHistory: (questionId: string) => ['responses', 'question-history', questionId] as const,
   },
 
   // System audio
@@ -55,5 +57,22 @@ export const queryKeys = {
   // Part instructions (manual audio per part)
   partInstructions: {
     all: () => ['part-instructions'] as const,
+  },
+
+  // System stats (storage, AI cost)
+  systemStats: {
+    all: () => ['system-stats'] as const,
+  },
+
+  // Admin dashboard
+  adminDashboard: {
+    stats: () => ['admin', 'dashboard', 'stats'] as const,
+  },
+
+  // Payments
+  payments: {
+    my: () => ['payments', 'my'] as const,
+    status: (orderCode: number) => ['payments', 'status', orderCode] as const,
+    tokenPackages: () => ['payments', 'token-packages'] as const,
   },
 }

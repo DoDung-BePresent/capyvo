@@ -16,7 +16,7 @@ import {
 /**
  * Icons
  */
-import { DeleteOutlined, PlusOutlined, SoundOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, PlusOutlined, SoundOutlined } from '@ant-design/icons'
 
 /**
  * Types
@@ -24,7 +24,7 @@ import { DeleteOutlined, PlusOutlined, SoundOutlined } from '@ant-design/icons'
 import type { FormInstance } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { PART_META } from '../types'
-import type { PartNumber, Question } from '../types'
+import type { PartNumber, Question, UpdateQuestionPayload } from '../types'
 import type {
   Part1FormValues,
   Part2FormValues,
@@ -42,6 +42,7 @@ import Part2Form from '../components/Part2Form'
 import Part3Form from '../components/Part3Form'
 import Part4Form from '../components/Part4Form'
 import Part5Form from '../components/Part5Form'
+import EditQuestionForm from '../components/EditQuestionForm'
 
 /**
  * Hooks
@@ -54,6 +55,7 @@ import {
   useCreatePart4,
   useCreatePart5,
   useDeleteQuestion,
+  useUpdateQuestion,
 } from '../hooks/useQuestion'
 
 /**
@@ -66,6 +68,7 @@ const { Text } = Typography
 // ─── Column definitions ─── //
 function getColumns(
   partNumber: PartNumber,
+  onEdit: (record: Question) => void,
   onDelete: (id: string) => void,
   deleting: boolean,
 ): ColumnsType<Question> {
@@ -78,20 +81,23 @@ function getColumns(
     },
   ]
 
-  const deleteColumn: ColumnsType<Question>[number] = {
+  const actionsColumn: ColumnsType<Question>[number] = {
     title: '',
     key: 'actions',
-    width: 60,
+    width: 90,
     render: (_: unknown, record: Question) => (
-      <Popconfirm
-        title="Xóa câu hỏi này?"
-        okText="Xóa"
-        cancelText="Hủy"
-        okButtonProps={{ danger: true }}
-        onConfirm={() => onDelete(record.id)}
-      >
-        <Button type="text" danger icon={<DeleteOutlined />} loading={deleting} />
-      </Popconfirm>
+      <Space size={4}>
+        <Button type="text" icon={<EditOutlined />} onClick={() => onEdit(record)} />
+        <Popconfirm
+          title="Xóa câu hỏi này?"
+          okText="Xóa"
+          cancelText="Hủy"
+          okButtonProps={{ danger: true }}
+          onConfirm={() => onDelete(record.id)}
+        >
+          <Button type="text" danger icon={<DeleteOutlined />} loading={deleting} />
+        </Popconfirm>
+      </Space>
     ),
   }
 
@@ -108,7 +114,7 @@ function getColumns(
         ),
         width: 120,
       },
-      deleteColumn,
+      actionsColumn,
     ]
   }
 
@@ -122,7 +128,7 @@ function getColumns(
           urls[0] ? <Image src={urls[0]} height={60} style={{ objectFit: 'cover' }} /> : '—',
         width: 100,
       },
-      deleteColumn,
+      actionsColumn,
     ]
   }
 
@@ -143,7 +149,7 @@ function getColumns(
           ),
         width: 90,
       },
-      deleteColumn,
+      actionsColumn,
     ]
   }
 
@@ -170,7 +176,7 @@ function getColumns(
           ),
         width: 90,
       },
-      deleteColumn,
+      actionsColumn,
     ]
   }
 
@@ -189,7 +195,7 @@ function getColumns(
         ),
       width: 90,
     },
-    deleteColumn,
+    actionsColumn,
   ]
 }
 
@@ -232,8 +238,11 @@ export default function PartQuestionsPage() {
   const partNumber = Number(partParam) as PartNumber
 
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false)
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null)
   const [search, setSearch] = useState('')
   const [drawerForm] = Form.useForm()
+  const [editForm] = Form.useForm()
   const [activeQNum, setActiveQNum] = useState<number>(
     () => PART_META[partNumber]?.questionNumbers[0] ?? 1,
   )
@@ -247,6 +256,7 @@ export default function PartQuestionsPage() {
 
   const { data: questions = [], isLoading } = useGetQuestions(partNumber)
   const { mutate: deleteQuestion, isPending: deleting } = useDeleteQuestion(partNumber)
+  const updateQuestion = useUpdateQuestion(partNumber)
 
   const createPart1 = useCreatePart1()
   const createPart2 = useCreatePart2()
@@ -286,6 +296,100 @@ export default function PartQuestionsPage() {
     }
   }
 
+  function openEditDrawer(question: Question) {
+    setEditingQuestion(question)
+    setEditDrawerOpen(true)
+    setTimeout(() => {
+      if (partNumber === 1) {
+        editForm.setFieldsValue({ contentText: question.contentText ?? '' })
+      } else if (partNumber === 2) {
+        editForm.setFieldsValue({
+          imageUrl: question.imageUrls[0] ?? '',
+          imageContext: question.imageContext ?? '',
+        })
+      } else if (partNumber === 3) {
+        editForm.setFieldsValue({
+          contextText: question.contextText ?? '',
+          contextAudioUrl: question.contextAudioUrl ?? undefined,
+          questionText: question.questionText ?? '',
+          questionAudioUrl: question.questionAudioUrl ?? undefined,
+        })
+      } else if (partNumber === 4) {
+        editForm.setFieldsValue({
+          imageUrl: question.imageUrls[0] ?? '',
+          imageContext: question.imageContext ?? '',
+          contextText: question.contextText ?? '',
+          contextAudioUrl: question.contextAudioUrl ?? undefined,
+          questionText: question.questionText ?? '',
+          questionAudioUrl: question.questionAudioUrl ?? undefined,
+        })
+      } else {
+        editForm.setFieldsValue({
+          questionText: question.questionText ?? '',
+          questionAudioUrl: question.questionAudioUrl ?? undefined,
+        })
+      }
+    }, 0)
+  }
+
+  function closeEditDrawer() {
+    editForm.resetFields()
+    setEditDrawerOpen(false)
+    setEditingQuestion(null)
+  }
+
+  const handleEditFormFinish = (values: unknown) => {
+    if (!editingQuestion) return
+    const id = editingQuestion.id
+    let payload: UpdateQuestionPayload = {}
+
+    if (partNumber === 1) {
+      const v = values as { contentText: string }
+      payload = { contentText: v.contentText }
+    } else if (partNumber === 2) {
+      const v = values as { imageUrl: string; imageContext?: string }
+      payload = { imageUrls: [v.imageUrl], imageContext: v.imageContext ?? null }
+    } else if (partNumber === 3) {
+      const v = values as {
+        contextText: string
+        contextAudioUrl?: string
+        questionText: string
+        questionAudioUrl?: string
+      }
+      payload = {
+        contextText: v.contextText,
+        contextAudioUrl: v.contextAudioUrl ?? null,
+        questionText: v.questionText,
+        questionAudioUrl: v.questionAudioUrl ?? null,
+      }
+    } else if (partNumber === 4) {
+      const v = values as {
+        imageUrl: string
+        imageContext?: string
+        contextText: string
+        contextAudioUrl?: string
+        questionText: string
+        questionAudioUrl?: string
+      }
+      payload = {
+        imageUrls: [v.imageUrl],
+        imageContext: v.imageContext ?? null,
+        contextText: v.contextText,
+        contextAudioUrl: v.contextAudioUrl ?? null,
+        questionText: v.questionText,
+        questionAudioUrl: v.questionAudioUrl ?? null,
+      }
+    } else {
+      const v = values as { questionText: string; questionAudioUrl?: string }
+      payload = {
+        questionText: v.questionText,
+        questionAudioUrl: v.questionAudioUrl ?? null,
+      }
+    }
+
+    updateQuestion.mutate({ id, payload }, { onSuccess: closeEditDrawer })
+  }
+
   const meta = PART_META[partNumber]
 
   if (!meta) {
@@ -293,7 +397,7 @@ export default function PartQuestionsPage() {
   }
 
   const questionNumbers = [...meta.questionNumbers]
-  const columns = getColumns(partNumber, deleteQuestion, deleting)
+  const columns = getColumns(partNumber, openEditDrawer, deleteQuestion, deleting)
 
   const responseTimeText =
     'responseTimeOverride' in meta
@@ -402,6 +506,33 @@ export default function PartQuestionsPage() {
         }
       >
         <PartFormContent partNumber={partNumber} form={drawerForm} onSubmit={handleFormFinish} />
+      </Drawer>
+
+      <Drawer
+        title="Chỉnh sửa câu hỏi"
+        placement="right"
+        width={DRAWER_WIDTHS.medium}
+        open={editDrawerOpen}
+        onClose={closeEditDrawer}
+        destroyOnHidden
+        closeIcon={null}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <Button size="large" onClick={closeEditDrawer}>
+              Hủy
+            </Button>
+            <Button
+              type="primary"
+              size="large"
+              loading={updateQuestion.isPending}
+              onClick={() => editForm.submit()}
+            >
+              Lưu thay đổi
+            </Button>
+          </div>
+        }
+      >
+        <EditQuestionForm partNumber={partNumber} form={editForm} onSubmit={handleEditFormFinish} />
       </Drawer>
     </Space>
   )
