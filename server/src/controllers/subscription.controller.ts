@@ -8,7 +8,7 @@ export class SubscriptionController {
    * GET /api/subscription/plans
    * Lấy danh sách các gói subscription
    */
-  static async getPlans(req: Request, res: Response, _next: NextFunction) {
+  static async getPlans(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const plans = await SubscriptionService.getPlans()
 
@@ -24,8 +24,7 @@ export class SubscriptionController {
 
       res.json({ plans: formattedPlans })
     } catch (error) {
-      console.error('Error fetching subscription plans:', error)
-      res.status(500).json({ error: 'Failed to fetch subscription plans' })
+      next(error)
     }
   }
 
@@ -33,17 +32,23 @@ export class SubscriptionController {
    * GET /api/subscription/current
    * Lấy subscription hiện tại của user
    */
-  static async getCurrentSubscription(req: Request, res: Response, _next: NextFunction) {
+  static async getCurrentSubscription(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
     try {
       const userId = (req as AuthRequest).userId
       if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' })
+        res.status(401).json({ error: 'Unauthorized' })
+        return
       }
 
       const subscription = await SubscriptionService.getCurrentSubscription(userId)
 
       if (!subscription) {
-        return res.json({ subscription: null })
+        res.json({ subscription: null })
+        return
       }
 
       const daysRemaining = await SubscriptionService.getDaysRemaining(userId)
@@ -60,8 +65,7 @@ export class SubscriptionController {
         },
       })
     } catch (error) {
-      console.error('Error fetching current subscription:', error)
-      res.status(500).json({ error: 'Failed to fetch subscription' })
+      next(error)
     }
   }
 
@@ -69,11 +73,12 @@ export class SubscriptionController {
    * GET /api/subscription/history
    * Lấy lịch sử subscriptions của user
    */
-  static async getHistory(req: Request, res: Response, _next: NextFunction) {
+  static async getHistory(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = (req as AuthRequest).userId
       if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' })
+        res.status(401).json({ error: 'Unauthorized' })
+        return
       }
 
       const subscriptions = await SubscriptionService.getUserSubscriptions(userId)
@@ -90,8 +95,7 @@ export class SubscriptionController {
 
       res.json({ subscriptions: formattedSubscriptions })
     } catch (error) {
-      console.error('Error fetching subscription history:', error)
-      res.status(500).json({ error: 'Failed to fetch subscription history' })
+      next(error)
     }
   }
 
@@ -99,23 +103,26 @@ export class SubscriptionController {
    * POST /api/subscription/create
    * Tạo subscription mới (sau khi thanh toán thành công)
    */
-  static async createSubscription(req: Request, res: Response, _next: NextFunction) {
+  static async createSubscription(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = (req as AuthRequest).userId
       if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' })
+        res.status(401).json({ error: 'Unauthorized' })
+        return
       }
 
       const { planId, paymentId } = req.body
 
       if (!planId) {
-        return res.status(400).json({ error: 'Plan ID is required' })
+        res.status(400).json({ error: 'Plan ID is required' })
+        return
       }
 
       // Convert planId to enum
       const planIdEnum = planId.toUpperCase() as SubscriptionPlanId
       if (!Object.values(SubscriptionPlanId).includes(planIdEnum)) {
-        return res.status(400).json({ error: 'Invalid plan ID' })
+        res.status(400).json({ error: 'Invalid plan ID' })
+        return
       }
 
       const subscription = await SubscriptionService.createSubscription(
@@ -135,8 +142,7 @@ export class SubscriptionController {
         },
       })
     } catch (error) {
-      console.error('Error creating subscription:', error)
-      res.status(500).json({ error: 'Failed to create subscription' })
+      next(error)
     }
   }
 
@@ -144,23 +150,26 @@ export class SubscriptionController {
    * POST /api/subscription/cancel
    * Hủy subscription (không gia hạn)
    */
-  static async cancelSubscription(req: Request, res: Response, _next: NextFunction) {
+  static async cancelSubscription(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = (req as AuthRequest).userId
       if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' })
+        res.status(401).json({ error: 'Unauthorized' })
+        return
       }
 
       const { subscriptionId } = req.body
 
       if (!subscriptionId) {
-        return res.status(400).json({ error: 'Subscription ID is required' })
+        res.status(400).json({ error: 'Subscription ID is required' })
+        return
       }
 
       // Verify ownership
       const subscription = await SubscriptionService.getCurrentSubscription(userId)
       if (!subscription || subscription.id !== subscriptionId) {
-        return res.status(403).json({ error: 'Forbidden' })
+        res.status(403).json({ error: 'Forbidden' })
+        return
       }
 
       const cancelledSubscription = await SubscriptionService.cancelSubscription(subscriptionId)
@@ -174,8 +183,7 @@ export class SubscriptionController {
         },
       })
     } catch (error) {
-      console.error('Error cancelling subscription:', error)
-      res.status(500).json({ error: 'Failed to cancel subscription' })
+      next(error)
     }
   }
 
@@ -183,14 +191,13 @@ export class SubscriptionController {
    * POST /api/subscription/check-expired (Internal/Cron)
    * Check và update expired subscriptions
    */
-  static async checkExpired(req: Request, res: Response, _next: NextFunction) {
+  static async checkExpired(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       // TODO: Add authentication for cron job (API key or internal only)
       const count = await SubscriptionService.checkExpiredSubscriptions()
       res.json({ message: `Processed ${count} expired subscriptions` })
     } catch (error) {
-      console.error('Error checking expired subscriptions:', error)
-      res.status(500).json({ error: 'Failed to check expired subscriptions' })
+      next(error)
     }
   }
 }

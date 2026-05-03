@@ -199,7 +199,7 @@ Scoring guidelines (adjusted for time constraints):
 
 Be encouraging and realistic. A short but accurate, grammatically correct response is BETTER than a long response with many errors. Only flag significant errors that impact communication or clarity.`
 
-class ResponseService {
+export class ResponseService {
   private async checkSubscriptionAccess(userId: string): Promise<void> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -537,5 +537,3 @@ class ResponseService {
     }))
   }
 }
-
-export const responseService = new ResponseService()

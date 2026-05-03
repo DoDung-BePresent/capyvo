@@ -141,4 +141,5 @@ export class MaintenanceService {
   }
 }
 
+// Singleton instance for stateful service (SSE clients, timers)
 export const maintenanceService = new MaintenanceService()

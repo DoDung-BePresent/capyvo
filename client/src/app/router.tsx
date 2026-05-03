@@ -1,8 +1,16 @@
 import { createBrowserRouter } from 'react-router-dom'
+
+/**
+ * Components
+ */
 import { GuestRoute, ProtectedRoute, RoleRoute } from './guards'
+import { NotFoundPage, ForbiddenPage } from '@/shared/components'
+
+/**
+ * Layouts
+ */
 import AdminLayout from '@/features/admin/layouts/AdminLayout'
 import UserLayout from '@/features/exam/layouts/UserLayout'
-import { NotFoundPage, ForbiddenPage } from '@/shared/components'
 
 const lazy = (importFn: () => Promise<{ default: React.ComponentType }>) => async () => ({
   Component: (await importFn()).default,
@@ -37,18 +45,10 @@ const router = createBrowserRouter([
                 path: '/practice/part/:partNumber',
                 lazy: lazy(() => import('@/features/exam/pages/PartPracticePage')),
               },
-              {
-                path: '/practice/part/:partNumber/set/:examSetId',
-                lazy: lazy(() => import('@/features/exam/pages/PartSetDetailPage')),
-              },
               { path: '/exam', lazy: lazy(() => import('@/features/exam/pages/ExamListPage')) },
               {
                 path: '/exam/:examSetId',
                 lazy: lazy(() => import('@/features/exam/pages/ExamSetDetailPage')),
-              },
-              {
-                path: '/result/:sessionId',
-                lazy: lazy(() => import('@/features/exam/pages/ResultPage')),
               },
               {
                 path: '/payment',
@@ -65,14 +65,6 @@ const router = createBrowserRouter([
             ],
           },
           // Fullscreen exam pages — no layout
-          {
-            path: '/exam/:examSetId/take',
-            lazy: lazy(() => import('@/features/exam/pages/ExamPage')),
-          },
-          {
-            path: '/practice/part/:partNumber/set/:examSetId/exam',
-            lazy: lazy(() => import('@/features/exam/pages/PartExamPage')),
-          },
           {
             path: '/practice/part/:partNumber/question/:questionId',
             lazy: lazy(() => import('@/features/exam/pages/QuestionPracticePage')),

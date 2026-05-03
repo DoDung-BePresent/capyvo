@@ -1,7 +1,7 @@
 import prisma from '@/lib/prisma'
 import { NotFoundError } from '@/errors/app-error'
 
-class SessionService {
+export class SessionService {
   async createSession(userId: string, examSetId: string, partNumber?: number | null) {
     return prisma.practiceSession.create({
       data: { userId, examSetId, partNumber: partNumber ?? null, status: 'IN_PROGRESS' },
@@ -22,7 +22,6 @@ class SessionService {
       where: {
         userId,
         examSetId,
-        // if partNumber provided, filter to that part; otherwise full-exam sessions (null)
         partNumber: partNumber != null ? partNumber : null,
       },
       include: {
@@ -72,5 +71,3 @@ class SessionService {
     return sessions.map((s) => s.examSetId)
   }
 }
-
-export const sessionService = new SessionService()
