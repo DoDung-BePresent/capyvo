@@ -47,10 +47,6 @@ const router = createBrowserRouter([
               },
               { path: '/exam', lazy: lazy(() => import('@/features/exam/pages/ExamListPage')) },
               {
-                path: '/exam/:examSetId',
-                lazy: lazy(() => import('@/features/exam/pages/ExamSetDetailPage')),
-              },
-              {
                 path: '/payment',
                 lazy: lazy(() => import('@/features/payment/pages/PaymentPage')),
               },
@@ -68,6 +64,10 @@ const router = createBrowserRouter([
           {
             path: '/practice/part/:partNumber/question/:questionId',
             lazy: lazy(() => import('@/features/exam/pages/QuestionPracticePage')),
+          },
+          {
+            path: '/exam/:examSetId/test',
+            lazy: lazy(() => import('@/features/exam/pages/FullTestPage')),
           },
         ],
       },

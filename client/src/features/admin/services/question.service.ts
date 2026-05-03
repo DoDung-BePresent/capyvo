@@ -9,6 +9,7 @@ import type {
   Part4FormValues,
   Part5FormValues,
   UpdateQuestionPayload,
+  ExamSetWithQuestions,
 } from '../types'
 
 export const questionService = {
@@ -16,6 +17,16 @@ export const questionService = {
     const { data } = await axiosInstance.get<ApiResponse<Question[]>>('/questions', {
       params: { partNumber },
     })
+    return data.data
+  },
+
+  /**
+   * Lấy exam set by ID với tất cả questions (cho full test)
+   */
+  getExamSetById: async (examSetId: string): Promise<ExamSetWithQuestions> => {
+    const { data } = await axiosInstance.get<ApiResponse<ExamSetWithQuestions>>(
+      `/exam-sets/${examSetId}/take`,
+    )
     return data.data
   },
 

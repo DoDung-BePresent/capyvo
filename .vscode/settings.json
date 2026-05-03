@@ -1,3 +1,4 @@
 {
-  "tailwindCSS.experimental.classRegex": ["styled\\([^,]+,\\s*[\"'`]([^\"'`]*)[\"'`]"]
+  "tailwindCSS.experimental.classRegex": ["styled\\([^,]+,\\s*[\"'`]([^\"'`]*)[\"'`]"],
+  "typescript.autoClosingTags": false
 }

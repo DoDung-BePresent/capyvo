@@ -60,7 +60,7 @@ export default function ExamListPage() {
                 hoverable
                 style={{ height: '100%' }}
                 styles={{ body: { padding: '20px 24px' } }}
-                onClick={() => navigate(`/exam/${set.id}`)}
+                onClick={() => navigate(`/exam/${set.id}/test`)}
               >
                 <Flex vertical gap={10}>
                   <Flex align="center" justify="space-between">

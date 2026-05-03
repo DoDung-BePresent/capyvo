@@ -1,5 +1,6 @@
 import axiosInstance from '@/lib/axios'
 import type { ApiResponse } from '@/shared/types/api'
+import type { AnalysisResult } from './session.service'
 
 export const responseService = {
   checkSubscription: async () => {
@@ -22,6 +23,22 @@ export const responseService = {
     const { data } = await axiosInstance.post<
       ApiResponse<{ audioUrl: string; responseId: string }>
     >('/responses/audio', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    return data.data
+  },
+
+  transcribeAndAnalyze: async (
+    responseId: string,
+    partNumber: number,
+  ): Promise<{
+    transcript: string
+    analysis: AnalysisResult
+  }> => {
+    const { data } = await axiosInstance.post<
+      ApiResponse<{
+        transcript: string
+        analysis: AnalysisResult
+      }>
+    >(`/responses/${responseId}/transcribe-analyze`, { partNumber })
     return data.data
   },
 
