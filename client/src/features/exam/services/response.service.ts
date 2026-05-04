@@ -42,6 +42,23 @@ export const responseService = {
     return data.data
   },
 
+  getOverallAssessment: async (
+    sessionId: string,
+  ): Promise<{
+    estimatedScore: number
+    assessment: string
+    partScores: Record<number, number>
+  }> => {
+    const { data } = await axiosInstance.get<
+      ApiResponse<{
+        estimatedScore: number
+        assessment: string
+        partScores: Record<number, number>
+      }>
+    >(`/responses/session/${sessionId}/overall-assessment`)
+    return data.data
+  },
+
   getQuestionHistory: async (questionId: string) => {
     const { data } = await axiosInstance.get<
       ApiResponse<

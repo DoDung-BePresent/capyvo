@@ -25,8 +25,14 @@ export class SessionController {
   async myBySet(req: Request, res: Response, _next: NextFunction): Promise<void> {
     const userId = (req as AuthRequest).userId
     const { examSetId, partNumber } = req.query
-    if (!examSetId || typeof examSetId !== 'string')
-      throw new ValidationError('examSetId query param is required')
+
+    // If no examSetId provided, return all sessions
+    if (!examSetId || typeof examSetId !== 'string') {
+      const sessions = await this.service.getAllUserSessions(userId)
+      res.json({ success: true, data: sessions })
+      return
+    }
+
     const part = partNumber != null ? Number(partNumber) : null
     const sessions = await this.service.getUserSessionsBySet(userId, examSetId, part)
     res.json({ success: true, data: sessions })

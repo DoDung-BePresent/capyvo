@@ -67,4 +67,11 @@ export class ResponseController {
     const history = await this.service.getQuestionHistory(questionId, userId)
     res.json({ success: true, data: history })
   }
+
+  async getOverallAssessment(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const sessionId = req.params['sessionId'] as string
+    const userId = (req as AuthRequest).userId
+    const result = await this.service.generateOverallAssessment(sessionId, userId)
+    res.json({ success: true, data: result })
+  }
 }

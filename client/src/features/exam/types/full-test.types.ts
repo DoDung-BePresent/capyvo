@@ -13,6 +13,11 @@ export interface TestState {
   responses: Map<string, string> // questionId -> responseId
   startTime: Date | null
   endTime: Date | null
+  overallAssessment?: {
+    estimatedScore: number
+    assessment: string
+    partScores: Record<number, number>
+  }
 }
 
 export interface PartInstruction {

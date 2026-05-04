@@ -25,5 +25,10 @@ router.get(
   authenticate,
   asyncHandler(ctrl.getQuestionHistory.bind(ctrl)),
 )
+router.get(
+  '/session/:sessionId/overall-assessment',
+  authenticate,
+  asyncHandler(ctrl.getOverallAssessment.bind(ctrl)),
+)
 
 export default router

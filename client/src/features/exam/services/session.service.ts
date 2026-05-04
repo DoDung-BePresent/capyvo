@@ -78,6 +78,11 @@ export const sessionService = {
     await axiosInstance.patch(`/sessions/${id}/complete`)
   },
 
+  async getMySessions(): Promise<SessionSummary[]> {
+    const { data } = await axiosInstance.get<ApiResponse<SessionSummary[]>>('/sessions/my')
+    return data.data
+  },
+
   async getMySessionsBySet(
     examSetId: string,
     partNumber?: number | null,

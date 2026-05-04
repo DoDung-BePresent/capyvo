@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Card, Typography, Tag, Flex, Space, Progress, Tooltip, message } from 'antd'
-import { VolumeUp } from '@mui/icons-material'
+import { Card, Typography, Tag, Flex, Space, Progress, message } from 'antd'
 import { styled } from '@/shared/utils/cn'
 import { StyledButton } from '@/shared/components'
 import { MicWaveform } from './MicWaveform'
@@ -9,20 +8,18 @@ import { COLORS } from '@/shared/constants/user-color'
 import beginPreparingSound from '@/assets/sounds/instructions/begin-preparing-now.mp3'
 import beginSpeakingSound from '@/assets/sounds/instructions/begin-speaking-now.mp3'
 
-const { Title, Text, Paragraph } = Typography
+const { Text, Paragraph } = Typography
 
 const Container = styled('div', 'h-full flex gap-4 flex-col')
 const QuestionCard = styled(Card, 'flex-1 rounded-lg! mb-4 overflow-y-auto')
 const ControlPanel = styled(Card, 'mt-auto rounded-lg!')
-const AudioIcon = styled(
-  'button',
-  'inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors cursor-pointer border-0',
-)
 
 interface FullTestQuestionViewProps {
   question: Question
   onRecordingComplete: (audioBlob: Blob) => Promise<void>
   onCancel: () => void
+  skipContextAudio?: boolean // For Part 3 & 4: skip context audio if already played
+  onContextPlayed?: () => void // Callback when context audio is played
   isLastQuestion?: boolean
 }
 
@@ -32,6 +29,8 @@ export function FullTestQuestionView({
   question,
   onRecordingComplete,
   onCancel,
+  skipContextAudio = false,
+  onContextPlayed,
 }: FullTestQuestionViewProps) {
   const [recordingState, setRecordingState] = useState<RecordingState>('preparing')
   const [prepTimeLeft, setPrepTimeLeft] = useState(question.prepTimeSeconds)
@@ -39,6 +38,10 @@ export function FullTestQuestionView({
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [recordingStream, setRecordingStream] = useState<MediaStream | null>(null)
   const [canStartTimer, setCanStartTimer] = useState(false) // Wait for audio to finish
+  const [showContext, setShowContext] = useState(false) // For Part 3: show context first
+  const [showQuestion, setShowQuestion] = useState(false) // For Part 3: show question after context
+  const [part4ReadingTime, setPart4ReadingTime] = useState(45) // For Part 4: 45s to read context
+  const [isInPart4Reading, setIsInPart4Reading] = useState(false) // For Part 4: reading phase
 
   const contextAudioRef = useRef<HTMLAudioElement>(null)
   const questionAudioRef = useRef<HTMLAudioElement>(null)
@@ -46,36 +49,123 @@ export function FullTestQuestionView({
   const beginSpeakingRef = useRef<HTMLAudioElement>(null)
   const prepTimerRef = useRef<number | null>(null)
   const recordTimerRef = useRef<number | null>(null)
+  const part4ReadingTimerRef = useRef<number | null>(null)
 
   // Auto-play audio sequence when question loads
   useEffect(() => {
     const playAudioSequence = async () => {
       try {
-        // For Part 3: Play context audio first
-        if (question.partNumber === 3 && question.contextAudioUrl && contextAudioRef.current) {
-          await contextAudioRef.current.play()
-          await new Promise<void>((resolve) => {
-            if (contextAudioRef.current) {
-              contextAudioRef.current.onended = () => resolve()
-            }
-          })
+        // Part 3: Context audio only plays once for all 3 questions (5, 6, 7)
+        if (question.partNumber === 3) {
+          // Play context audio only if not played yet
+          if (!skipContextAudio && question.contextAudioUrl && contextAudioRef.current) {
+            setShowContext(true)
+            await contextAudioRef.current.play()
+            await new Promise<void>((resolve) => {
+              if (contextAudioRef.current) {
+                contextAudioRef.current.onended = () => resolve()
+              }
+            })
+            onContextPlayed?.()
+          } else if (skipContextAudio) {
+            // If context already played, just show it
+            setShowContext(true)
+          }
+
+          // Play question audio
+          if (question.questionAudioUrl && questionAudioRef.current) {
+            setShowQuestion(true)
+            await questionAudioRef.current.play()
+            await new Promise<void>((resolve) => {
+              if (questionAudioRef.current) {
+                questionAudioRef.current.onended = () => resolve()
+              }
+            })
+          }
+
+          // Play "begin preparing now" sound
+          if (beginPreparingRef.current) {
+            await beginPreparingRef.current.play()
+            await new Promise<void>((resolve) => {
+              if (beginPreparingRef.current) {
+                beginPreparingRef.current.onended = () => resolve()
+              }
+            })
+          }
+
+          setCanStartTimer(true)
+          return
         }
 
-        // For Part 3 & 4: Play question audio before preparation
-        if (
-          (question.partNumber === 3 || question.partNumber === 4) &&
-          question.questionAudioUrl &&
-          questionAudioRef.current
-        ) {
-          await questionAudioRef.current.play()
-          await new Promise<void>((resolve) => {
-            if (questionAudioRef.current) {
-              questionAudioRef.current.onended = () => resolve()
+        // Part 4: Show image + context text for 45s → play context audio once → play question audio → "begin preparing"
+        if (question.partNumber === 4) {
+          // First question in Part 4: Give 45s to read context
+          if (!skipContextAudio) {
+            setIsInPart4Reading(true)
+            // Start 45s countdown timer
+            part4ReadingTimerRef.current = setInterval(() => {
+              setPart4ReadingTime((prev) => prev - 1)
+            }, 1000)
+
+            // Wait 45 seconds for reading
+            await new Promise<void>((resolve) => {
+              setTimeout(() => {
+                if (part4ReadingTimerRef.current) {
+                  clearInterval(part4ReadingTimerRef.current)
+                }
+                resolve()
+              }, 45000)
+            })
+            setIsInPart4Reading(false)
+            setPart4ReadingTime(45) // Reset for next time
+
+            // Play context audio once
+            if (question.contextAudioUrl && contextAudioRef.current) {
+              await contextAudioRef.current.play()
+              await new Promise<void>((resolve) => {
+                if (contextAudioRef.current) {
+                  contextAudioRef.current.onended = () => resolve()
+                }
+              })
+              onContextPlayed?.()
             }
-          })
+          }
+
+          // Play question audio
+          if (question.questionAudioUrl && questionAudioRef.current) {
+            await questionAudioRef.current.play()
+            await new Promise<void>((resolve) => {
+              if (questionAudioRef.current) {
+                questionAudioRef.current.onended = () => resolve()
+              }
+            })
+
+            // Question 10: Play question audio twice
+            if (question.questionNumber === 10) {
+              await questionAudioRef.current.play()
+              await new Promise<void>((resolve) => {
+                if (questionAudioRef.current) {
+                  questionAudioRef.current.onended = () => resolve()
+                }
+              })
+            }
+          }
+
+          // Play "begin preparing now" sound AFTER question audio
+          if (beginPreparingRef.current) {
+            await beginPreparingRef.current.play()
+            await new Promise<void>((resolve) => {
+              if (beginPreparingRef.current) {
+                beginPreparingRef.current.onended = () => resolve()
+              }
+            })
+          }
+
+          setCanStartTimer(true)
+          return
         }
 
-        // For Part 5: Play question audio before preparation
+        // Part 5: Play question audio before preparation
         if (question.partNumber === 5 && question.questionAudioUrl && questionAudioRef.current) {
           await questionAudioRef.current.play()
           await new Promise<void>((resolve) => {
@@ -85,7 +175,7 @@ export function FullTestQuestionView({
           })
         }
 
-        // Play "begin preparing now" sound
+        // For Part 1, 2, 5: Play "begin preparing now" sound
         if (beginPreparingRef.current) {
           await beginPreparingRef.current.play()
           await new Promise<void>((resolve) => {
@@ -105,7 +195,15 @@ export function FullTestQuestionView({
     }
 
     playAudioSequence()
-  }, [question.id, question.partNumber, question.contextAudioUrl, question.questionAudioUrl])
+  }, [
+    question.id,
+    question.partNumber,
+    question.questionNumber,
+    question.contextAudioUrl,
+    question.questionAudioUrl,
+    skipContextAudio,
+    onContextPlayed,
+  ])
 
   // Cleanup function
   const stopRecording = useCallback(() => {
@@ -220,13 +318,6 @@ export function FullTestQuestionView({
     }
   }, [recordingState, canStartTimer, stopRecording])
 
-  const playAudio = (audioRef: React.RefObject<HTMLAudioElement | null>) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0
-      audioRef.current.play().catch((error) => console.log('Play failed:', error))
-    }
-  }
-
   const prepProgress = ((question.prepTimeSeconds - prepTimeLeft) / question.prepTimeSeconds) * 100
   const recordProgress =
     ((question.responseTimeSeconds - recordTimeLeft) / question.responseTimeSeconds) * 100
@@ -244,7 +335,14 @@ export function FullTestQuestionView({
       <audio ref={beginSpeakingRef} src={beginSpeakingSound} preload="auto" />
 
       <QuestionCard>
-        <Flex vertical gap={16}>
+        <Flex
+          vertical
+          gap={16}
+          style={{
+            maxWidth: 700,
+            marginInline: 'auto',
+          }}
+        >
           {/* Header */}
           <Flex align="center" justify="space-between">
             <Space>
@@ -258,79 +356,50 @@ export function FullTestQuestionView({
             </Space>
           </Flex>
 
-          {/* Images */}
+          {/* Images - Always show for all parts */}
           {question.imageUrls && question.imageUrls.length > 0 && (
-            <div>
-              <Title level={5} style={{ marginBottom: 12 }}>
-                Hình ảnh
-              </Title>
-              <Flex gap={12} justify="center" wrap="wrap">
-                {question.imageUrls.map((url, index) => (
-                  <img
-                    key={index}
-                    src={url}
-                    alt={`Question ${question.questionNumber}`}
-                    style={{
-                      maxWidth: '100%',
-                      maxHeight: 400,
-                      borderRadius: 8,
-                      objectFit: 'contain',
-                    }}
-                  />
-                ))}
-              </Flex>
-            </div>
+            <Flex gap={12} justify="center" wrap="wrap">
+              {question.imageUrls.map((url, index) => (
+                <img
+                  key={index}
+                  src={url}
+                  alt={`Question ${question.questionNumber}`}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: 400,
+                    borderRadius: 8,
+                    objectFit: 'contain',
+                  }}
+                />
+              ))}
+            </Flex>
           )}
 
-          {/* Context Text (Part 3, 4, 5) */}
-          {question.contextText && (
-            <div>
-              <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
-                <Title level={5} style={{ margin: 0 }}>
-                  Ngữ cảnh
-                </Title>
-                {question.contextAudioUrl && (
-                  <Tooltip title="Phát audio ngữ cảnh">
-                    <AudioIcon onClick={() => playAudio(contextAudioRef)}>
-                      <VolumeUp style={{ fontSize: 18, color: '#1890ff' }} />
-                    </AudioIcon>
-                  </Tooltip>
-                )}
-              </Flex>
+          {/* Context Text - For Part 3 when showContext, and Part 4 during reading phase */}
+          {((question.partNumber === 3 && showContext) ||
+            (question.partNumber === 4 && isInPart4Reading)) &&
+            question.contextText && (
               <Paragraph
                 style={{
-                  fontSize: 15,
+                  fontSize: 16,
                   lineHeight: 1.8,
-                  backgroundColor: '#f5f5f5',
-                  padding: 16,
-                  borderRadius: 8,
+                  textAlign: 'justify',
                 }}
               >
                 {question.contextText}
               </Paragraph>
-            </div>
-          )}
+            )}
 
-          {/* Question Text */}
-          {(question.contentText || question.questionText) && (
-            <div>
-              <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
-                <Title level={5} style={{ margin: 0 }}>
-                  Câu hỏi
-                </Title>
-                {question.questionAudioUrl && (
-                  <Tooltip title="Phát audio câu hỏi">
-                    <AudioIcon onClick={() => playAudio(questionAudioRef)}>
-                      <VolumeUp style={{ fontSize: 18, color: '#1890ff' }} />
-                    </AudioIcon>
-                  </Tooltip>
-                )}
-              </Flex>
-              <Paragraph style={{ fontSize: 16, lineHeight: 1.8 }}>
+          {/* Question Text - Show for Part 1, 2, 5, and Part 3 when showQuestion is true */}
+          {(question.partNumber === 1 ||
+            question.partNumber === 2 ||
+            question.partNumber === 5 ||
+            (question.partNumber === 3 && showQuestion)) &&
+            (question.contentText || question.questionText) && (
+              <Paragraph style={{ fontSize: 16, lineHeight: 1.8, textAlign: 'justify' }}>
                 {question.contentText || question.questionText}
               </Paragraph>
-            </div>
-          )}
+            )}
         </Flex>
       </QuestionCard>
 
@@ -339,7 +408,23 @@ export function FullTestQuestionView({
         <Flex align="center" justify="space-between" gap={16}>
           {/* Left: Circular countdown */}
           <div style={{ width: 80, flexShrink: 0 }}>
-            {recordingState === 'preparing' && (
+            {/* Part 4 Reading Timer */}
+            {isInPart4Reading && (
+              <Flex vertical align="center" gap={4}>
+                <Progress
+                  type="circle"
+                  percent={((45 - part4ReadingTime) / 45) * 100}
+                  format={() => `${part4ReadingTime}s`}
+                  strokeColor="#52c41a"
+                  strokeWidth={10}
+                  size={80}
+                />
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Đọc context
+                </Text>
+              </Flex>
+            )}
+            {!isInPart4Reading && recordingState === 'preparing' && (
               <Flex vertical align="center" gap={4}>
                 <Progress
                   type="circle"
@@ -378,7 +463,12 @@ export function FullTestQuestionView({
                 <MicWaveform color={COLORS.primary} stream={recordingStream} height={80} />
               </Flex>
             )}
-            {recordingState === 'preparing' && (
+            {isInPart4Reading && (
+              <Flex align="center" justify="center" style={{ height: 80 }}>
+                <Text type="secondary">Đang đọc context...</Text>
+              </Flex>
+            )}
+            {!isInPart4Reading && recordingState === 'preparing' && (
               <Flex align="center" justify="center" style={{ height: 80 }}>
                 <Text type="secondary">Đang chuẩn bị...</Text>
               </Flex>

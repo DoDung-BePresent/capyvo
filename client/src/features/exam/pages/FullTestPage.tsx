@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Flex, message, Spin } from 'antd'
+import { Flex, message, Spin, Card, Typography, Tag, Progress } from 'antd'
 import { styled } from '@/shared/utils/cn'
 
 import { questionService } from '@/features/admin/services/question.service'
@@ -14,20 +14,29 @@ import { TestIntroView } from '../components/TestIntroView'
 import { PartInstructionView } from '../components/PartInstructionView'
 import { FullTestQuestionView } from '../components/FullTestQuestionView'
 import { SavingView } from '../components/SavingView'
+import { FullTestHistoryPanel } from '../components/FullTestHistoryPanel'
 import { ResultView } from '../components/ResultView'
-import { PracticeHistoryPanel } from '../components/PracticeHistoryPanel'
-import type { Question, PartNumber } from '@/features/admin/types'
+import type { Question } from '@/features/admin/types'
 import type { TestState } from '../types/full-test.types'
 import { PART_INSTRUCTIONS } from '../types/full-test.types'
+
+const { Title, Text, Paragraph } = Typography
 
 const PageContainer = styled('div', 'flex h-screen')
 const LeftPanel = styled('div', 'flex-1 p-6 flex flex-col overflow-hidden')
 const LeftContent = styled('div', 'flex-1 overflow-y-auto')
 const RightPanel = styled('div', 'w-96 border-l border-gray-200 p-6 bg-gray-50 overflow-y-auto')
 
+const PART_NAMES: Record<number, string> = {
+  1: 'Part 1: Read a text aloud',
+  2: 'Part 2: Describe a picture',
+  3: 'Part 3: Respond to questions',
+  4: 'Part 4: Respond using information',
+  5: 'Part 5: Express an opinion',
+}
+
 export default function FullTestPage() {
   const { examSetId } = useParams<{ examSetId: string }>()
-  const navigate = useNavigate()
 
   const [testState, setTestState] = useState<TestState>({
     phase: 'intro',
@@ -44,6 +53,25 @@ export default function FullTestPage() {
   const [allResults, setAllResults] = useState<
     Array<{ transcript: string; analysis: AnalysisResult; questionId: string }>
   >([])
+  const [contextPlayedForPart, setContextPlayedForPart] = useState<Record<number, boolean>>({})
+  const [selectedHistorySessionId, setSelectedHistorySessionId] = useState<string | null>(null)
+
+  // Load selected session detail when clicking history
+  const { data: selectedSession, isLoading: isLoadingSession } = useQuery({
+    queryKey: queryKeys.practiceSessions.detail(selectedHistorySessionId ?? ''),
+    queryFn: () => sessionService.getSessionDetail(selectedHistorySessionId!),
+    enabled: !!selectedHistorySessionId,
+  })
+
+  const { data: selectedAssessment, isLoading: isLoadingAssessment } = useQuery({
+    queryKey: ['overallAssessment', selectedHistorySessionId],
+    queryFn: () => responseService.getOverallAssessment(selectedHistorySessionId!),
+    enabled: !!selectedHistorySessionId,
+  })
+
+  const handleSelectHistorySession = (historySessionId: string) => {
+    setSelectedHistorySessionId(historySessionId)
+  }
 
   // Check subscription on mount
   useEffect(() => {
@@ -166,12 +194,34 @@ export default function FullTestPage() {
           currentQuestionIndex: 0,
         }))
       } else {
-        // Test completed
-        setTestState((prev) => ({
-          ...prev,
-          phase: 'completed',
-          endTime: new Date(),
-        }))
+        // Test completed - complete session and get overall assessment
+        if (sessionId) {
+          sessionService
+            .completeSession(sessionId)
+            .then(() => responseService.getOverallAssessment(sessionId))
+            .then((assessment) => {
+              setTestState((prev) => ({
+                ...prev,
+                phase: 'completed',
+                endTime: new Date(),
+                overallAssessment: assessment,
+              }))
+            })
+            .catch((error) => {
+              console.error('Failed to complete session:', error)
+              setTestState((prev) => ({
+                ...prev,
+                phase: 'completed',
+                endTime: new Date(),
+              }))
+            })
+        } else {
+          setTestState((prev) => ({
+            ...prev,
+            phase: 'completed',
+            endTime: new Date(),
+          }))
+        }
       }
     } else {
       // Move to next question in same part
@@ -198,7 +248,21 @@ export default function FullTestPage() {
 
   const handleCancelTest = () => {
     // Navigate back to exam list without saving
-    navigate('/exam')
+    window.location.href = '/exam'
+  }
+
+  const getScoreColor = (score: number) => {
+    if (score >= 160) return '#52c41a'
+    if (score >= 120) return '#1890ff'
+    if (score >= 80) return '#faad14'
+    return '#ff4d4f'
+  }
+
+  const getScoreLevel = (score: number) => {
+    if (score >= 160) return 'Excellent'
+    if (score >= 120) return 'Good'
+    if (score >= 80) return 'Fair'
+    return 'Limited'
   }
 
   const showHistoryPanel = testState.phase === 'intro' || testState.phase === 'completed'
@@ -229,7 +293,104 @@ export default function FullTestPage() {
             breadcrumbs={[{ label: 'Thi thử', href: '/exam' }, { label: examSet.title }]}
           />
           <LeftContent>
-            {testState.phase === 'intro' && (
+            {/* Show loading when fetching history */}
+            {selectedHistorySessionId && (isLoadingSession || isLoadingAssessment) && (
+              <Flex justify="center" align="center" style={{ minHeight: '60vh' }}>
+                <Spin size="large" />
+              </Flex>
+            )}
+
+            {/* Show history result if selected */}
+            {selectedHistorySessionId && selectedAssessment && selectedSession && (
+              <Flex vertical gap={24}>
+                {/* Top Section: Horizontal layout */}
+                <Card>
+                  <Flex gap={24} align="stretch">
+                    {/* Left: Score Circle */}
+                    <Flex vertical align="center" gap={12} style={{ marginLeft: 5 }}>
+                      <div
+                        style={{
+                          width: 200,
+                          height: 200,
+                          borderRadius: '50%',
+                          backgroundColor: getScoreColor(selectedAssessment.estimatedScore),
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexDirection: 'column',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 48,
+                            fontWeight: 700,
+                            color: '#fff',
+                            lineHeight: 1,
+                          }}
+                        >
+                          {selectedAssessment.estimatedScore}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 16,
+                            color: '#fff',
+                            marginTop: 8,
+                            opacity: 0.9,
+                          }}
+                        >
+                          / 200 điểm
+                        </div>
+                      </div>
+                      <Tag
+                        color={getScoreColor(selectedAssessment.estimatedScore)}
+                        style={{ fontSize: 14, padding: '4px 16px' }}
+                      >
+                        {getScoreLevel(selectedAssessment.estimatedScore)}
+                      </Tag>
+                    </Flex>
+
+                    {/* Right: Assessment */}
+                    <div>
+                      <Title level={5} style={{ marginBottom: 16 }}>
+                        Nhận xét chung
+                      </Title>
+                      <Paragraph style={{ fontSize: 14, lineHeight: 1.8, color: '#595959' }}>
+                        {selectedAssessment.assessment}
+                      </Paragraph>
+                    </div>
+                  </Flex>
+                </Card>
+
+                {/* Bottom Section: Detailed Results */}
+                {selectedSession.userResponses.map((response) => {
+                  const question = examSet?.questions.find((q) => q.id === response.questionId)
+                  if (!question) return null
+
+                  return (
+                    <div key={response.id}>
+                      <Title level={5} style={{ marginBottom: 12 }}>
+                        {PART_NAMES[question.partNumber]} - Câu {question.questionNumber}
+                      </Title>
+                      <ResultView
+                        partNumber={question.partNumber as 1 | 2 | 3 | 4 | 5}
+                        transcript={response.transcript || undefined}
+                        analysis={
+                          (response.pronunciationScore as
+                            | import('../services/session.service').AnalysisResult
+                            | null) || undefined
+                        }
+                        referenceText={question.contentText || undefined}
+                        audioUrl={response.audioUrl || undefined}
+                        isLoading={false}
+                      />
+                    </div>
+                  )
+                })}
+              </Flex>
+            )}
+
+            {!selectedHistorySessionId && testState.phase === 'intro' && (
               <TestIntroView
                 onStart={handleStartTest}
                 hasAccess={hasAccess}
@@ -251,31 +412,157 @@ export default function FullTestPage() {
                   question={currentQuestion}
                   onRecordingComplete={handleRecordingComplete}
                   onCancel={handleCancelTest}
+                  skipContextAudio={contextPlayedForPart[testState.currentPartNumber] || false}
+                  onContextPlayed={() => {
+                    setContextPlayedForPart((prev) => ({
+                      ...prev,
+                      [testState.currentPartNumber]: true,
+                    }))
+                  }}
                 />
               )}
 
             {testState.phase === 'saving' && <SavingView />}
 
-            {testState.phase === 'completed' && (
-              <div>
-                <h2>Hoàn thành bài thi!</h2>
-                {/* TODO: Show all results */}
-                {allResults.map((result, index) => (
-                  <ResultView
-                    key={index}
-                    partNumber={1 as PartNumber}
-                    transcript={result.transcript}
-                    analysis={result.analysis}
-                  />
-                ))}
-              </div>
-            )}
+            {testState.phase === 'completed' &&
+              !selectedHistorySessionId &&
+              testState.overallAssessment && (
+                <Flex vertical gap={24}>
+                  {/* Top Section: Horizontal layout */}
+                  <Card>
+                    <Flex gap={24} align="stretch">
+                      {/* Left: Score Circle */}
+                      <Flex vertical align="center" gap={12} style={{ marginLeft: 5 }}>
+                        <div
+                          style={{
+                            width: 200,
+                            height: 200,
+                            borderRadius: '50%',
+                            backgroundColor: getScoreColor(
+                              testState.overallAssessment.estimatedScore,
+                            ),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexDirection: 'column',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: 48,
+                              fontWeight: 700,
+                              color: '#fff',
+                              lineHeight: 1,
+                            }}
+                          >
+                            {testState.overallAssessment.estimatedScore}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 16,
+                              color: '#fff',
+                              marginTop: 8,
+                              opacity: 0.9,
+                            }}
+                          >
+                            / 200 điểm
+                          </div>
+                        </div>
+                        <Tag
+                          color={getScoreColor(testState.overallAssessment.estimatedScore)}
+                          style={{ fontSize: 14, padding: '4px 16px' }}
+                        >
+                          {getScoreLevel(testState.overallAssessment.estimatedScore)}
+                        </Tag>
+                      </Flex>
+
+                      {/* Middle: Part Scores */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Title level={5} style={{ marginBottom: 16 }}>
+                          Điểm theo từng phần
+                        </Title>
+                        <Flex vertical gap={16}>
+                          {Object.entries(testState.overallAssessment.partScores).map(
+                            ([part, score]) => (
+                              <div key={part}>
+                                <Flex
+                                  justify="space-between"
+                                  align="center"
+                                  style={{ marginBottom: 8 }}
+                                >
+                                  <Text strong>{PART_NAMES[Number(part)]}</Text>
+                                  <Text
+                                    strong
+                                    style={{ color: getScoreColor((score as number) * 2) }}
+                                  >
+                                    {(score as number).toFixed(1)}/100
+                                  </Text>
+                                </Flex>
+                                <Progress
+                                  percent={score as number}
+                                  strokeColor={getScoreColor((score as number) * 2)}
+                                  showInfo={false}
+                                />
+                              </div>
+                            ),
+                          )}
+                        </Flex>
+                      </div>
+
+                      {/* Right: Assessment */}
+                      <div style={{ width: 300, flexShrink: 0 }}>
+                        <Title level={5} style={{ marginBottom: 16 }}>
+                          Nhận xét chung
+                        </Title>
+                        <Paragraph style={{ fontSize: 14, lineHeight: 1.8, color: '#595959' }}>
+                          {testState.overallAssessment.assessment}
+                        </Paragraph>
+                      </div>
+                    </Flex>
+                  </Card>
+
+                  {/* Bottom Section: Detailed Results */}
+                  {allResults.map((result) => {
+                    const question = examSet?.questions.find((q) => q.id === result.questionId)
+                    if (!question) return null
+
+                    return (
+                      <div key={result.questionId}>
+                        <Title level={5} style={{ marginBottom: 12 }}>
+                          {PART_NAMES[question.partNumber]} - Câu {question.questionNumber}
+                        </Title>
+                        <ResultView
+                          partNumber={question.partNumber as 1 | 2 | 3 | 4 | 5}
+                          transcript={result.transcript}
+                          analysis={result.analysis}
+                          referenceText={question.contentText || undefined}
+                          audioUrl={undefined}
+                          isLoading={false}
+                        />
+                      </div>
+                    )
+                  })}
+                </Flex>
+              )}
+
+            {testState.phase === 'completed' &&
+              !selectedAssessment &&
+              !testState.overallAssessment && (
+                <Flex justify="center" align="center" style={{ minHeight: '60vh' }}>
+                  <Spin size="large" tip="Đang tạo đánh giá tổng quan..." />
+                </Flex>
+              )}
           </LeftContent>
         </LeftPanel>
 
-        {showHistoryPanel && (
+        {showHistoryPanel && examSetId && (
           <RightPanel>
-            <PracticeHistoryPanel questionId={null} />
+            <FullTestHistoryPanel
+              examSetId={examSetId}
+              currentSessionId={sessionId}
+              onSelectSession={handleSelectHistorySession}
+            />
           </RightPanel>
         )}
       </PageContainer>

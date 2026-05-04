@@ -536,4 +536,97 @@ export class ResponseService {
       createdAt: r.createdAt,
     }))
   }
+
+  async generateOverallAssessment(sessionId: string, userId: string) {
+    // Get session with all responses
+    const session = await prisma.practiceSession.findFirst({
+      where: { id: sessionId, userId },
+      include: {
+        userResponses: {
+          include: {
+            question: {
+              select: {
+                partNumber: true,
+                questionNumber: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (!session) throw new ForbiddenError('Session not found or access denied')
+
+    // Collect all scores by part
+    const scoresByPart: Record<number, number[]> = {}
+    let totalScore = 0
+    let totalResponses = 0
+
+    for (const response of session.userResponses) {
+      if (response.pronunciationScore) {
+        const analysis = response.pronunciationScore as unknown as AnalysisResult
+        const partNumber = response.question.partNumber
+        if (!scoresByPart[partNumber]) scoresByPart[partNumber] = []
+        scoresByPart[partNumber].push(analysis.score)
+        totalScore += analysis.score
+        totalResponses++
+      }
+    }
+
+    if (totalResponses === 0) {
+      return {
+        estimatedScore: 0,
+        assessment: 'Chưa có dữ liệu để đánh giá.',
+        partScores: {},
+      }
+    }
+
+    // Calculate average score (0-100)
+    const averageScore = totalScore / totalResponses
+
+    // Calculate part averages
+    const partAverages: Record<number, number> = {}
+    for (const [part, scores] of Object.entries(scoresByPart)) {
+      partAverages[Number(part)] = scores.reduce((a, b) => a + b, 0) / scores.length
+    }
+
+    // Use AI to generate overall assessment and estimate TOEIC score
+    const prompt = `You are a TOEIC Speaking test evaluator. Based on the following performance data, provide an overall assessment and estimate the TOEIC Speaking score (0-200).
+
+Performance Data:
+- Average Score: ${averageScore.toFixed(1)}/100
+- Part 1 (Read Aloud): ${partAverages[1]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[1]?.length || 0} questions)
+- Part 2 (Describe Picture): ${partAverages[2]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[2]?.length || 0} questions)
+- Part 3 (Respond to Questions): ${partAverages[3]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[3]?.length || 0} questions)
+- Part 4 (Respond Using Information): ${partAverages[4]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[4]?.length || 0} questions)
+- Part 5 (Express Opinion): ${partAverages[5]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[5]?.length || 0} questions)
+
+Return a JSON object (no markdown) with this exact shape:
+{
+  "estimatedScore": <0-200 integer, estimated TOEIC Speaking score>,
+  "assessment": <2-3 sentences in Vietnamese summarizing overall performance, strengths, and areas for improvement>
+}
+
+Scoring guidelines:
+- 0-30: Very limited ability (0-30 TOEIC)
+- 31-50: Limited ability (40-80 TOEIC)
+- 51-70: Fair ability (90-130 TOEIC)
+- 71-85: Good ability (140-170 TOEIC)
+- 86-100: Excellent ability (180-200 TOEIC)`
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+    })
+
+    const content = completion.choices[0]?.message?.content?.trim() || '{}'
+    const result = JSON.parse(content)
+
+    return {
+      estimatedScore: result.estimatedScore || 0,
+      assessment: result.assessment || 'Không thể tạo đánh giá.',
+      partScores: partAverages,
+    }
+  }
 }

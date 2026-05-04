@@ -32,6 +32,17 @@ export class SessionService {
     })
   }
 
+  async getAllUserSessions(userId: string) {
+    return prisma.practiceSession.findMany({
+      where: { userId },
+      include: {
+        _count: { select: { userResponses: true } },
+        examSet: { select: { title: true } },
+      },
+      orderBy: { startedAt: 'desc' },
+    })
+  }
+
   async getSessionDetail(id: string, userId: string) {
     const session = await prisma.practiceSession.findFirst({
       where: { id, userId },

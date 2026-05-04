@@ -64,7 +64,14 @@ export function PartInstructionView({
       <audio ref={audioRef} src={AUDIO_MAP[instruction.partNumber]} preload="auto" />
 
       <ContentCard>
-        <Flex vertical gap={24}>
+        <Flex
+          vertical
+          gap={24}
+          style={{
+            maxWidth: 700,
+            marginInline: 'auto',
+          }}
+        >
           <Title level={3} style={{ textAlign: 'center', marginBottom: 0 }}>
             {instruction.title}
           </Title>
