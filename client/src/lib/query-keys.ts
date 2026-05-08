@@ -76,4 +76,10 @@ export const queryKeys = {
     status: (orderCode: number) => ['payments', 'status', orderCode] as const,
     tokenPackages: () => ['payments', 'token-packages'] as const,
   },
+
+  // Shares
+  shares: {
+    byQuestion: (questionId: string) => ['shares', 'question', questionId] as const,
+    my: () => ['shares', 'my'] as const,
+  },
 }

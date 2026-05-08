@@ -73,6 +73,8 @@ model User {
   practiceSessions PracticeSession[]
   payments         Payment[]
   subscriptions    Subscription[]
+  publicShares     PublicShare[]
+  reactions        Reaction[]
 
   @@map("users")
 }
@@ -116,6 +118,7 @@ model Question {
 
   examSet       ExamSet?       @relation(fields: [examSetId], references: [id], onDelete: SetNull)
   userResponses UserResponse[]
+  publicShares  PublicShare[]
 
   @@unique([examSetId, questionNumber])
   @@map("questions")
@@ -166,8 +169,9 @@ model UserResponse {
   evaluatedAt         DateTime?
   createdAt           DateTime @default(now())
 
-  session  PracticeSession @relation(fields: [sessionId], references: [id])
-  question Question        @relation(fields: [questionId], references: [id])
+  session      PracticeSession @relation(fields: [sessionId], references: [id])
+  question     Question        @relation(fields: [questionId], references: [id])
+  publicShare  PublicShare?
 
   @@map("user_responses")
 }
@@ -230,3 +234,34 @@ model Subscription {
   @@map("subscriptions")
 }
 
+model PublicShare {
+  id          String   @id @default(uuid())
+  responseId  String   @unique
+  userId      String
+  questionId  String
+  createdAt   DateTime @default(now())
+  
+  response    UserResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question    Question     @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  reactions   Reaction[]
+  
+  @@index([questionId])
+  @@index([createdAt])
+  @@map("public_shares")
+}
+
+model Reaction {
+  id        String   @id @default(uuid())
+  shareId   String
+  userId    String
+  emoji     String   // "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "😍", "💖", "🤔"
+  createdAt DateTime @default(now())
+  
+  share     PublicShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([shareId, userId])
+  @@index([shareId])
+  @@map("reactions")
+}
