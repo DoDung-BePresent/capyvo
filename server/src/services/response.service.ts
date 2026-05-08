@@ -507,7 +507,10 @@ export class ResponseService {
     const responses = await prisma.userResponse.findMany({
       where: {
         questionId,
-        session: { userId },
+        session: {
+          userId,
+          partNumber: { not: null }, // Only get responses from practice sessions (not full test)
+        },
       },
       select: {
         id: true,
