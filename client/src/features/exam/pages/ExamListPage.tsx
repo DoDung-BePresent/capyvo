@@ -61,6 +61,7 @@ export default function ExamListPage() {
                 style={{ height: '100%' }}
                 styles={{ body: { padding: '20px 24px' } }}
                 onClick={() => navigate(`/exam/${set.id}/test`)}
+                className="rounded-lg!"
               >
                 <Flex vertical gap={10}>
                   <Flex align="center" justify="space-between">

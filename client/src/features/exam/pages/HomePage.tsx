@@ -52,6 +52,7 @@ export default function HomePage() {
                 paddingLeft: 20,
               },
             }}
+            className="w-fit! rounded-lg!"
           >
             <Heatmap activityByDate={activityByDate} />
           </Card>

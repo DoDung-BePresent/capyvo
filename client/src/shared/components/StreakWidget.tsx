@@ -11,7 +11,7 @@ interface StreakWidgetProps {
 
 export function StreakWidget({ currentStreak, longestStreak }: StreakWidgetProps) {
   return (
-    <Card>
+    <Card className="rounded-lg!">
       <Flex gap={24}>
         {/* Current Streak */}
         <Flex vertical align="center" style={{ flex: 1 }}>
