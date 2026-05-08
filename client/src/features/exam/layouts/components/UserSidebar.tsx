@@ -57,11 +57,14 @@ export function UserSidebar({ collapsed }: UserSidebarProps) {
       ? '/'
       : (MENU_ITEMS.slice(1).find((m) => location.pathname.startsWith(m.key))?.key ?? '/')
 
-  // Calculate days remaining
+  // Calculate days remaining (premiumUntil is stored as DATE without time)
   const daysRemaining = user?.premiumUntil
-    ? Math.ceil(
-        (new Date(user.premiumUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
-      )
+    ? (() => {
+        const now = new Date()
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        const diffTime = new Date(user.premiumUntil).getTime() - today.getTime()
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      })()
     : null
 
   return (

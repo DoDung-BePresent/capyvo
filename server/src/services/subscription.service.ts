@@ -76,7 +76,9 @@ export class SubscriptionService {
       )
     } else {
       // No active subscription - start from now
-      startDate = new Date()
+      const now = new Date()
+      // Normalize to start of day (00:00:00)
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       endDate = addDays(startDate, plan.durationDays)
       console.log(
         `Creating new subscription for user ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`,
@@ -135,7 +137,16 @@ export class SubscriptionService {
     }
 
     // Tính ngày bắt đầu mới (từ ngày hết hạn cũ hoặc hôm nay)
-    const startDate = subscription.endDate > new Date() ? subscription.endDate : new Date()
+    // Calculate start and end dates (normalized to start of day)
+    let startDate: Date
+    if (subscription.endDate > new Date()) {
+      // Subscription still active - extend from end date
+      startDate = subscription.endDate
+    } else {
+      // Subscription expired - start from today
+      const now = new Date()
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    }
     const endDate = addDays(startDate, plan.durationDays)
 
     const newSubscription = await prisma.subscription.create({

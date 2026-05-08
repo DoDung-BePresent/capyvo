@@ -240,8 +240,11 @@ export class ResponseService {
 
     let daysRemaining = null
     if (user.premiumUntil) {
-      const diff = user.premiumUntil.getTime() - now.getTime()
-      daysRemaining = Math.ceil(diff / (1000 * 60 * 60 * 24))
+      // premiumUntil is now stored as DATE (no time component)
+      // Calculate difference in days
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      const diffTime = user.premiumUntil.getTime() - today.getTime()
+      daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     }
 
     return {
