@@ -3,8 +3,6 @@ import multer from 'multer'
 import { SystemAudioService } from '@/services/system-audio.service'
 import { ValidationError } from '@/errors/app-error'
 
-const service = new SystemAudioService()
-
 export const audioUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 },
@@ -18,23 +16,17 @@ export const audioUpload = multer({
 })
 
 export class SystemAudioController {
-  async getAll(_req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const items = await service.findAll()
-      res.json({ success: true, data: items })
-    } catch (err) {
-      next(err)
-    }
+  private service = new SystemAudioService()
+
+  async getAll(_req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const items = await this.service.findAll()
+    res.json({ success: true, data: items })
   }
 
-  async uploadAudio(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const key = req.params['key'] as string
-      if (!req.file) throw new ValidationError('No audio file uploaded')
-      const item = await service.uploadAudio(key, req.file.buffer, req.file.originalname)
-      res.json({ success: true, data: item })
-    } catch (err) {
-      next(err)
-    }
+  async uploadAudio(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const key = req.params['key'] as string
+    if (!req.file) throw new ValidationError('No audio file uploaded')
+    const item = await this.service.uploadAudio(key, req.file.buffer, req.file.originalname)
+    res.json({ success: true, data: item })
   }
 }

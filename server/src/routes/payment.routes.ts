@@ -1,24 +1,23 @@
 import { Router } from 'express'
 import { authenticate } from '@/middlewares/authenticate'
 import { PaymentController } from '@/controllers/payment.controller'
+import { asyncHandler } from '@/utils/async-handler'
 
 const router = Router()
 const ctrl = new PaymentController()
 
-// Webhook từ PayOS — không cần authenticate
-router.post('/webhook', (req, res, next) => ctrl.handleWebhook(req, res, next))
+// Webhook from PayOS — no authentication
+router.post('/webhook', asyncHandler(ctrl.handleWebhook.bind(ctrl)))
 
-// Public: danh sách gói token (DEPRECATED)
-router.get('/token-packages', (req, res) => ctrl.getTokenPackages(req, res))
+// Public: token packages list (DEPRECATED)
+router.get('/token-packages', ctrl.getTokenPackages.bind(ctrl))
 
-// Các route cần đăng nhập
+// Authenticated routes
 router.use(authenticate)
 
-router.post('/create-token', (req, res, next) => ctrl.createTokenOrder(req, res, next)) // DEPRECATED
-router.post('/create-subscription', (req, res, next) =>
-  ctrl.createSubscriptionOrder(req, res, next),
-)
-router.get('/status', (req, res, next) => ctrl.getPaymentStatus(req, res, next))
-router.get('/my', (req, res, next) => ctrl.getMyPayments(req, res, next))
+router.post('/create-token', asyncHandler(ctrl.createTokenOrder.bind(ctrl)))
+router.post('/create-subscription', asyncHandler(ctrl.createSubscriptionOrder.bind(ctrl)))
+router.get('/status', asyncHandler(ctrl.getPaymentStatus.bind(ctrl)))
+router.get('/my', asyncHandler(ctrl.getMyPayments.bind(ctrl)))
 
 export default router

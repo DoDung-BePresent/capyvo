@@ -1,22 +1,21 @@
 import { Router } from 'express'
 import { SubscriptionController } from '../controllers/subscription.controller'
 import { authenticate } from '@/middlewares/authenticate'
+import { asyncHandler } from '@/utils/async-handler'
 
 const router = Router()
 const ctrl = SubscriptionController
 
 // Public routes
-router.get('/plans', (req, res, next) => ctrl.getPlans(req, res, next))
+router.get('/plans', asyncHandler(ctrl.getPlans))
 
-// Protected routes (require authentication)
+// Protected routes
 router.use(authenticate)
 
-router.get('/current', (req, res, next) => ctrl.getCurrentSubscription(req, res, next))
-router.get('/history', (req, res, next) => ctrl.getHistory(req, res, next))
-router.post('/create', (req, res, next) => ctrl.createSubscription(req, res, next))
-router.post('/cancel', (req, res, next) => ctrl.cancelSubscription(req, res, next))
-
-// Internal/Cron route (should be protected with API key in production)
-router.post('/check-expired', (req, res, next) => ctrl.checkExpired(req, res, next))
+router.get('/current', asyncHandler(ctrl.getCurrentSubscription))
+router.get('/history', asyncHandler(ctrl.getHistory))
+router.post('/create', asyncHandler(ctrl.createSubscription))
+router.post('/cancel', asyncHandler(ctrl.cancelSubscription))
+router.post('/check-expired', asyncHandler(ctrl.checkExpired))
 
 export default router

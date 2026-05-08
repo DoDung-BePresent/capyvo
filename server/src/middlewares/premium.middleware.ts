@@ -3,7 +3,7 @@ import { SubscriptionService } from '../services/subscription.service'
 import { AuthRequest } from '@/middlewares/authenticate'
 
 /**
- * Middleware để check user có premium không
+ * Middleware to check if user has premium subscription
  */
 export async function requirePremium(req: AuthRequest, res: Response, next: NextFunction) {
   try {
@@ -38,7 +38,7 @@ export interface PremiumAuthRequest extends AuthRequest {
 }
 
 /**
- * Middleware để check premium nhưng không block (chỉ thêm flag)
+ * Middleware to check premium status without blocking (adds flag only)
  */
 export async function checkPremium(req: PremiumAuthRequest, res: Response, next: NextFunction) {
   try {

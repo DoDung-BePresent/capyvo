@@ -1,47 +1,33 @@
 import { Router } from 'express'
 import { QuestionController, upload, uploadAudio } from '@/controllers/question.controller'
-import { authenticate } from '@/middlewares/authenticate'
-import { requireRole } from '@/middlewares/authenticate'
+import { authenticate, requireRole } from '@/middlewares/authenticate'
+import { asyncHandler } from '@/utils/async-handler'
 
 const router = Router()
 const ctrl = new QuestionController()
 
 // Any authenticated user can fetch questions (needed for practice mode)
-router.get('/', authenticate, (req, res, next) => ctrl.getQuestions(req, res, next))
-router.get('/practice-sets', authenticate, (req, res, next) => ctrl.getPracticeSets(req, res, next))
-
-// New endpoints for optimized part practice page
-router.get('/part/:partNumber/all', authenticate, (req, res, next) =>
-  ctrl.getQuestionsByPart(req, res, next),
-)
-router.get('/part/:partNumber/exam-sets', authenticate, (req, res, next) =>
-  ctrl.getExamSetsByPart(req, res, next),
+router.get('/', authenticate, asyncHandler(ctrl.getQuestions.bind(ctrl)))
+router.get('/practice-sets', authenticate, asyncHandler(ctrl.getPracticeSets.bind(ctrl)))
+router.get('/part/:partNumber/all', authenticate, asyncHandler(ctrl.getQuestionsByPart.bind(ctrl)))
+router.get(
+  '/part/:partNumber/exam-sets',
+  authenticate,
+  asyncHandler(ctrl.getExamSetsByPart.bind(ctrl)),
 )
 
-// The rest are admin-only
+// Admin-only routes
 router.use(authenticate, requireRole('ADMIN'))
 
-router.delete('/:id', (req, res, next) => ctrl.deleteQuestion(req, res, next))
-router.patch('/:id', (req, res, next) => ctrl.updateQuestion(req, res, next))
-
-// Upload image → returns { url }
-router.post('/upload/image', upload.single('image'), (req, res, next) =>
-  ctrl.uploadImage(req, res, next),
-)
-
-// Upload audio → returns { url }
-router.post('/upload/audio', uploadAudio.single('audio'), (req, res, next) =>
-  ctrl.uploadAudio(req, res, next),
-)
-
-// Analyze image with Vision → returns { context }
-router.post('/analyze-image', (req, res, next) => ctrl.analyzeImage(req, res, next))
-
-// Create questions per part
-router.post('/part/1', (req, res, next) => ctrl.createPart1(req, res, next))
-router.post('/part/2', (req, res, next) => ctrl.createPart2(req, res, next))
-router.post('/part/3', (req, res, next) => ctrl.createPart3(req, res, next))
-router.post('/part/4', (req, res, next) => ctrl.createPart4(req, res, next))
-router.post('/part/5', (req, res, next) => ctrl.createPart5(req, res, next))
+router.delete('/:id', asyncHandler(ctrl.deleteQuestion.bind(ctrl)))
+router.patch('/:id', asyncHandler(ctrl.updateQuestion.bind(ctrl)))
+router.post('/upload/image', upload.single('image'), asyncHandler(ctrl.uploadImage.bind(ctrl)))
+router.post('/upload/audio', uploadAudio.single('audio'), asyncHandler(ctrl.uploadAudio.bind(ctrl)))
+router.post('/analyze-image', asyncHandler(ctrl.analyzeImage.bind(ctrl)))
+router.post('/part/1', asyncHandler(ctrl.createPart1.bind(ctrl)))
+router.post('/part/2', asyncHandler(ctrl.createPart2.bind(ctrl)))
+router.post('/part/3', asyncHandler(ctrl.createPart3.bind(ctrl)))
+router.post('/part/4', asyncHandler(ctrl.createPart4.bind(ctrl)))
+router.post('/part/5', asyncHandler(ctrl.createPart5.bind(ctrl)))
 
 export default router

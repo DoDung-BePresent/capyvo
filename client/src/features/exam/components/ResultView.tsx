@@ -63,7 +63,7 @@ export function ResultView({
   const scale = SCORE_SCALES[partNumber]
 
   // Loading skeleton
-  if (isLoading || !analysis || !transcript) {
+  if (isLoading || !analysis) {
     return (
       <Container>
         <ResultCard>
@@ -117,7 +117,15 @@ export function ResultView({
 
   // Render transcript với highlight lỗi
   const renderHighlightedTranscript = () => {
-    if (!transcript || analysis.issues.length === 0) {
+    if (!transcript || transcript.trim() === '') {
+      return (
+        <Paragraph style={{ fontSize: 15, lineHeight: 2, color: '#8c8c8c', fontStyle: 'italic' }}>
+          (Không có phiên âm)
+        </Paragraph>
+      )
+    }
+
+    if (analysis.issues.length === 0) {
       return <Paragraph style={{ fontSize: 15, lineHeight: 2 }}>{transcript}</Paragraph>
     }
 

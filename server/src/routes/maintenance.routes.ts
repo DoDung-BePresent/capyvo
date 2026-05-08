@@ -1,33 +1,32 @@
 import { Router } from 'express'
 import { authenticate, requireRole } from '@/middlewares/authenticate'
 import { maintenanceController } from '@/controllers/maintenance.controller'
+import { asyncHandler } from '@/utils/async-handler'
 
 const router = Router()
 
-// Public — anyone can check status or subscribe to events
+// Public routes
 router.get('/status', maintenanceController.getStatus.bind(maintenanceController))
 router.get('/events', maintenanceController.sseStream.bind(maintenanceController))
 
-// Admin only — manual toggle
+// Admin only routes
 router.patch(
   '/',
   authenticate,
   requireRole('ADMIN'),
-  maintenanceController.setStatus.bind(maintenanceController),
+  asyncHandler(maintenanceController.setStatus.bind(maintenanceController)),
 )
-
-// Admin only — set/clear schedule
 router.put(
   '/schedule',
   authenticate,
   requireRole('ADMIN'),
-  maintenanceController.setSchedule.bind(maintenanceController),
+  asyncHandler(maintenanceController.setSchedule.bind(maintenanceController)),
 )
 router.delete(
   '/schedule',
   authenticate,
   requireRole('ADMIN'),
-  maintenanceController.clearSchedule.bind(maintenanceController),
+  asyncHandler(maintenanceController.clearSchedule.bind(maintenanceController)),
 )
 
 export default router

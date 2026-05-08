@@ -32,6 +32,7 @@ export const queryKeys = {
   // Practice sessions
   practiceSessions: {
     all: () => ['practice-sessions'] as const,
+    my: () => ['practice-sessions', 'my'] as const,
     detail: (id: string) => ['practice-sessions', 'detail', id] as const,
     byUser: (userId: string) => ['practice-sessions', 'user', userId] as const,
     myBySet: (examSetId: string, partNumber?: number | null) =>

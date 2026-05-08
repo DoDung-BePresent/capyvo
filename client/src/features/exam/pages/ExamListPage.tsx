@@ -60,7 +60,7 @@ export default function ExamListPage() {
                 hoverable
                 style={{ height: '100%' }}
                 styles={{ body: { padding: '20px 24px' } }}
-                onClick={() => navigate(`/exam/${set.id}`)}
+                onClick={() => navigate(`/exam/${set.id}/test`)}
               >
                 <Flex vertical gap={10}>
                   <Flex align="center" justify="space-between">
@@ -86,14 +86,7 @@ export default function ExamListPage() {
             return (
               <Col key={set.id} xs={24} sm={12} lg={8}>
                 {isDone ? (
-                  <Badge.Ribbon
-                    text={
-                      <Flex align="center" gap={4}>
-                        <CheckCircleFilled /> Đã làm
-                      </Flex>
-                    }
-                    color="green"
-                  >
+                  <Badge.Ribbon text={<CheckCircleFilled />} color="green">
                     {card}
                   </Badge.Ribbon>
                 ) : (
