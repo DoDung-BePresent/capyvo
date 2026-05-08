@@ -33,8 +33,8 @@ const LEVELS = [
 ]
 const LABEL_COLOR = '#57606a'
 
-const CELL_WIDTH = 30
-const CELL_HEIGHT = 20
+const CELL_WIDTH = 40
+const CELL_HEIGHT = 25
 const GAP = 3
 
 function getLevel(count: number): number {

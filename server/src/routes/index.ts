@@ -11,6 +11,7 @@ import systemStatsRouter from './system-stats.routes'
 import paymentRouter from './payment.routes'
 import adminDashboardRouter from './admin-dashboard.routes'
 import subscriptionRouter from './subscription.routes'
+import activityRouter from './activity.routes'
 
 const router = Router()
 
@@ -26,5 +27,6 @@ router.use('/system-stats', systemStatsRouter)
 router.use('/payments', paymentRouter)
 router.use('/admin/dashboard', adminDashboardRouter)
 router.use('/subscription', subscriptionRouter)
+router.use('/activity', activityRouter)
 
 export default router
