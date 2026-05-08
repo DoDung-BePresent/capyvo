@@ -1,9 +1,11 @@
 import { useMemo } from 'react'
 import { Flex, Tooltip, Typography } from 'antd'
+import { COLORS } from '@/shared/constants/user-color'
+import { hexToRgba } from '@/shared/utils/color'
 
 const { Text } = Typography
 
-const WEEKS = 52
+const WEEKS = 13 // 3 months ≈ 13 weeks
 const DAYS = 7
 const DAY_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', '']
 const MONTH_LABELS = [
@@ -21,11 +23,18 @@ const MONTH_LABELS = [
   'Dec',
 ]
 
-// GitHub light theme palette
-const LEVELS = ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39']
+// Color levels using primary color with different opacities
+const LEVELS = [
+  hexToRgba(COLORS.primary, 0.1), // Level 0: Very light
+  hexToRgba(COLORS.primary, 0.3), // Level 1: Light
+  hexToRgba(COLORS.primary, 0.5), // Level 2: Medium
+  hexToRgba(COLORS.primary, 0.7), // Level 3: Dark
+  COLORS.primary, // Level 4: Full color
+]
 const LABEL_COLOR = '#57606a'
 
-const CELL = 13
+const CELL_WIDTH = 30
+const CELL_HEIGHT = 20
 const GAP = 3
 
 function getLevel(count: number): number {
@@ -80,7 +89,7 @@ export function Heatmap({ activityByDate = new Map() }: HeatmapProps) {
   const grid = useMemo(() => buildGrid(activityByDate), [activityByDate])
   const monthHeaders = useMemo(() => getMonthHeaders(grid), [grid])
 
-  const totalWidth = grid.length * (CELL + GAP)
+  const totalWidth = grid.length * (CELL_WIDTH + GAP)
 
   return (
     <div style={{ display: 'inline-block' }}>
@@ -99,7 +108,7 @@ export function Heatmap({ activityByDate = new Map() }: HeatmapProps) {
             key={`${label}-${colIdx}`}
             style={{
               position: 'absolute',
-              left: colIdx * (CELL + GAP),
+              left: colIdx * (CELL_WIDTH + GAP),
               color: LABEL_COLOR,
               fontSize: 11,
               fontFamily: 'monospace',
@@ -126,7 +135,7 @@ export function Heatmap({ activityByDate = new Map() }: HeatmapProps) {
             <div
               key={i}
               style={{
-                height: CELL,
+                height: CELL_HEIGHT,
                 color: LABEL_COLOR,
                 fontSize: 10,
                 fontFamily: 'monospace',
@@ -163,8 +172,8 @@ export function Heatmap({ activityByDate = new Map() }: HeatmapProps) {
                   >
                     <div
                       style={{
-                        width: CELL,
-                        height: CELL,
+                        width: CELL_WIDTH,
+                        height: CELL_HEIGHT,
                         borderRadius: 2,
                         backgroundColor: LEVELS[getLevel(count)],
                         cursor: 'default',
@@ -185,7 +194,12 @@ export function Heatmap({ activityByDate = new Map() }: HeatmapProps) {
         {LEVELS.map((color, i) => (
           <div
             key={i}
-            style={{ width: CELL, height: CELL, borderRadius: 2, backgroundColor: color }}
+            style={{
+              width: CELL_WIDTH,
+              height: CELL_HEIGHT,
+              borderRadius: 2,
+              backgroundColor: color,
+            }}
           />
         ))}
         <Text style={{ color: LABEL_COLOR, fontSize: 11 }}>More</Text>
