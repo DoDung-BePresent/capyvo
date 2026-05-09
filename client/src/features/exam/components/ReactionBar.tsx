@@ -63,14 +63,13 @@ export function ReactionBar({ reactions, onReactionClick }: ReactionBarProps) {
       {usedReactions.map((reaction) => (
         <Button
           size="small"
-          type={reaction.userReacted ? 'primary' : 'default'}
           onClick={(e) => {
             e.stopPropagation()
             onReactionClick(reaction.emoji as AllowedEmoji)
           }}
           style={{
             fontSize: 14,
-            border: reaction.userReacted ? '2px solid #1890ff' : '1px solid #d9d9d9',
+            border: reaction.userReacted ? '1px solid #1890ff' : '1px solid #d9d9d9',
           }}
           className="rounded-lg!"
         >

@@ -39,25 +39,16 @@ export class ShareController {
    * Get all shares for a question
    */
   async getSharesByQuestion(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const userId = (req as AuthRequest).userId
     const { questionId, limit, offset } = GetSharesByQuestionSchema.parse({
       questionId: req.params['questionId'],
       limit: req.query['limit'],
       offset: req.query['offset'],
     })
 
-    const shares = await this.service.getSharesByQuestion(questionId, limit, offset)
+    const shares = await this.service.getSharesByQuestion(questionId, userId, limit, offset)
 
-    // Mark which reactions the current user has made
-    const sharesWithUserReactions = shares.map((share) => ({
-      ...share,
-      reactions: share.reactions.map((reaction) => ({
-        ...reaction,
-        // This will be properly implemented when we add userId tracking
-        userReacted: false, // TODO: Check if currentUserId reacted with this emoji
-      })),
-    }))
-
-    res.json({ success: true, data: sharesWithUserReactions })
+    res.json({ success: true, data: shares })
   }
 
   /**

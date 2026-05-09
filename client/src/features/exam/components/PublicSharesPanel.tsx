@@ -1,12 +1,12 @@
-import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, Avatar, Typography, Flex, Empty, Spin, message } from 'antd'
 import { UserOutlined } from '@ant-design/icons'
 import { shareService, type AllowedEmoji, type PublicShareDetail } from '../services/share.service'
 import { queryKeys } from '@/lib/query-keys'
 import { ReactionBar } from './ReactionBar'
+import { WaveformVisualizer } from './WaveformVisualizer'
 
-const { Text, Paragraph } = Typography
+const { Text } = Typography
 
 interface PublicSharesPanelProps {
   questionId: string
@@ -14,7 +14,6 @@ interface PublicSharesPanelProps {
 
 export function PublicSharesPanel({ questionId }: PublicSharesPanelProps) {
   const queryClient = useQueryClient()
-  const [expandedShareId, setExpandedShareId] = useState<string | null>(null)
 
   const { data: shares, isLoading } = useQuery({
     queryKey: queryKeys.shares.byQuestion(questionId),
@@ -25,19 +24,73 @@ export function PublicSharesPanel({ questionId }: PublicSharesPanelProps) {
   const toggleReactionMutation = useMutation({
     mutationFn: ({ shareId, emoji }: { shareId: string; emoji: AllowedEmoji }) =>
       shareService.toggleReaction(shareId, emoji),
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.shares.byQuestion(questionId) })
+    onMutate: async ({ shareId, emoji }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: queryKeys.shares.byQuestion(questionId) })
 
-      if (result.action === 'added') {
-        message.success('Đã thêm reaction')
-      } else if (result.action === 'removed') {
-        message.success('Đã bỏ reaction')
-      } else {
-        message.success('Đã đổi reaction')
+      // Snapshot previous value
+      const previousShares = queryClient.getQueryData<PublicShareDetail[]>(
+        queryKeys.shares.byQuestion(questionId),
+      )
+
+      // Optimistically update
+      if (previousShares) {
+        queryClient.setQueryData<PublicShareDetail[]>(
+          queryKeys.shares.byQuestion(questionId),
+          previousShares.map((share) => {
+            if (share.id !== shareId) return share
+
+            const existingReaction = share.reactions.find((r) => r.userReacted)
+            const clickedReaction = share.reactions.find((r) => r.emoji === emoji)
+
+            let newReactions = [...share.reactions]
+
+            if (existingReaction?.emoji === emoji) {
+              // Remove reaction
+              newReactions = newReactions.map((r) =>
+                r.emoji === emoji
+                  ? { ...r, count: Math.max(0, r.count - 1), userReacted: false }
+                  : r,
+              )
+            } else if (existingReaction) {
+              // Change reaction
+              newReactions = newReactions.map((r) => {
+                if (r.emoji === existingReaction.emoji) {
+                  return { ...r, count: Math.max(0, r.count - 1), userReacted: false }
+                }
+                if (r.emoji === emoji) {
+                  return { ...r, count: r.count + 1, userReacted: true }
+                }
+                return r
+              })
+            } else {
+              // Add new reaction
+              if (clickedReaction) {
+                newReactions = newReactions.map((r) =>
+                  r.emoji === emoji ? { ...r, count: r.count + 1, userReacted: true } : r,
+                )
+              } else {
+                newReactions.push({ emoji, count: 1, userReacted: true })
+              }
+            }
+
+            return { ...share, reactions: newReactions }
+          }),
+        )
       }
+
+      return { previousShares }
     },
-    onError: () => {
+    onError: (_error, _variables, context) => {
+      // Rollback on error
+      if (context?.previousShares) {
+        queryClient.setQueryData(queryKeys.shares.byQuestion(questionId), context.previousShares)
+      }
       message.error('Lỗi khi thêm reaction')
+    },
+    onSettled: () => {
+      // Refetch to sync with server
+      queryClient.invalidateQueries({ queryKey: queryKeys.shares.byQuestion(questionId) })
     },
   })
 
@@ -66,13 +119,7 @@ export function PublicSharesPanel({ questionId }: PublicSharesPanelProps) {
   return (
     <Flex vertical gap={16}>
       {shares.map((share) => (
-        <ShareCard
-          key={share.id}
-          share={share}
-          expanded={expandedShareId === share.id}
-          onToggleExpand={() => setExpandedShareId(expandedShareId === share.id ? null : share.id)}
-          onReactionClick={handleReactionClick}
-        />
+        <ShareCard key={share.id} share={share} onReactionClick={handleReactionClick} />
       ))}
     </Flex>
   )
@@ -80,24 +127,14 @@ export function PublicSharesPanel({ questionId }: PublicSharesPanelProps) {
 
 interface ShareCardProps {
   share: PublicShareDetail
-  expanded: boolean
-  onToggleExpand: () => void
   onReactionClick: (shareId: string, emoji: AllowedEmoji) => void
 }
 
-function ShareCard({ share, expanded, onToggleExpand, onReactionClick }: ShareCardProps) {
+function ShareCard({ share, onReactionClick }: ShareCardProps) {
   const displayName = share.user.fullName || share.user.email.split('@')[0]
-  const transcript = share.response.transcript || 'Chưa có transcript'
-  const truncatedTranscript =
-    transcript.length > 100 ? transcript.slice(0, 100) + '...' : transcript
 
   return (
-    <Card
-      className="rounded-lg!"
-      size="small"
-      onClick={onToggleExpand}
-      style={{ cursor: 'pointer' }}
-    >
+    <Card className="rounded-lg! border-2!" size="small" style={{ cursor: 'default' }}>
       <Flex vertical gap={12}>
         {/* User info */}
         <Flex align="center" gap={8}>
@@ -110,19 +147,12 @@ function ShareCard({ share, expanded, onToggleExpand, onReactionClick }: ShareCa
           </Text>
         </Flex>
 
-        {/* Transcript */}
-        <Paragraph
-          style={{
-            margin: 0,
-            fontSize: 13,
-            color: '#595959',
-            whiteSpace: expanded ? 'pre-wrap' : 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {expanded ? transcript : truncatedTranscript}
-        </Paragraph>
+        {/* Waveform audio player */}
+        {share.response.audioUrl && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <WaveformVisualizer audioUrl={share.response.audioUrl} />
+          </div>
+        )}
 
         {/* Reactions */}
         <ReactionBar

@@ -151,6 +151,7 @@ export class ShareService {
    */
   async getSharesByQuestion(
     questionId: string,
+    currentUserId: string,
     limit = 20,
     offset = 0,
   ): Promise<PublicShareDetail[]> {
@@ -201,7 +202,7 @@ export class ShareService {
       const reactions = Array.from(reactionMap.entries()).map(([emoji, data]) => ({
         emoji,
         count: data.count,
-        userReacted: false, // Will be set by controller based on current user
+        userReacted: data.userIds.includes(currentUserId), // Check if current user reacted
       }))
 
       return {
