@@ -38,7 +38,7 @@ export class PaymentService {
     const paymentData = await payos.paymentRequests.create({
       orderCode,
       amount: plan.price,
-      description: `Capyvo Premium ${plan.name}`,
+      description: `Capyvo ${plan.name}`,
       returnUrl: `${returnUrl}?orderCode=${orderCode}`,
       cancelUrl: `${cancelUrl}?orderCode=${orderCode}`,
     })
@@ -48,7 +48,7 @@ export class PaymentService {
         userId,
         orderCode,
         amount: plan.price,
-        description: `Gói ${plan.name} - Premium`,
+        description: `Gói ${plan.name}`,
         checkoutUrl: paymentData.checkoutUrl,
         status: 'PENDING',
       },
@@ -128,9 +128,9 @@ export class PaymentService {
 
   /** Extract plan ID from payment description */
   private extractPlanIdFromDescription(description: string): SubscriptionPlanId | null {
-    if (description.includes('1 THÁNG')) return SubscriptionPlanId.MONTHLY
-    if (description.includes('3 THÁNG')) return SubscriptionPlanId.QUARTERLY
-    if (description.includes('6 THÁNG')) return SubscriptionPlanId.BIANNUAL
+    if (description.includes('Cơ bản')) return SubscriptionPlanId.BASIC
+    if (description.includes('Premium')) return SubscriptionPlanId.PREMIUM
+    if (description.includes('Lớp học')) return SubscriptionPlanId.CLASSROOM
     return null
   }
 

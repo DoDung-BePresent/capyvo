@@ -14,6 +14,9 @@ export interface PricingPlan {
   color: string
   isPopular?: boolean
   discount?: string // "Tiết kiệm 15%"
+  isContactPlan?: boolean // For plans that require contact instead of payment
+  contactUrl?: string // URL to contact (e.g., Zalo link)
+  badge?: string // "Sắp ra mắt", "Mới", etc.
 }
 
 interface PricingCardProps {
@@ -73,9 +76,12 @@ export default function PricingCard({ plan, onSelect, isLoading = false }: Prici
           : '0 2px 8px rgba(0,0,0,0.08)',
       }}
     >
-      {/* Popular Badge */}
+      {/* Popular/Badge */}
       {isPopular && (
         <PopularBadge style={{ backgroundColor: plan.color }}>Phổ biến nhất</PopularBadge>
+      )}
+      {!isPopular && plan.badge && (
+        <PopularBadge style={{ backgroundColor: plan.color }}>{plan.badge}</PopularBadge>
       )}
 
       {/* Header */}
@@ -86,14 +92,25 @@ export default function PricingCard({ plan, onSelect, isLoading = false }: Prici
 
       {/* Price */}
       <PriceSection>
-        <TotalPrice>{plan.price.toLocaleString('vi-VN')} VNĐ</TotalPrice>
-        <PricePerMonth style={{ color: plan.color }}>
-          {plan.pricePerMonth}k<span className="text-lg font-semibold">/tháng</span>
-        </PricePerMonth>
-        {plan.discount && (
-          <Tag color="success" style={{ fontSize: 11, fontWeight: 600 }}>
-            {plan.discount}
-          </Tag>
+        {plan.isContactPlan ? (
+          <>
+            <TotalPrice style={{ color: plan.color }}>Liên hệ</TotalPrice>
+            <PricePerMonth style={{ color: plan.color, fontSize: '1.25rem' }}>
+              Báo giá theo nhu cầu
+            </PricePerMonth>
+          </>
+        ) : (
+          <>
+            <TotalPrice>{plan.price.toLocaleString('vi-VN')} VNĐ</TotalPrice>
+            <PricePerMonth style={{ color: plan.color }}>
+              {plan.pricePerMonth}k<span className="text-lg font-semibold">/tháng</span>
+            </PricePerMonth>
+            {plan.discount && (
+              <Tag color="success" style={{ fontSize: 11, fontWeight: 600 }}>
+                {plan.discount}
+              </Tag>
+            )}
+          </>
         )}
       </PriceSection>
 
@@ -118,29 +135,47 @@ export default function PricingCard({ plan, onSelect, isLoading = false }: Prici
       </FeatureList>
 
       {/* CTA Button */}
-      <StyledButton
-        type={isPopular ? 'primary' : 'default'}
-        size="large"
-        loading={isLoading}
-        onClick={() => onSelect(plan.id)}
-        style={
-          isPopular
-            ? ({
-                '--shadow-color': hexToRgba(plan.color, 0.6),
-                backgroundColor: plan.color,
-                borderColor: plan.color,
-                color: '#fff',
-              } as React.CSSProperties)
-            : ({
-                '--shadow-color': 'rgba(0,0,0,0.15)',
-                backgroundColor: '#fff',
-                borderColor: plan.color,
-                color: plan.color,
-              } as React.CSSProperties)
-        }
-      >
-        Thanh toán
-      </StyledButton>
+      {plan.isContactPlan ? (
+        <StyledButton
+          type="default"
+          size="large"
+          onClick={() => window.open(plan.contactUrl, '_blank')}
+          style={
+            {
+              '--shadow-color': hexToRgba(plan.color, 0.6),
+              backgroundColor: plan.color,
+              borderColor: plan.color,
+              color: '#fff',
+            } as React.CSSProperties
+          }
+        >
+          Liên hệ Zalo
+        </StyledButton>
+      ) : (
+        <StyledButton
+          type={isPopular ? 'primary' : 'default'}
+          size="large"
+          loading={isLoading}
+          onClick={() => onSelect(plan.id)}
+          style={
+            isPopular
+              ? ({
+                  '--shadow-color': hexToRgba(plan.color, 0.6),
+                  backgroundColor: plan.color,
+                  borderColor: plan.color,
+                  color: '#fff',
+                } as React.CSSProperties)
+              : ({
+                  '--shadow-color': 'rgba(0,0,0,0.15)',
+                  backgroundColor: '#fff',
+                  borderColor: plan.color,
+                  color: plan.color,
+                } as React.CSSProperties)
+          }
+        >
+          Thanh toán
+        </StyledButton>
+      )}
     </StyledCard>
   )
 }

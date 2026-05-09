@@ -42,9 +42,9 @@ enum SubscriptionStatus {
 }
 
 enum SubscriptionPlanId {
-  MONTHLY
-  QUARTERLY
-  BIANNUAL
+  BASIC
+  PREMIUM
+  CLASSROOM
 }
 
 // ─── Models ───────────────────────────────────────────────────────────────────
