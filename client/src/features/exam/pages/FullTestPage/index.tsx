@@ -1,24 +1,46 @@
+/**
+ * Hooks
+ */
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Flex, message, Spin, Card, Typography, Tag, Progress } from 'antd'
+
+/**
+ * Utils
+ */
 import { styled } from '@/shared/utils/cn'
 
+/**
+ * Services
+ */
 import { questionService } from '@/features/admin/services/question.service'
 import { responseService } from '@/features/exam/services/response.service'
 import { sessionService, type AnalysisResult } from '@/features/exam/services/session.service'
+
+/**
+ * QUERY_KEYS
+ */
 import { queryKeys } from '@/lib/query-keys'
+
+/**
+ * Components
+ */
 import { PageHeader } from '@/shared/components'
-import { MicPermissionGate } from '../components/MicPermissionGate'
-import { TestIntroView } from '../components/TestIntroView'
-import { PartInstructionView } from '../components/PartInstructionView'
-import { FullTestQuestionView } from '../components/FullTestQuestionView'
-import { SavingView } from '../components/SavingView'
-import { FullTestHistoryPanel } from '../components/FullTestHistoryPanel'
-import { ResultView } from '../components/ResultView'
-import type { Question } from '@/features/admin/types'
-import type { TestState } from '../types/full-test.types'
-import { PART_INSTRUCTIONS } from '../types/full-test.types'
+import { Flex, message, Spin, Card, Typography, Tag, Progress } from 'antd'
+import { MicPermissionGate } from '@/features/exam/components/MicPermissionGate'
+import { TestIntroView } from './components/TestIntroView'
+import { PartInstructionView } from './components/PartInstructionView'
+import { FullTestQuestionView } from './components/FullTestQuestionView'
+import { SavingView } from './components/SavingView'
+import { FullTestHistoryPanel } from './components/FullTestHistoryPanel'
+import { ResultView } from '../../components/ResultView'
+
+/**
+ * Types
+ */
+import type { Question } from '@/shared/types/domain'
+import type { TestState } from '@/features/exam/types/full-test.types'
+import { PART_INSTRUCTIONS } from '@/features/exam/types/full-test.types'
 
 const { Title, Text, Paragraph } = Typography
 

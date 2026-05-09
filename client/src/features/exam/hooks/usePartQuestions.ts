@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-keys'
 import { questionService } from '@/features/admin/services/question.service'
-import type { PartNumber } from '@/features/admin/types'
+import type { PartNumber } from '@/shared/types/domain'
 
 /**
  * Hook để lấy tất cả câu hỏi của một part

@@ -1,6 +1,14 @@
 import { Flex, Button, Popover } from 'antd'
+
+/**
+ * Icons
+ */
 import { SmileOutlined } from '@ant-design/icons'
-import type { AllowedEmoji } from '../services/share.service'
+
+/**
+ * Services
+ */
+import type { AllowedEmoji } from '@/features/exam/services/share.service'
 
 const ALLOWED_EMOJIS: AllowedEmoji[] = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '😍', '💖', '🤔']
 

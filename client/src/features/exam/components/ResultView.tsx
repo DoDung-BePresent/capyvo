@@ -2,7 +2,7 @@ import { Card, Typography, Flex, Progress, Tag, Tooltip, Space, Skeleton } from 
 import { Refresh } from '@mui/icons-material'
 import { styled } from '@/shared/utils/cn'
 import type { AnalysisResult } from '@/features/exam/services/session.service'
-import type { PartNumber } from '@/features/admin/types'
+import type { PartNumber } from '@/shared/types/domain'
 import { AudioPlayButton } from './AudioPlayButton'
 import { UpgradeCTA } from './UpgradeCTA'
 import { StyledButton } from '@/shared/components'

@@ -1,10 +1,33 @@
+/**
+ * Hooks
+ */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+
+/**
+ * Components
+ */
 import { Card, Avatar, Typography, Flex, Empty, Spin, message } from 'antd'
-import { UserOutlined } from '@ant-design/icons'
-import { shareService, type AllowedEmoji, type PublicShareDetail } from '../services/share.service'
-import { queryKeys } from '@/lib/query-keys'
 import { ReactionBar } from './ReactionBar'
-import { WaveformVisualizer } from './WaveformVisualizer'
+import { WaveformVisualizer } from '@/features/exam/components/WaveformVisualizer'
+
+/**
+ * Icons
+ */
+import { UserOutlined } from '@ant-design/icons'
+
+/**
+ * Services
+ */
+import {
+  shareService,
+  type AllowedEmoji,
+  type PublicShareDetail,
+} from '@/features/exam/services/share.service'
+
+/**
+ * QUERY_KEYS
+ */
+import { queryKeys } from '@/lib/query-keys'
 
 const { Text } = Typography
 

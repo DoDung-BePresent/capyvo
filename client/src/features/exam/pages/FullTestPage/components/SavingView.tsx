@@ -1,6 +1,18 @@
-import { useEffect, useRef } from 'react'
 import { Card, Typography, Flex, Spin } from 'antd'
+
+/**
+ * Hooks
+ */
+import { useEffect, useRef } from 'react'
+
+/**
+ * Utils
+ */
 import { styled } from '@/shared/utils/cn'
+
+/**
+ * Assets
+ */
 import endSound from '@/assets/sounds/instructions/end-sound.mp3'
 
 const { Title, Paragraph } = Typography

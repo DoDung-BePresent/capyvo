@@ -40,7 +40,10 @@ const router = createBrowserRouter([
             element: <UserLayout />,
             children: [
               { path: '/', lazy: lazy(() => import('@/features/exam/pages/HomePage')) },
-              { path: '/practice', lazy: lazy(() => import('@/features/exam/pages/PracticePage')) },
+              {
+                path: '/practice',
+                lazy: lazy(() => import('@/features/exam/pages/PracticePage/index')),
+              },
               {
                 path: '/practice/part/:partNumber',
                 lazy: lazy(() => import('@/features/exam/pages/PartPracticePage')),

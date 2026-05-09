@@ -1,20 +1,56 @@
-import { useState, useMemo } from 'react'
-import { Card, Empty, Flex, Typography, Progress, Segmented, Button, Modal, message } from 'antd'
-import { ShareAltOutlined, CheckCircleOutlined } from '@ant-design/icons'
-import { History, CheckCircle, Star, EmojiEvents } from '@mui/icons-material'
-import { styled } from '@/shared/utils/cn'
-import { useQuestionHistory } from '../hooks/useQuestionHistory'
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
-import { shareService } from '../services/share.service'
-import { queryKeys } from '@/lib/query-keys'
-import { AudioPlayButton } from './AudioPlayButton'
-import { PublicSharesPanel } from './PublicSharesPanel'
-import { WaveformVisualizer } from './WaveformVisualizer'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/vi'
+
+/**
+ * Components
+ */
+import { Card, Empty, Flex, Typography, Progress, Segmented, Button, Modal, message } from 'antd'
+
+/**
+ * Hooks
+ */
+import { useState, useMemo } from 'react'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
+
+/**
+ * Icons
+ */
+import { ShareAltOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { History, CheckCircle, Star, EmojiEvents } from '@mui/icons-material'
+
+/**
+ * Utils
+ */
+import { styled } from '@/shared/utils/cn'
+import { useQuestionHistory } from '@/features/exam/hooks/useQuestionHistory'
+
+/**
+ * Services
+ */
+import { shareService } from '@/features/exam/services/share.service'
+import type { AnalysisResult } from '@/features/exam/services/session.service'
+
+/**
+ * QUERY_KEYS
+ */
+import { queryKeys } from '@/lib/query-keys'
+
+/**
+ * Components
+ */
+import { AudioPlayButton } from '@/features/exam/components/AudioPlayButton'
+import { PublicSharesPanel } from '@/features/exam/pages/QuestionPracticePage/components/PublicSharesPanel'
+import { WaveformVisualizer } from '@/features/exam/components/WaveformVisualizer'
+
+/**
+ * Constants
+ */
 import { getErrorMessage } from '@/shared/constants/error-messages'
 
+/**
+ * Setup time
+ */
 dayjs.extend(relativeTime)
 dayjs.locale('vi')
 
@@ -34,22 +70,7 @@ interface PracticeHistoryPanelProps {
     responseId: string
     transcript: string
     isShared: boolean
-    analysis?: {
-      score: number
-      criteria: {
-        accuracy: number
-        vocabulary: number
-        grammar: number
-        fluency: number
-      }
-      issues: Array<{
-        category: string
-        original: string
-        spoken: string
-        note: string
-      }>
-      summary: string
-    }
+    analysis?: AnalysisResult
   }) => void
 }
 
@@ -233,7 +254,7 @@ export function PracticeHistoryPanel({
                         onSelectHistory({
                           responseId: item.id,
                           transcript: item.transcript,
-                          analysis: item.pronunciationScore || undefined,
+                          analysis: item.pronunciationScore as AnalysisResult | undefined,
                           isShared,
                         })
                       }

@@ -1,13 +1,23 @@
+/**
+ * Hooks
+ */
 import { useMemo } from 'react'
+
+/**
+ * Components
+ */
 import { Card, Flex, Space, Typography, Row, Col } from 'antd'
+import { Heatmap, StreakWidget } from '@/shared/components'
+
+/**
+ * Hooks
+ */
 import { useSession } from '@/features/auth/hooks/useSession'
 import { useGetMe } from '@/features/auth/hooks/useAuth'
 import { useActivity } from '@/features/exam/hooks/useActivity'
-import { Heatmap, StreakWidget } from '@/shared/components'
 
 const { Title, Text } = Typography
 
-// ─── Page ─── //
 export default function HomePage() {
   const { session } = useSession()
   const { data: user } = useGetMe(session)

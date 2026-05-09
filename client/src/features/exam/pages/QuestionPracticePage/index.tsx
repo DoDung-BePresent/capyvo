@@ -1,20 +1,42 @@
+/**
+ * Hooks
+ */
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Flex, message, Spin } from 'antd'
+
+/**
+ * Utils
+ */
 import { styled } from '@/shared/utils/cn'
 
+/**
+ * Services
+ */
 import { questionService } from '@/features/admin/services/question.service'
 import { responseService } from '@/features/exam/services/response.service'
-import { shareService } from '@/features/exam/services/share.service'
 import { sessionService, type AnalysisResult } from '@/features/exam/services/session.service'
+
+/**
+ * QUERY_KEYS
+ */
 import { queryKeys } from '@/lib/query-keys'
-import { QuestionPracticeView } from '../components/QuestionPracticeView'
-import { PracticeHistoryPanel } from '../components/PracticeHistoryPanel'
-import { ResultView } from '../components/ResultView'
-import { MicPermissionGate } from '../components/MicPermissionGate'
+
+/**
+ * Components
+ */
+import { Flex, message, Spin } from 'antd'
+import { QuestionPracticeView } from './components/QuestionPracticeView'
+import { PracticeHistoryPanel } from './components/PracticeHistoryPanel'
+import { BasicResultView } from './components/BasicResultView'
+import { PremiumResultView } from './components/PremiumResultView'
+import { MicPermissionGate } from '../../components/MicPermissionGate'
 import { PageHeader } from '@/shared/components'
-import { PART_META, type PartNumber } from '@/features/admin/types'
+
+/**
+ * Types
+ */
+import { PART_META, type PartNumber } from '@/shared/types/domain'
 
 const PageContainer = styled('div', 'flex h-screen')
 const LeftPanel = styled('div', 'flex-1 p-6 flex flex-col overflow-hidden')
@@ -30,8 +52,9 @@ export default function QuestionPracticePage() {
   const [selectedHistory, setSelectedHistory] = useState<{
     responseId: string
     transcript: string
-    analysis: AnalysisResult
+    analysis?: AnalysisResult
     isShared: boolean
+    isPremium: boolean
   } | null>(null)
 
   const { data: question, isLoading } = useQuery({
@@ -66,7 +89,7 @@ export default function QuestionPracticePage() {
       console.log('📤 Calling responseService.saveAudio...')
       const result = await responseService.saveAudio(sid, questionId!, audioBlob)
       console.log('✅ saveAudio result:', result)
-      return { responseId: result.responseId, ...result }
+      return result
     },
     onSuccess: (data) => {
       console.log('✅ saveAudioMutation success:', data)
@@ -85,29 +108,13 @@ export default function QuestionPracticePage() {
   const handleSelectHistory = (history: {
     responseId: string
     transcript: string
-    analysis: AnalysisResult
+    analysis?: AnalysisResult
     isShared: boolean
   }) => {
-    setSelectedHistory(history)
-  }
-
-  const handleShareHistory = async (responseId: string) => {
-    try {
-      await shareService.createShare(responseId)
-      // Update isShared in selectedHistory
-      if (selectedHistory && selectedHistory.responseId === responseId) {
-        setSelectedHistory({ ...selectedHistory, isShared: true })
-      }
-      // Invalidate my shares query to update history panel
-      queryClient.invalidateQueries({ queryKey: queryKeys.shares.my() })
-      message.success('Đã chia sẻ bài tập thành công!')
-    } catch (error) {
-      console.error('Share failed:', error)
-      const err = error as { response?: { data?: { error?: string; message?: string } } }
-      const errorCode = err.response?.data?.error
-      message.error(errorCode || 'Lỗi khi chia sẻ bài tập')
-      throw error
-    }
+    setSelectedHistory({
+      ...history,
+      isPremium: !!history.analysis,
+    })
   }
 
   const getReferenceText = () => {
@@ -158,16 +165,24 @@ export default function QuestionPracticePage() {
           />
           <LeftContent>
             {selectedHistory ? (
-              <ResultView
-                partNumber={part}
-                transcript={selectedHistory.transcript}
-                analysis={selectedHistory.analysis}
-                referenceText={getReferenceText()}
-                onReset={() => setSelectedHistory(null)}
-                responseId={selectedHistory.responseId}
-                isShared={selectedHistory.isShared}
-                onShare={handleShareHistory}
-              />
+              <>
+                {selectedHistory.isPremium ? (
+                  <PremiumResultView
+                    partNumber={part}
+                    transcript={selectedHistory.transcript}
+                    analysis={selectedHistory.analysis}
+                    referenceText={getReferenceText()}
+                    onReset={() => setSelectedHistory(null)}
+                  />
+                ) : (
+                  <BasicResultView
+                    partNumber={part}
+                    transcript={selectedHistory.transcript}
+                    referenceText={getReferenceText()}
+                    onReset={() => setSelectedHistory(null)}
+                  />
+                )}
+              </>
             ) : (
               <QuestionPracticeView
                 key={question.id}

@@ -1,9 +1,25 @@
 import { Card, Typography, Flex } from 'antd'
+
+/**
+ * Utils
+ */
 import { styled } from '@/shared/utils/cn'
-import { StyledButton } from '@/shared/components'
-import { COLORS } from '@/shared/constants/user-color'
 import { hexToRgba } from '@/shared/utils/color'
-import { TEST_INTRO_TEXT } from '../types/full-test.types'
+
+/**
+ * Components
+ */
+import { StyledButton } from '@/shared/components'
+
+/**
+ * Constants
+ */
+import { COLORS } from '@/shared/constants/user-color'
+
+/**
+ * Types
+ */
+import { TEST_INTRO_TEXT } from '@/features/exam/types/full-test.types'
 
 const { Title, Paragraph } = Typography
 
