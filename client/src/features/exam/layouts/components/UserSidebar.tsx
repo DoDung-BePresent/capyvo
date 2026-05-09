@@ -67,6 +67,10 @@ export function UserSidebar({ collapsed }: UserSidebarProps) {
       })()
     : null
 
+  // Get current active subscription plan
+  const currentPlan = user?.subscriptions?.[0]?.plan
+  const planName = currentPlan?.id
+
   return (
     <Sider
       trigger={null}
@@ -114,6 +118,7 @@ export function UserSidebar({ collapsed }: UserSidebarProps) {
           onUpgrade={() => navigate('/pricing')}
           isPremium={user?.isPremium}
           daysRemaining={daysRemaining}
+          planName={planName}
         />
       </Bottom>
     </Sider>
