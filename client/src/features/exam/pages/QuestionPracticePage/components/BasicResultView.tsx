@@ -28,12 +28,11 @@ import { StyledButton } from '@/shared/components'
  */
 import { COLORS } from '@/shared/constants/user-color'
 
-const { Title, Text, Paragraph } = Typography
+const { Title, Paragraph } = Typography
 
 const Container = styled('div', 'h-full flex flex-col')
 const ResultCard = styled(Card, 'flex-1 overflow-y-auto rounded-lg! min-h-0')
 const ControlPanel = styled(Card, 'rounded-lg! shrink-0 mt-4!')
-const TranscriptSection = styled('div', 'w-full')
 
 interface BasicResultViewProps {
   partNumber: PartNumber
@@ -56,18 +55,23 @@ export function BasicResultView({
     return (
       <Container>
         <ResultCard>
-          <Flex vertical gap={24}>
+          <Flex vertical gap={16}>
+            {referenceText && (
+              <div>
+                <Skeleton.Input active size="small" style={{ width: 150, marginBottom: 8 }} />
+                <Skeleton active paragraph={{ rows: 2 }} title={false} />
+              </div>
+            )}
             <div>
-              <Skeleton.Input active size="large" style={{ width: 200, marginBottom: 16 }} />
-              <Skeleton paragraph={{ rows: 4 }} active />
+              <Skeleton.Input active size="small" style={{ width: 150, marginBottom: 8 }} />
+              <Skeleton active paragraph={{ rows: 3 }} title={false} />
+            </div>
+            <div>
+              <Skeleton.Input active size="small" style={{ width: 100, marginBottom: 8 }} />
+              <Skeleton active paragraph={{ rows: 2 }} title={false} />
             </div>
           </Flex>
         </ResultCard>
-        <ControlPanel>
-          <Flex justify="flex-end">
-            <Skeleton.Button active size="large" style={{ width: 120 }} />
-          </Flex>
-        </ControlPanel>
       </Container>
     )
   }
@@ -75,64 +79,53 @@ export function BasicResultView({
   return (
     <Container>
       <ResultCard>
-        <Flex vertical gap={24}>
-          {/* Upgrade CTA */}
-          <UpgradeCTA />
-
-          {/* Audio Player */}
-          {audioUrl && (
-            <Flex align="center" gap={12}>
-              <AudioPlayButton audioUrl={audioUrl} />
-              <Text type="secondary">Nghe lại bài tập của bạn</Text>
-            </Flex>
-          )}
-
-          {/* Reference Text */}
+        <Flex vertical gap={16}>
+          {/* Reference text (if available) */}
           {referenceText && (
-            <TranscriptSection>
-              <Title level={5} style={{ marginBottom: 12 }}>
+            <div>
+              <Title level={5} style={{ marginBottom: 8 }}>
                 Nội dung tham khảo
               </Title>
               <Paragraph
                 style={{
-                  fontSize: 15,
+                  fontSize: 14,
                   lineHeight: 1.8,
                   backgroundColor: '#f5f5f5',
-                  padding: 16,
+                  padding: 12,
                   borderRadius: 8,
-                  whiteSpace: 'pre-wrap',
+                  color: '#595959',
                 }}
               >
                 {referenceText}
               </Paragraph>
-            </TranscriptSection>
+            </div>
           )}
 
-          {/* Transcript */}
-          {transcript && (
-            <TranscriptSection>
-              <Title level={5} style={{ marginBottom: 12 }}>
+          {/* Transcript only */}
+          <div>
+            <Flex align="center" gap={8} style={{ marginBottom: 8 }}>
+              <Title level={5} style={{ margin: 0 }}>
                 Phiên âm của bạn
               </Title>
+              {audioUrl && <AudioPlayButton audioUrl={audioUrl} />}
+            </Flex>
+            {transcript && transcript.trim() !== '' ? (
+              <Paragraph style={{ fontSize: 15, lineHeight: 2 }}>{transcript}</Paragraph>
+            ) : (
               <Paragraph
-                style={{
-                  fontSize: 15,
-                  lineHeight: 1.8,
-                  backgroundColor: '#e6f7ff',
-                  padding: 16,
-                  borderRadius: 8,
-                  whiteSpace: 'pre-wrap',
-                  border: '1px solid #91d5ff',
-                }}
+                style={{ fontSize: 15, lineHeight: 2, color: '#8c8c8c', fontStyle: 'italic' }}
               >
-                {transcript}
+                (Không có phiên âm)
               </Paragraph>
-            </TranscriptSection>
-          )}
+            )}
+          </div>
+
+          {/* Upgrade CTA inline */}
+          <UpgradeCTA />
         </Flex>
       </ResultCard>
 
-      {/* Control Panel */}
+      {/* Control Panel with Reset button */}
       <ControlPanel>
         <Flex justify="flex-end">
           <StyledButton
@@ -142,6 +135,7 @@ export function BasicResultView({
             onClick={onReset}
             shadowColor={hexToRgba(COLORS.primary, 0.6)}
             style={{
+              minWidth: 150,
               backgroundColor: COLORS.primary,
               borderColor: COLORS.primary,
             }}

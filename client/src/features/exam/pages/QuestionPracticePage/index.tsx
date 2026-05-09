@@ -52,6 +52,7 @@ export default function QuestionPracticePage() {
   const [selectedHistory, setSelectedHistory] = useState<{
     responseId: string
     transcript: string
+    audioUrl?: string
     analysis?: AnalysisResult
     isShared: boolean
     isPremium: boolean
@@ -108,6 +109,7 @@ export default function QuestionPracticePage() {
   const handleSelectHistory = (history: {
     responseId: string
     transcript: string
+    audioUrl?: string
     analysis?: AnalysisResult
     isShared: boolean
   }) => {
@@ -172,6 +174,7 @@ export default function QuestionPracticePage() {
                     transcript={selectedHistory.transcript}
                     analysis={selectedHistory.analysis}
                     referenceText={getReferenceText()}
+                    audioUrl={selectedHistory.audioUrl}
                     onReset={() => setSelectedHistory(null)}
                   />
                 ) : (
@@ -179,6 +182,7 @@ export default function QuestionPracticePage() {
                     partNumber={part}
                     transcript={selectedHistory.transcript}
                     referenceText={getReferenceText()}
+                    audioUrl={selectedHistory.audioUrl}
                     onReset={() => setSelectedHistory(null)}
                   />
                 )}

@@ -69,6 +69,7 @@ interface PracticeHistoryPanelProps {
   onSelectHistory?: (history: {
     responseId: string
     transcript: string
+    audioUrl?: string
     isShared: boolean
     analysis?: AnalysisResult
   }) => void
@@ -254,6 +255,7 @@ export function PracticeHistoryPanel({
                         onSelectHistory({
                           responseId: item.id,
                           transcript: item.transcript,
+                          audioUrl: item.audioUrl || undefined,
                           analysis: item.pronunciationScore as AnalysisResult | undefined,
                           isShared,
                         })

@@ -116,16 +116,25 @@ export function PremiumResultView({
 
             {/* Right: Transcript Skeleton */}
             <TranscriptSection>
-              <Skeleton.Input active size="large" style={{ width: 200, marginBottom: 16 }} />
-              <Skeleton paragraph={{ rows: 6 }} active />
+              <Flex vertical gap={16}>
+                {referenceText && (
+                  <div>
+                    <Skeleton.Input active size="small" style={{ width: 150, marginBottom: 8 }} />
+                    <Skeleton active paragraph={{ rows: 2 }} title={false} />
+                  </div>
+                )}
+                <div>
+                  <Skeleton.Input active size="small" style={{ width: 150, marginBottom: 8 }} />
+                  <Skeleton active paragraph={{ rows: 3 }} title={false} />
+                </div>
+                <div>
+                  <Skeleton.Input active size="small" style={{ width: 100, marginBottom: 8 }} />
+                  <Skeleton active paragraph={{ rows: 2 }} title={false} />
+                </div>
+              </Flex>
             </TranscriptSection>
           </ScoreSection>
         </ResultCard>
-        <ControlPanel>
-          <Flex justify="flex-end">
-            <Skeleton.Button active size="large" style={{ width: 120 }} />
-          </Flex>
-        </ControlPanel>
       </Container>
     )
   }
@@ -135,6 +144,111 @@ export function PremiumResultView({
   }
 
   const scorePercentage = (analysis.score / scale.max) * 100
+
+  // Render transcript với highlight lỗi
+  const renderHighlightedTranscript = () => {
+    if (!transcript || transcript.trim() === '') {
+      return (
+        <Paragraph style={{ fontSize: 15, lineHeight: 2, color: '#8c8c8c', fontStyle: 'italic' }}>
+          (Không có phiên âm)
+        </Paragraph>
+      )
+    }
+
+    if (analysis.issues.length === 0) {
+      return <Paragraph style={{ fontSize: 15, lineHeight: 2 }}>{transcript}</Paragraph>
+    }
+
+    // Tạo array các đoạn text với thông tin lỗi
+    const segments: Array<{ text: string; issue?: (typeof analysis.issues)[0] }> = []
+    let lastIndex = 0
+
+    // Sort issues by position in transcript
+    const sortedIssues = [...analysis.issues].sort((a, b) => {
+      const aIndex = transcript.toLowerCase().indexOf(a.spoken.toLowerCase())
+      const bIndex = transcript.toLowerCase().indexOf(b.spoken.toLowerCase())
+      return aIndex - bIndex
+    })
+
+    sortedIssues.forEach((issue) => {
+      const spokenLower = issue.spoken.toLowerCase()
+      const transcriptLower = transcript.toLowerCase()
+      const index = transcriptLower.indexOf(spokenLower, lastIndex)
+
+      if (index !== -1) {
+        // Add text before error
+        if (index > lastIndex) {
+          segments.push({ text: transcript.substring(lastIndex, index) })
+        }
+
+        // Add error segment
+        segments.push({
+          text: transcript.substring(index, index + issue.spoken.length),
+          issue,
+        })
+
+        lastIndex = index + issue.spoken.length
+      }
+    })
+
+    // Add remaining text
+    if (lastIndex < transcript.length) {
+      segments.push({ text: transcript.substring(lastIndex) })
+    }
+
+    return (
+      <Paragraph style={{ fontSize: 15, lineHeight: 2 }}>
+        {segments.map((segment, index) => {
+          if (!segment.issue) {
+            return <span key={index}>{segment.text}</span>
+          }
+
+          const colors = ERROR_COLORS[segment.issue.category] || {
+            bg: '#f5f5f5',
+            border: '#d9d9d9',
+            text: '#595959',
+          }
+          return (
+            <Tooltip
+              key={index}
+              title={
+                <div>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                    {ERROR_LABELS[segment.issue.category] || segment.issue.category}
+                  </div>
+                  {segment.issue.original && (
+                    <div style={{ marginBottom: 4 }}>
+                      <Text style={{ color: '#fff', opacity: 0.85 }}>
+                        Đúng: <strong>{segment.issue.original}</strong>
+                      </Text>
+                    </div>
+                  )}
+                  <div>
+                    <Text style={{ color: '#fff', opacity: 0.85 }}>{segment.issue.note}</Text>
+                  </div>
+                </div>
+              }
+              overlayStyle={{ maxWidth: 300 }}
+            >
+              <span
+                style={{
+                  backgroundColor: colors.bg,
+                  borderBottom: `2px solid ${colors.border}`,
+                  color: colors.text,
+                  padding: '2px 4px',
+                  borderRadius: 4,
+                  cursor: 'help',
+                  fontWeight: 500,
+                }}
+              >
+                {segment.text}
+              </span>
+            </Tooltip>
+          )
+        })}
+      </Paragraph>
+    )
+  }
 
   return (
     <Container>
@@ -148,112 +262,78 @@ export function PremiumResultView({
                 percent={scorePercentage}
                 format={() => (
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 32, fontWeight: 700, color: '#1890ff' }}>
+                    <div style={{ fontSize: 32, fontWeight: 700, lineHeight: 1 }}>
                       {analysis.score.toFixed(1)}
                     </div>
-                    <div style={{ fontSize: 14, color: '#8c8c8c' }}>/ {scale.max}</div>
+                    <div style={{ fontSize: 14, color: '#8c8c8c', marginTop: 4 }}>
+                      / {scale.max}
+                    </div>
                   </div>
                 )}
                 strokeColor={{
-                  '0%': '#108ee9',
-                  '100%': '#87d068',
+                  '0%': scorePercentage >= 80 ? '#52c41a' : '#1890ff',
+                  '100%': scorePercentage >= 80 ? '#73d13d' : '#40a9ff',
                 }}
-                strokeWidth={8}
+                strokeWidth={10}
                 size={160}
               />
               <Text type="secondary" style={{ fontSize: 13, textAlign: 'center' }}>
                 {scale.label}
               </Text>
 
-              {/* Audio Player */}
-              {audioUrl && (
-                <div style={{ marginTop: 8 }}>
-                  <AudioPlayButton audioUrl={audioUrl} />
-                </div>
-              )}
-
-              {/* Criteria Progress Bars */}
+              {/* Criteria breakdown */}
               <div style={{ width: '100%', marginTop: 8 }}>
                 <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                  <Tooltip title="Độ chính xác">
-                    <Progress
-                      percent={analysis.criteria.accuracy}
-                      size="small"
-                      strokeColor="#52c41a"
-                      format={(percent) => <Text style={{ fontSize: 12 }}>{percent}%</Text>}
-                    />
-                  </Tooltip>
+                  <Flex justify="space-between">
+                    <Text style={{ fontSize: 12 }}>Độ chính xác</Text>
+                    <Text strong style={{ fontSize: 12 }}>
+                      {analysis.criteria.accuracy}%
+                    </Text>
+                  </Flex>
                   {partNumber !== 1 && (
                     <>
-                      <Tooltip title="Từ vựng">
-                        <Progress
-                          percent={analysis.criteria.vocabulary}
-                          size="small"
-                          strokeColor="#1890ff"
-                          format={(percent) => <Text style={{ fontSize: 12 }}>{percent}%</Text>}
-                        />
-                      </Tooltip>
-                      <Tooltip title="Ngữ pháp">
-                        <Progress
-                          percent={analysis.criteria.grammar}
-                          size="small"
-                          strokeColor="#722ed1"
-                          format={(percent) => <Text style={{ fontSize: 12 }}>{percent}%</Text>}
-                        />
-                      </Tooltip>
+                      <Flex justify="space-between">
+                        <Text style={{ fontSize: 12 }}>Từ vựng</Text>
+                        <Text strong style={{ fontSize: 12 }}>
+                          {analysis.criteria.vocabulary}%
+                        </Text>
+                      </Flex>
+                      <Flex justify="space-between">
+                        <Text style={{ fontSize: 12 }}>Ngữ pháp</Text>
+                        <Text strong style={{ fontSize: 12 }}>
+                          {analysis.criteria.grammar}%
+                        </Text>
+                      </Flex>
                     </>
                   )}
-                  <Tooltip title="Độ trôi chảy">
-                    <Progress
-                      percent={analysis.criteria.fluency}
-                      size="small"
-                      strokeColor="#faad14"
-                      format={(percent) => <Text style={{ fontSize: 12 }}>{percent}%</Text>}
-                    />
-                  </Tooltip>
+                  <Flex justify="space-between">
+                    <Text style={{ fontSize: 12 }}>Độ trôi chảy</Text>
+                    <Text strong style={{ fontSize: 12 }}>
+                      {analysis.criteria.fluency}%
+                    </Text>
+                  </Flex>
                 </Space>
               </div>
             </Flex>
           </div>
 
-          {/* Right: Transcript & Issues */}
+          {/* Right: Transcript with highlights */}
           <TranscriptSection>
-            <Flex vertical gap={24}>
-              {/* Summary */}
-              {analysis.summary && (
-                <div>
-                  <Title level={5} style={{ marginBottom: 12 }}>
-                    Nhận xét tổng quan
-                  </Title>
-                  <Paragraph
-                    style={{
-                      fontSize: 15,
-                      lineHeight: 1.8,
-                      backgroundColor: '#f0f5ff',
-                      padding: 16,
-                      borderRadius: 8,
-                      border: '1px solid #adc6ff',
-                    }}
-                  >
-                    {analysis.summary}
-                  </Paragraph>
-                </div>
-              )}
-
-              {/* Reference Text */}
+            <Flex vertical gap={16}>
+              {/* Reference text (if available) */}
               {referenceText && (
                 <div>
-                  <Title level={5} style={{ marginBottom: 12 }}>
+                  <Title level={5} style={{ marginBottom: 8 }}>
                     Nội dung tham khảo
                   </Title>
                   <Paragraph
                     style={{
-                      fontSize: 15,
+                      fontSize: 14,
                       lineHeight: 1.8,
                       backgroundColor: '#f5f5f5',
-                      padding: 16,
+                      padding: 12,
                       borderRadius: 8,
-                      whiteSpace: 'pre-wrap',
+                      color: '#595959',
                     }}
                   >
                     {referenceText}
@@ -261,91 +341,67 @@ export function PremiumResultView({
                 </div>
               )}
 
-              {/* Transcript */}
-              {transcript && (
-                <div>
-                  <Title level={5} style={{ marginBottom: 12 }}>
-                    Phiên âm của bạn
-                  </Title>
-                  <Paragraph
-                    style={{
-                      fontSize: 15,
-                      lineHeight: 1.8,
-                      backgroundColor: '#e6f7ff',
-                      padding: 16,
-                      borderRadius: 8,
-                      whiteSpace: 'pre-wrap',
-                      border: '1px solid #91d5ff',
-                    }}
-                  >
-                    {transcript}
-                  </Paragraph>
-                </div>
-              )}
+              {/* Transcript with errors */}
+              <div>
+                <Flex align="center" justify="space-between" style={{ marginBottom: 8 }}>
+                  <Flex align="center" gap={8}>
+                    <Title level={5} style={{ margin: 0 }}>
+                      Phiên âm của bạn
+                    </Title>
+                    {audioUrl && <AudioPlayButton audioUrl={audioUrl} />}
+                  </Flex>
+                  {analysis.issues.length > 0 && (
+                    <Tag color="orange">{analysis.issues.length} lỗi</Tag>
+                  )}
+                </Flex>
+                {renderHighlightedTranscript()}
+              </div>
 
-              {/* Issues */}
-              {analysis.issues && analysis.issues.length > 0 && (
+              {/* Error legend */}
+              {analysis.issues.length > 0 && (
                 <div>
-                  <Title level={5} style={{ marginBottom: 12 }}>
-                    Các lỗi cần cải thiện ({analysis.issues.length})
-                  </Title>
-                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                    {analysis.issues.map((issue, index) => {
-                      const colors = ERROR_COLORS[issue.category] || ERROR_COLORS.substitution
+                  <Text
+                    type="secondary"
+                    style={{ fontSize: 12, marginBottom: 8, display: 'block' }}
+                  >
+                    Chú thích màu sắc:
+                  </Text>
+                  <Flex gap={8} wrap="wrap">
+                    {Object.entries(ERROR_LABELS).map(([key, label]) => {
+                      const hasError = analysis.issues.some((issue) => issue.category === key)
+                      if (!hasError) return null
+
+                      const colors = ERROR_COLORS[key] || {
+                        bg: '#f5f5f5',
+                        border: '#d9d9d9',
+                        text: '#595959',
+                      }
                       return (
-                        <Card
-                          key={index}
-                          size="small"
+                        <Tag
+                          key={key}
                           style={{
                             backgroundColor: colors.bg,
                             borderColor: colors.border,
-                            borderWidth: 2,
+                            color: colors.text,
                           }}
                         >
-                          <Flex vertical gap={8}>
-                            <Flex align="center" gap={8}>
-                              <Tag color={colors.text} style={{ margin: 0 }}>
-                                {ERROR_LABELS[issue.category] || issue.category}
-                              </Tag>
-                              <Text style={{ fontSize: 13, color: '#595959' }}>{issue.note}</Text>
-                            </Flex>
-                            <Flex gap={12} align="center">
-                              <div style={{ flex: 1 }}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                  Nên nói:
-                                </Text>
-                                <div
-                                  style={{
-                                    fontSize: 14,
-                                    fontWeight: 500,
-                                    color: '#52c41a',
-                                    marginTop: 4,
-                                  }}
-                                >
-                                  {issue.original}
-                                </div>
-                              </div>
-                              <div style={{ flex: 1 }}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                  Bạn nói:
-                                </Text>
-                                <div
-                                  style={{
-                                    fontSize: 14,
-                                    fontWeight: 500,
-                                    color: colors.text,
-                                    marginTop: 4,
-                                  }}
-                                >
-                                  {issue.spoken}
-                                </div>
-                              </div>
-                            </Flex>
-                          </Flex>
-                        </Card>
+                          {label}
+                        </Tag>
                       )
                     })}
-                  </Space>
+                  </Flex>
+                </div>
+              )}
+
+              {/* Summary */}
+              {analysis.summary && (
+                <div>
+                  <Title level={5} style={{ marginBottom: 8 }}>
+                    Nhận xét
+                  </Title>
+                  <Paragraph style={{ fontSize: 14, lineHeight: 1.8, color: '#595959' }}>
+                    {analysis.summary}
+                  </Paragraph>
                 </div>
               )}
             </Flex>
@@ -363,6 +419,7 @@ export function PremiumResultView({
             onClick={onReset}
             shadowColor={hexToRgba(COLORS.primary, 0.6)}
             style={{
+              minWidth: 150,
               backgroundColor: COLORS.primary,
               borderColor: COLORS.primary,
             }}
