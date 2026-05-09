@@ -63,30 +63,42 @@ CRITICAL RULES for Part 1 (Read Aloud):
 7. IGNORE minor punctuation differences (commas, apostrophes).
 8. "spoken" must be copied CHARACTER-FOR-CHARACTER from the transcript.
 9. "original" must be copied CHARACTER-FOR-CHARACTER from the reference text.
-10. NUMBERS AND SYMBOLS: Accept natural spoken forms. Examples:
-    - "$15" can be read as "fifteen dollars" or "dollar fifteen" — BOTH ARE CORRECT
-    - "15" can be read as "fifteen" — CORRECT
-    - "1st" can be read as "first" — CORRECT
-    - "&" can be read as "and" — CORRECT
-    - "%" can be read as "percent" — CORRECT
-    - Do NOT flag these as pronunciation errors unless the number itself is wrong (e.g., "fifteen" for "50")
-11. DATES: Accept multiple formats:
-    - "Saturday and Sunday" = "Saturday, Sunday" = "Saturday & Sunday" — ALL CORRECT
-    - "next Saturday" = "this Saturday" if contextually equivalent — CORRECT
+10. NUMBERS AND SYMBOLS - Accept ALL natural spoken forms as CORRECT:
+    - "$15" in text → "fifteen dollars" OR "15 dollars" OR "dollar 15" spoken = ALL CORRECT
+    - "15" in text → "fifteen" spoken = CORRECT
+    - "10%" in text → "ten percent" OR "10 percent" spoken = CORRECT
+    - "1st" in text → "first" spoken = CORRECT
+    - "&" in text → "and" spoken = CORRECT
+    - ONLY flag if NUMBER VALUE is wrong (e.g., "fifty" when text says "15")
+    - NEVER flag format differences (symbol vs word)
+11. DATES AND TIME - Accept equivalent formats:
+    - "Saturday and Sunday" = "Saturday, Sunday" = "Saturday & Sunday" = ALL CORRECT
+    - Minor wording differences in dates/times are acceptable
 
 Category rules:
 - omission: student skipped a word that IS in the reference. "spoken" = surrounding phrase from transcript for UI anchoring.
 - addition: student added a word that is NOT in the reference. "spoken" = the extra word(s) verbatim from transcript.
 - morphology: wrong word form (dollar→dollars, is→are). "spoken" = wrong word verbatim from transcript.
-- pronunciation: number/symbol read differently (15→fifteen, $→dollar). "spoken" = wrong form verbatim from transcript.
-- substitution: different word with different meaning. "spoken" = what was said verbatim from transcript.
+- pronunciation: ONLY for mispronounced words, NOT for number/symbol format differences. "spoken" = mispronounced word verbatim.
+- substitution: different word with different meaning (NOT number/symbol format). "spoken" = what was said verbatim from transcript.
 - order: words said in wrong order. "original" = correct phrase from reference. "spoken" = swapped phrase verbatim from transcript.
 
-Scoring guidelines for Part 1:
-- Perfect reading (0-2 minor errors): {MAX_SCORE} points
-- Good reading (3-5 errors): 70-80% of {MAX_SCORE}
-- Fair reading (6-10 errors): 50-70% of {MAX_SCORE}
-- Poor reading (>10 errors): below 50% of {MAX_SCORE}
+CRITICAL: Do NOT use "pronunciation" category for number/symbol format differences ($15 vs fifteen dollars). These are CORRECT variations.
+
+Scoring guidelines for Part 1 (Official TOEIC criteria):
+- Score 3: Pronunciation highly intelligible; stress, pausing, intonation appropriate
+- Score 2: Pronunciation generally intelligible with some errors; stress/intonation generally appropriate
+- Score 1: Pronunciation sometimes intelligible but heavily influenced by native language
+- Score 0: No response or not in English
+
+Apply these to {MAX_SCORE}-point scale proportionally.
+
+EXAMPLES OF CORRECT READINGS (do NOT flag these):
+Reference: "Tickets cost $15 at the gate."
+Transcript: "Tickets cost fifteen dollars at the gate." → CORRECT (no errors)
+
+Reference: "Saturday and Sunday"
+Transcript: "Saturday & Sunday" → CORRECT (no errors)
 
 If the student read perfectly, return empty issues array and score {MAX_SCORE}.`
 
@@ -137,6 +149,14 @@ Critical rules:
 6. IGNORE capitalization.
 7. Only flag clear, objective errors. Be lenient with paraphrasing.
 8. A concise, accurate description of main elements deserves a high score.
+
+Scoring guidelines (Official TOEIC Part 2 criteria):
+- Score 3: Describes main features; generally understandable; appropriate vocabulary/structure
+- Score 2: Relevant but meaning sometimes unclear; limited vocabulary/structure
+- Score 1: May be relevant but very limited language ability; requires significant listener effort
+- Score 0: No response or not in English
+
+Apply these to {MAX_SCORE}-point scale proportionally.
 
 If the description accurately covers the main visible elements with good grammar, return high score even if brief.`
 
@@ -191,11 +211,21 @@ Category rules:
 - grammar: sentence structure error (word order, missing words, run-on sentences, fragments). "spoken" = problematic phrase verbatim.
 - vocabulary: inappropriate word choice, repetition, unclear expression, or unnatural phrasing. "spoken" = the word/phrase verbatim. "original" = better alternative.
 
-Scoring guidelines (adjusted for time constraints):
-- Excellent (90-100% of MAX_SCORE): Directly answers question, clear and grammatically correct, appropriate vocabulary, good flow. Length is appropriate for time limit.
-- Good (70-89% of MAX_SCORE): Answers question, mostly clear, few minor errors, adequate vocabulary. May be brief but complete.
-- Fair (50-69% of MAX_SCORE): Partially addresses question, some errors that don't prevent understanding, basic vocabulary.
-- Poor (<50% of MAX_SCORE): Doesn't address question well, many errors that impede understanding, very limited vocabulary.
+Scoring guidelines (Official TOEIC Part 3/4 criteria):
+- Score 3: Complete, relevant response; requires little listener effort; appropriate vocabulary/structure
+- Score 2: Partially effective response; may require listener effort but mostly understandable; limited vocabulary/structure
+- Score 1: Ineffective response; relevant information not conveyed; affects listener understanding
+- Score 0: No response or not in English
+
+For Part 5 (5-point scale):
+- Score 5: Clear opinion with support (reasons/details/examples); clear speech with fluency; good control of simple/complex structures; effective vocabulary
+- Score 4: Clear opinion with adequate support; some pronunciation difficulties; fairly effective grammar/vocabulary
+- Score 3: Opinion stated but limited support; basically understandable but requires effort; limited grammar control (mostly simple sentences); limited vocabulary
+- Score 2: Opinion stated but support unclear/incoherent; frequent pronunciation difficulties; grammar significantly affects communication; very limited vocabulary
+- Score 1: Only reads prompt or cannot express understandable opinion; single words/phrases or mix of native language and English
+- Score 0: No response or not in English
+
+Apply these criteria to {MAX_SCORE}-point scale proportionally.
 
 Be encouraging and realistic. A short but accurate, grammatically correct response is BETTER than a long response with many errors. Only flag significant errors that impact communication or clarity.`
 
@@ -407,7 +437,7 @@ export class ResponseService {
     }
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0,
       response_format: { type: 'json_object' },
@@ -506,7 +536,7 @@ export class ResponseService {
       throw new ForbiddenError('No reference text or image context for this question type')
     }
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0,
       response_format: { type: 'json_object' },
@@ -638,7 +668,7 @@ Scoring guidelines:
 - 86-100: Excellent ability (180-200 TOEIC)`
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.3,
     })
