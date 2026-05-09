@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Card, Typography, Tag, Flex, Space, Progress, Tooltip, message, Button } from 'antd'
+import { Card, Typography, Tag, Flex, Space, Progress, Tooltip, message } from 'antd'
 import { Mic, Stop, Refresh, Cancel, VolumeUp } from '@mui/icons-material'
-import { Link } from 'react-router-dom'
 import { styled } from '@/shared/utils/cn'
 import { StyledButton } from '@/shared/components'
 import { useMicPermission } from '@/features/exam/hooks/useMicPermission'
 import { useTranscribeAndAnalyze } from '@/features/exam/hooks/useTranscribeAndAnalyze'
+import { useTranscribe } from '@/features/exam/hooks/useTranscribe'
 import { responseService } from '@/features/exam/services/response.service'
 import { MicWaveform } from './MicWaveform'
 import { ResultView } from './ResultView'
@@ -53,8 +53,7 @@ export function QuestionPracticeView({
     audioUrl?: string
   } | null>(null)
   const [isCancelled, setIsCancelled] = useState(false)
-  const [hasAccess, setHasAccess] = useState(true)
-  const [daysRemaining, setDaysRemaining] = useState<number | null>(null)
+  const [userPlan, setUserPlan] = useState<'BASIC' | 'PREMIUM' | null>(null)
 
   const contextAudioRef = useRef<HTMLAudioElement>(null!)
   const questionAudioRef = useRef<HTMLAudioElement>(null!)
@@ -65,12 +64,11 @@ export function QuestionPracticeView({
     const checkSubscription = async () => {
       try {
         const result = await responseService.checkSubscription()
-        setHasAccess(result.hasAccess)
-        setDaysRemaining(result.daysRemaining)
+        setUserPlan(result.plan)
       } catch (error) {
         console.error('Failed to check subscription:', error)
-        // Assume has access if check fails to not block user
-        setHasAccess(true)
+        // Assume BASIC if check fails
+        setUserPlan('BASIC')
       }
     }
     checkSubscription()
@@ -88,6 +86,27 @@ export function QuestionPracticeView({
     },
     onError: (error: unknown) => {
       console.error('❌ Analysis error:', error)
+      const err = error as { response?: { data?: { error?: string; message?: string } } }
+      const errorCode = err.response?.data?.error
+      message.error(getErrorMessage(errorCode))
+      setRecordingState('completed')
+    },
+  })
+
+  // For BASIC users: transcribe only
+  const { mutate: transcribeOnly, isPending: isTranscribing } = useTranscribe('temp-session-id', {
+    onSuccess: (transcript) => {
+      console.log('✅ Transcription complete:', transcript)
+      setAnalysisResult({
+        transcript,
+        analysis: {} as AnalysisResult,
+        audioUrl: analysisResult?.audioUrl,
+      })
+      setRecordingState('result')
+      onAnalysisComplete?.()
+    },
+    onError: (error: unknown) => {
+      console.error('❌ Transcription error:', error)
       const err = error as { response?: { data?: { error?: string; message?: string } } }
       const errorCode = err.response?.data?.error
       message.error(getErrorMessage(errorCode))
@@ -174,9 +193,17 @@ export function QuestionPracticeView({
             analysis: {} as AnalysisResult,
             audioUrl: result.audioUrl,
           })
-          // Auto transcribe and analyze
-          console.log('🔄 Starting transcribe & analyze...')
-          transcribeAndAnalyze({ responseId: result.responseId, partNumber: question.partNumber })
+
+          // Check user plan and call appropriate API
+          if (userPlan === 'PREMIUM') {
+            // PREMIUM: Full analysis
+            console.log('🔄 Starting transcribe & analyze (PREMIUM)...')
+            transcribeAndAnalyze({ responseId: result.responseId, partNumber: question.partNumber })
+          } else {
+            // BASIC: Transcribe only
+            console.log('🔄 Starting transcribe only (BASIC)...')
+            transcribeOnly(result.responseId)
+          }
         } catch (error) {
           console.error('❌ Failed to save audio:', error)
           setRecordingState('completed')
@@ -190,7 +217,14 @@ export function QuestionPracticeView({
       console.error('Failed to start recording:', error)
       setRecordingState('idle')
     }
-  }, [onRecordingComplete, transcribeAndAnalyze, question.partNumber, isCancelled])
+  }, [
+    onRecordingComplete,
+    transcribeAndAnalyze,
+    transcribeOnly,
+    question.partNumber,
+    isCancelled,
+    userPlan,
+  ])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -304,282 +338,252 @@ export function QuestionPracticeView({
           analysis={analysisResult?.analysis}
           referenceText={getReferenceText()}
           audioUrl={analysisResult?.audioUrl}
-          isLoading={isAnalyzing}
+          isLoading={isAnalyzing || isTranscribing}
+          isPremium={userPlan === 'PREMIUM'}
+          onReset={handleReset}
         />
       )}
 
       {/* Show Question Content when not in analyzing/result state */}
       {recordingState !== 'analyzing' && recordingState !== 'result' && (
-        <QuestionCard>
-          <Flex vertical gap={16}>
-            {/* Header */}
-            <Flex align="center" justify="space-between">
-              <Space>
-                <Tag color="blue" style={{ fontSize: 14, padding: '4px 12px' }}>
-                  Câu {question.questionNumber}
-                </Tag>
-                <Text type="secondary">{question.examSetTitle}</Text>
-              </Space>
-              <Space>
-                <Tag>{question.prepTimeSeconds}s chuẩn bị</Tag>
-                <Tag>{question.responseTimeSeconds}s trả lời</Tag>
-              </Space>
-            </Flex>
+        <>
+          <QuestionCard>
+            <Flex vertical gap={16}>
+              {/* Header */}
+              <Flex align="center" justify="space-between">
+                <Space>
+                  <Tag color="blue" style={{ fontSize: 14, padding: '4px 12px' }}>
+                    Câu {question.questionNumber}
+                  </Tag>
+                  <Text type="secondary">{question.examSetTitle}</Text>
+                </Space>
+                <Space>
+                  <Tag>{question.prepTimeSeconds}s chuẩn bị</Tag>
+                  <Tag>{question.responseTimeSeconds}s trả lời</Tag>
+                </Space>
+              </Flex>
 
-            {/* Images */}
-            {question.imageUrls && question.imageUrls.length > 0 && (
-              <div>
-                <Title level={5} style={{ marginBottom: 12 }}>
-                  Hình ảnh
-                </Title>
-                <Flex gap={12} justify="center" wrap="wrap">
-                  {question.imageUrls.map((url, index) => (
-                    <img
-                      key={index}
-                      src={url}
-                      alt={`Question ${question.questionNumber}`}
-                      style={{
-                        maxWidth: '100%',
-                        maxHeight: 400,
-                        borderRadius: 8,
-                        objectFit: 'contain',
-                      }}
+              {/* Images */}
+              {question.imageUrls && question.imageUrls.length > 0 && (
+                <div>
+                  <Title level={5} style={{ marginBottom: 12 }}>
+                    Hình ảnh
+                  </Title>
+                  <Flex gap={12} justify="center" wrap="wrap">
+                    {question.imageUrls.map((url, index) => (
+                      <img
+                        key={index}
+                        src={url}
+                        alt={`Question ${question.questionNumber}`}
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: 400,
+                          borderRadius: 8,
+                          objectFit: 'contain',
+                        }}
+                      />
+                    ))}
+                  </Flex>
+                </div>
+              )}
+
+              {/* Context Text (Part 3, 4, 5) */}
+              {question.contextText && (
+                <div>
+                  <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
+                    <Title level={5} style={{ margin: 0 }}>
+                      Ngữ cảnh
+                    </Title>
+                    {question.contextAudioUrl && (
+                      <Tooltip title="Phát audio ngữ cảnh">
+                        <AudioIcon onClick={() => playAudio(contextAudioRef)}>
+                          <VolumeUp style={{ fontSize: 18, color: '#1890ff' }} />
+                        </AudioIcon>
+                      </Tooltip>
+                    )}
+                  </Flex>
+                  <Paragraph
+                    style={{
+                      fontSize: 15,
+                      lineHeight: 1.8,
+                      backgroundColor: '#f5f5f5',
+                      padding: 16,
+                      borderRadius: 8,
+                    }}
+                  >
+                    {question.contextText}
+                  </Paragraph>
+                </div>
+              )}
+
+              {/* Question Text */}
+              {(question.contentText || question.questionText) && (
+                <div>
+                  <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
+                    <Title level={5} style={{ margin: 0 }}>
+                      Câu hỏi
+                    </Title>
+                    {question.questionAudioUrl && (
+                      <Tooltip title="Phát audio câu hỏi">
+                        <AudioIcon onClick={() => playAudio(questionAudioRef)}>
+                          <VolumeUp style={{ fontSize: 18, color: '#1890ff' }} />
+                        </AudioIcon>
+                      </Tooltip>
+                    )}
+                  </Flex>
+                  <Paragraph style={{ fontSize: 16, lineHeight: 1.8 }}>
+                    {question.contentText || question.questionText}
+                  </Paragraph>
+                </div>
+              )}
+            </Flex>
+          </QuestionCard>
+
+          {/* Control Panel */}
+          <ControlPanel>
+            <Flex align="center" justify="space-between" gap={16}>
+              {/* Left: Circular countdown (only for prep/record states) */}
+              <div style={{ width: 80, flexShrink: 0 }}>
+                {recordingState === 'preparing' && (
+                  <Flex vertical align="center" gap={4}>
+                    <Progress
+                      type="circle"
+                      percent={prepProgress}
+                      format={() => `${prepTimeLeft}s`}
+                      strokeColor="#1890ff"
+                      strokeWidth={10}
+                      size={80}
                     />
-                  ))}
-                </Flex>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Chuẩn bị
+                    </Text>
+                  </Flex>
+                )}
+                {recordingState === 'recording' && (
+                  <Flex vertical align="center" gap={4}>
+                    <Progress
+                      type="circle"
+                      percent={recordProgress}
+                      format={() => `${recordTimeLeft}s`}
+                      strokeColor="#ff4d4f"
+                      strokeWidth={10}
+                      size={80}
+                    />
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Ghi âm
+                    </Text>
+                  </Flex>
+                )}
+                {(recordingState === 'idle' || recordingState === 'completed') && (
+                  <div style={{ width: 80, height: 80 }} />
+                )}
               </div>
-            )}
 
-            {/* Context Text (Part 3, 4, 5) */}
-            {question.contextText && (
-              <div>
-                <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
-                  <Title level={5} style={{ margin: 0 }}>
-                    Ngữ cảnh
-                  </Title>
-                  {question.contextAudioUrl && (
-                    <Tooltip title="Phát audio ngữ cảnh">
-                      <AudioIcon onClick={() => playAudio(contextAudioRef)}>
-                        <VolumeUp style={{ fontSize: 18, color: '#1890ff' }} />
-                      </AudioIcon>
-                    </Tooltip>
-                  )}
-                </Flex>
-                <Paragraph
-                  style={{
-                    fontSize: 15,
-                    lineHeight: 1.8,
-                    backgroundColor: '#f5f5f5',
-                    padding: 16,
-                    borderRadius: 8,
-                  }}
-                >
-                  {question.contextText}
-                </Paragraph>
+              {/* Center: Waveform */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {recordingState === 'recording' && recordingStream && (
+                  <Flex align="center" justify="center" style={{ height: 80 }}>
+                    <MicWaveform color={COLORS.primary} stream={recordingStream} height={80} />
+                  </Flex>
+                )}
+                {recordingState === 'preparing' && (
+                  <Flex align="center" justify="center" style={{ height: 80 }}>
+                    <Text type="secondary">Đang chuẩn bị...</Text>
+                  </Flex>
+                )}
+                {recordingState === 'idle' && (
+                  <Flex align="center" justify="center" style={{ height: 80 }}>
+                    <Text type="secondary">Nhấn nút để bắt đầu</Text>
+                  </Flex>
+                )}
+                {recordingState === 'completed' && (
+                  <Flex align="center" justify="center" style={{ height: 80 }}>
+                    <Text type="secondary">Đã lưu bài tập</Text>
+                  </Flex>
+                )}
               </div>
-            )}
 
-            {/* Question Text */}
-            {(question.contentText || question.questionText) && (
-              <div>
-                <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
-                  <Title level={5} style={{ margin: 0 }}>
-                    Câu hỏi
-                  </Title>
-                  {question.questionAudioUrl && (
-                    <Tooltip title="Phát audio câu hỏi">
-                      <AudioIcon onClick={() => playAudio(questionAudioRef)}>
-                        <VolumeUp style={{ fontSize: 18, color: '#1890ff' }} />
-                      </AudioIcon>
-                    </Tooltip>
-                  )}
-                </Flex>
-                <Paragraph style={{ fontSize: 16, lineHeight: 1.8 }}>
-                  {question.contentText || question.questionText}
-                </Paragraph>
-              </div>
-            )}
-          </Flex>
-        </QuestionCard>
-      )}
-
-      {/* Control Panel */}
-      <ControlPanel>
-        {!hasAccess ? (
-          <Flex align="center" justify="center" gap={8} style={{ padding: '16px' }}>
-            <Flex vertical align="center" gap={8}>
-              <Text type="secondary" style={{ fontSize: 13, textAlign: 'center' }}>
-                {daysRemaining !== null && daysRemaining < 0
-                  ? 'Gói đăng ký của bạn đã hết hạn'
-                  : 'Bạn chưa có gói đăng ký'}
-              </Text>
-              <Link to="/pricing">
-                <Button type="link" style={{ padding: 0, height: 'auto' }}>
-                  {daysRemaining !== null && daysRemaining < 0 ? 'Gia hạn ngay' : 'Mua gói ngay'}
-                </Button>
-              </Link>
-            </Flex>
-          </Flex>
-        ) : (
-          <Flex align="center" justify="space-between" gap={16}>
-            {/* Left: Circular countdown (only for prep/record states) */}
-            <div style={{ width: 80, flexShrink: 0 }}>
-              {recordingState === 'preparing' && (
-                <Flex vertical align="center" gap={4}>
-                  <Progress
-                    type="circle"
-                    percent={prepProgress}
-                    format={() => `${prepTimeLeft}s`}
-                    strokeColor="#1890ff"
-                    strokeWidth={10}
-                    size={80}
-                  />
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    Chuẩn bị
-                  </Text>
-                </Flex>
-              )}
-              {recordingState === 'recording' && (
-                <Flex vertical align="center" gap={4}>
-                  <Progress
-                    type="circle"
-                    percent={recordProgress}
-                    format={() => `${recordTimeLeft}s`}
-                    strokeColor="#ff4d4f"
-                    strokeWidth={10}
-                    size={80}
-                  />
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    Ghi âm
-                  </Text>
-                </Flex>
-              )}
-              {(recordingState === 'idle' || recordingState === 'completed') && (
-                <div style={{ width: 80, height: 80 }} />
-              )}
-            </div>
-
-            {/* Center: Waveform */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {recordingState === 'recording' && recordingStream && (
-                <Flex align="center" justify="center" style={{ height: 80 }}>
-                  <MicWaveform color={COLORS.primary} stream={recordingStream} height={80} />
-                </Flex>
-              )}
-              {recordingState === 'preparing' && (
-                <Flex align="center" justify="center" style={{ height: 80 }}>
-                  <Text type="secondary">Đang chuẩn bị...</Text>
-                </Flex>
-              )}
-              {recordingState === 'idle' && (
-                <Flex align="center" justify="center" style={{ height: 80 }}>
-                  <Text type="secondary">Nhấn nút để bắt đầu</Text>
-                </Flex>
-              )}
-              {recordingState === 'completed' && (
-                <Flex align="center" justify="center" style={{ height: 80 }}>
-                  <Text type="secondary">Đã lưu bài tập</Text>
-                </Flex>
-              )}
-            </div>
-
-            {/* Right: Action buttons */}
-            <Flex gap={12} style={{ flexShrink: 0 }}>
-              {recordingState === 'idle' && (
-                <StyledButton
-                  size="large"
-                  type="primary"
-                  icon={<Mic style={{ fontSize: 20 }} />}
-                  onClick={startPreparing}
-                  disabled={isSubmitting}
-                  style={{
-                    width: '100%',
-                    backgroundColor: COLORS.primary,
-                    borderColor: COLORS.primary,
-                  }}
-                >
-                  Bắt đầu luyện tập
-                </StyledButton>
-              )}
-
-              {(recordingState === 'preparing' || recordingState === 'recording') && (
-                <>
+              {/* Right: Action buttons */}
+              <Flex gap={12} style={{ flexShrink: 0 }}>
+                {recordingState === 'idle' && (
                   <StyledButton
                     size="large"
-                    danger
-                    icon={<Cancel style={{ fontSize: 20 }} />}
-                    onClick={handleCancel}
+                    type="primary"
+                    icon={<Mic style={{ fontSize: 20 }} />}
+                    onClick={startPreparing}
+                    disabled={isSubmitting}
+                    style={{
+                      width: '100%',
+                      backgroundColor: COLORS.primary,
+                      borderColor: COLORS.primary,
+                    }}
                   >
-                    Hủy
+                    Bắt đầu luyện tập
                   </StyledButton>
-                  {recordingState === 'preparing' && (
+                )}
+
+                {(recordingState === 'preparing' || recordingState === 'recording') && (
+                  <>
                     <StyledButton
                       size="large"
-                      type="primary"
-                      onClick={skipPreparation}
-                      shadowColor={hexToRgba(COLORS.secondary, 0.6)}
-                      style={{
-                        width: '100%',
-                        backgroundColor: COLORS.secondary,
-                        borderColor: COLORS.secondary,
-                      }}
+                      danger
+                      icon={<Cancel style={{ fontSize: 20 }} />}
+                      onClick={handleCancel}
                     >
-                      Bỏ qua
+                      Hủy
                     </StyledButton>
-                  )}
-                  {recordingState === 'recording' && (
-                    <StyledButton
-                      size="large"
-                      color="danger"
-                      variant="solid"
-                      icon={<Stop style={{ fontSize: 20 }} />}
-                      shadowColor={hexToRgba(COLORS.accent, 0.4)}
-                      onClick={stopRecording}
-                    >
-                      Dừng và gửi
-                    </StyledButton>
-                  )}
-                </>
-              )}
+                    {recordingState === 'preparing' && (
+                      <StyledButton
+                        size="large"
+                        type="primary"
+                        onClick={skipPreparation}
+                        shadowColor={hexToRgba(COLORS.secondary, 0.6)}
+                        style={{
+                          width: '100%',
+                          backgroundColor: COLORS.secondary,
+                          borderColor: COLORS.secondary,
+                        }}
+                      >
+                        Bỏ qua
+                      </StyledButton>
+                    )}
+                    {recordingState === 'recording' && (
+                      <StyledButton
+                        size="large"
+                        color="danger"
+                        variant="solid"
+                        icon={<Stop style={{ fontSize: 20 }} />}
+                        shadowColor={hexToRgba(COLORS.accent, 0.4)}
+                        onClick={stopRecording}
+                      >
+                        Dừng và gửi
+                      </StyledButton>
+                    )}
+                  </>
+                )}
 
-              {recordingState === 'completed' && (
-                <StyledButton
-                  size="large"
-                  type="primary"
-                  icon={<Refresh style={{ fontSize: 20 }} />}
-                  onClick={handleReset}
-                  disabled={isSubmitting}
-                  shadowColor={hexToRgba(COLORS.primary, 0.6)}
-                  style={{
-                    width: '100%',
-                    backgroundColor: COLORS.primary,
-                    borderColor: COLORS.primary,
-                  }}
-                >
-                  Luyện lại
-                </StyledButton>
-              )}
-
-              {recordingState === 'result' && (
-                <StyledButton
-                  size="large"
-                  type="primary"
-                  icon={<Refresh style={{ fontSize: 20 }} />}
-                  onClick={handleReset}
-                  shadowColor={hexToRgba(COLORS.primary, 0.6)}
-                  style={{
-                    width: '100%',
-                    backgroundColor: COLORS.primary,
-                    borderColor: COLORS.primary,
-                  }}
-                >
-                  Luyện lại
-                </StyledButton>
-              )}
+                {recordingState === 'completed' && (
+                  <StyledButton
+                    size="large"
+                    type="primary"
+                    icon={<Refresh style={{ fontSize: 20 }} />}
+                    onClick={handleReset}
+                    disabled={isSubmitting}
+                    shadowColor={hexToRgba(COLORS.primary, 0.6)}
+                    style={{
+                      width: '100%',
+                      backgroundColor: COLORS.primary,
+                      borderColor: COLORS.primary,
+                    }}
+                  >
+                    Luyện lại
+                  </StyledButton>
+                )}
+              </Flex>
             </Flex>
-          </Flex>
-        )}
-      </ControlPanel>
+          </ControlPanel>
+        </>
+      )}
     </Container>
   )
 }

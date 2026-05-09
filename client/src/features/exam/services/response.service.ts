@@ -5,7 +5,12 @@ import type { AnalysisResult } from './session.service'
 export const responseService = {
   checkSubscription: async () => {
     const { data } = await axiosInstance.get<
-      ApiResponse<{ hasAccess: boolean; isPremium: boolean; daysRemaining: number | null }>
+      ApiResponse<{
+        hasAccess: boolean
+        isPremium: boolean
+        plan: 'BASIC' | 'PREMIUM' | null
+        daysRemaining: number | null
+      }>
     >('/responses/check-subscription')
     return data.data
   },
@@ -24,6 +29,13 @@ export const responseService = {
       ApiResponse<{ audioUrl: string; responseId: string }>
     >('/responses/audio', form, { headers: { 'Content-Type': 'multipart/form-data' } })
     return data.data
+  },
+
+  transcribe: async (responseId: string): Promise<string> => {
+    const { data } = await axiosInstance.post<ApiResponse<{ transcript: string }>>(
+      `/responses/${responseId}/transcribe`,
+    )
+    return data.data.transcript
   },
 
   transcribeAndAnalyze: async (

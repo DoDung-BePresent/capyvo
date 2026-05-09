@@ -48,13 +48,26 @@ export default function FullTestPage() {
   })
 
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [hasAccess, setHasAccess] = useState(true)
-  const [daysRemaining, setDaysRemaining] = useState<number | null>(null)
+  const [userPlan, setUserPlan] = useState<'BASIC' | 'PREMIUM' | null>(null)
   const [allResults, setAllResults] = useState<
-    Array<{ transcript: string; analysis: AnalysisResult; questionId: string }>
+    Array<{ transcript: string; analysis: AnalysisResult | null; questionId: string }>
   >([])
   const [contextPlayedForPart, setContextPlayedForPart] = useState<Record<number, boolean>>({})
   const [selectedHistorySessionId, setSelectedHistorySessionId] = useState<string | null>(null)
+
+  // Check subscription on mount
+  useEffect(() => {
+    const checkSubscription = async () => {
+      try {
+        const result = await responseService.checkSubscription()
+        setUserPlan(result.plan)
+      } catch (error) {
+        console.error('Failed to check subscription:', error)
+        setUserPlan('BASIC')
+      }
+    }
+    checkSubscription()
+  }, [])
 
   // Load selected session detail when clicking history
   const { data: selectedSession, isLoading: isLoadingSession } = useQuery({
@@ -72,21 +85,6 @@ export default function FullTestPage() {
   const handleSelectHistorySession = (historySessionId: string) => {
     setSelectedHistorySessionId(historySessionId)
   }
-
-  // Check subscription on mount
-  useEffect(() => {
-    const checkSubscription = async () => {
-      try {
-        const result = await responseService.checkSubscription()
-        setHasAccess(result.hasAccess)
-        setDaysRemaining(result.daysRemaining)
-      } catch (error) {
-        console.error('Failed to check subscription:', error)
-        setHasAccess(true)
-      }
-    }
-    checkSubscription()
-  }, [])
 
   // Fetch all questions for the exam set
   const { data: examSet, isLoading } = useQuery({
@@ -133,10 +131,16 @@ export default function FullTestPage() {
     },
   })
 
-  // Transcribe and analyze mutation
+  // Transcribe and analyze mutation (PREMIUM only)
   const analyzeMutation = useMutation({
     mutationFn: async ({ responseId, partNumber }: { responseId: string; partNumber: number }) => {
-      return responseService.transcribeAndAnalyze(responseId, partNumber)
+      if (userPlan === 'PREMIUM') {
+        return responseService.transcribeAndAnalyze(responseId, partNumber)
+      } else {
+        // BASIC: transcribe only
+        const transcript = await responseService.transcribe(responseId)
+        return { transcript, analysis: null }
+      }
     },
   })
 
@@ -165,7 +169,7 @@ export default function FullTestPage() {
         ...prev,
         {
           transcript: result.transcript,
-          analysis: result.analysis as AnalysisResult,
+          analysis: result.analysis,
           questionId: currentQuestion!.id,
         },
       ])
@@ -234,7 +238,6 @@ export default function FullTestPage() {
   }
 
   const handleStartTest = () => {
-    if (!hasAccess) return
     setTestState((prev) => ({
       ...prev,
       phase: 'part-instruction',
@@ -375,14 +378,12 @@ export default function FullTestPage() {
                       <ResultView
                         partNumber={question.partNumber as 1 | 2 | 3 | 4 | 5}
                         transcript={response.transcript || undefined}
-                        analysis={
-                          (response.pronunciationScore as
-                            | import('../services/session.service').AnalysisResult
-                            | null) || undefined
-                        }
+                        analysis={response.pronunciationScore || undefined}
                         referenceText={question.contentText || undefined}
                         audioUrl={response.audioUrl || undefined}
                         isLoading={false}
+                        isPremium={userPlan === 'PREMIUM'}
+                        onReset={() => setSelectedHistorySessionId(null)}
                       />
                     </div>
                   )
@@ -391,11 +392,7 @@ export default function FullTestPage() {
             )}
 
             {!selectedHistorySessionId && testState.phase === 'intro' && (
-              <TestIntroView
-                onStart={handleStartTest}
-                hasAccess={hasAccess}
-                daysRemaining={daysRemaining}
-              />
+              <TestIntroView onStart={handleStartTest} />
             )}
 
             {testState.phase === 'part-instruction' && (
@@ -535,10 +532,15 @@ export default function FullTestPage() {
                         <ResultView
                           partNumber={question.partNumber as 1 | 2 | 3 | 4 | 5}
                           transcript={result.transcript}
-                          analysis={result.analysis}
+                          analysis={result.analysis || undefined}
                           referenceText={question.contentText || undefined}
                           audioUrl={undefined}
                           isLoading={false}
+                          isPremium={userPlan === 'PREMIUM'}
+                          onReset={() => {
+                            // No action needed - user is viewing completed test results
+                            // Could navigate back to exam list if needed
+                          }}
                         />
                       </div>
                     )
@@ -550,7 +552,7 @@ export default function FullTestPage() {
               !selectedAssessment &&
               !testState.overallAssessment && (
                 <Flex justify="center" align="center" style={{ minHeight: '60vh' }}>
-                  <Spin size="large" tip="Đang tạo đánh giá tổng quan..." />
+                  <Spin size="large" />
                 </Flex>
               )}
           </LeftContent>

@@ -136,6 +136,7 @@ export default function QuestionPracticePage() {
                 transcript={selectedHistory.transcript}
                 analysis={selectedHistory.analysis}
                 referenceText={getReferenceText()}
+                onReset={() => setSelectedHistory(null)}
               />
             ) : (
               <QuestionPracticeView

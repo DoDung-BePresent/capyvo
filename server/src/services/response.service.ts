@@ -200,27 +200,9 @@ Scoring guidelines (adjusted for time constraints):
 Be encouraging and realistic. A short but accurate, grammatically correct response is BETTER than a long response with many errors. Only flag significant errors that impact communication or clarity.`
 
 export class ResponseService {
-  private async checkSubscriptionAccess(userId: string): Promise<void> {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { isPremium: true, premiumUntil: true },
-    })
-
-    if (!user) {
-      throw new ForbiddenError('User not found')
-    }
-
-    const now = new Date()
-    const hasAccess = user.isPremium && user.premiumUntil && user.premiumUntil > now
-
-    if (!hasAccess) {
-      throw new ForbiddenError('subscription_expired')
-    }
-  }
-
-  async checkUserSubscription(userId: string): Promise<{
+  private async checkPlanAccess(userId: string): Promise<{
+    plan: 'BASIC' | 'PREMIUM' | null
     hasAccess: boolean
-    isPremium: boolean
     daysRemaining: number | null
   }> {
     const user = await prisma.user.findUnique({
@@ -228,6 +210,12 @@ export class ResponseService {
       select: {
         isPremium: true,
         premiumUntil: true,
+        subscriptions: {
+          where: { status: 'ACTIVE' },
+          orderBy: { endDate: 'desc' },
+          take: 1,
+          include: { plan: true },
+        },
       },
     })
 
@@ -240,17 +228,46 @@ export class ResponseService {
 
     let daysRemaining = null
     if (user.premiumUntil) {
-      // premiumUntil is now stored as DATE (no time component)
-      // Calculate difference in days
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       const diffTime = user.premiumUntil.getTime() - today.getTime()
       daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     }
 
+    const currentPlan = user.subscriptions?.[0]?.plan?.id
+    const plan = currentPlan === 'BASIC' || currentPlan === 'PREMIUM' ? currentPlan : null
+
     return {
+      plan,
       hasAccess: hasAccess || false,
-      isPremium: user.isPremium,
-      daysRemaining: daysRemaining,
+      daysRemaining,
+    }
+  }
+
+  private async checkSubscriptionAccess(userId: string, requirePremium = false): Promise<void> {
+    const access = await this.checkPlanAccess(userId)
+
+    if (!access.hasAccess) {
+      throw new ForbiddenError('subscription_expired')
+    }
+
+    if (requirePremium && access.plan !== 'PREMIUM') {
+      throw new ForbiddenError('premium_required')
+    }
+  }
+
+  async checkUserSubscription(userId: string): Promise<{
+    hasAccess: boolean
+    isPremium: boolean
+    plan: 'BASIC' | 'PREMIUM' | null
+    daysRemaining: number | null
+  }> {
+    const access = await this.checkPlanAccess(userId)
+
+    return {
+      hasAccess: access.hasAccess,
+      isPremium: access.plan === 'PREMIUM',
+      plan: access.plan,
+      daysRemaining: access.daysRemaining,
     }
   }
 
@@ -298,8 +315,8 @@ export class ResponseService {
     // If already transcribed, return cached result
     if (response.transcript) return response.transcript
 
-    // 2. Check subscription access
-    await this.checkSubscriptionAccess(userId)
+    // 2. Check subscription access (BASIC or PREMIUM can transcribe)
+    await this.checkSubscriptionAccess(userId, false)
 
     // 3. Download audio from Supabase Storage
     const urlPath = new URL(response.audioUrl).pathname
@@ -362,8 +379,8 @@ export class ResponseService {
     if (!referenceText && !imageContext)
       throw new ForbiddenError('No reference text for this question type')
 
-    // 2. Check subscription access
-    await this.checkSubscriptionAccess(userId)
+    // 2. Check PREMIUM access (analysis requires PREMIUM)
+    await this.checkSubscriptionAccess(userId, true)
 
     // 3. Determine score scale based on part number
     const maxScore = partNumber === 5 ? 5 : 3
@@ -439,8 +456,8 @@ export class ResponseService {
     if (!referenceText && !imageContext)
       throw new ForbiddenError('No reference text for this question type')
 
-    // 2. Check subscription access FIRST — fail fast before doing any work
-    await this.checkSubscriptionAccess(userId)
+    // 2. Check PREMIUM access FIRST (transcribeAndAnalyze requires PREMIUM)
+    await this.checkSubscriptionAccess(userId, true)
 
     // 3. Transcribe (use cached transcript if already exists)
     let transcript = response.transcript

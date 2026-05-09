@@ -1,12 +1,11 @@
-import { Card, Typography, Flex, Button } from 'antd'
+import { Card, Typography, Flex } from 'antd'
 import { styled } from '@/shared/utils/cn'
 import { StyledButton } from '@/shared/components'
 import { COLORS } from '@/shared/constants/user-color'
 import { hexToRgba } from '@/shared/utils/color'
 import { TEST_INTRO_TEXT } from '../types/full-test.types'
-import { Link } from 'react-router-dom'
 
-const { Title, Paragraph, Text } = Typography
+const { Title, Paragraph } = Typography
 
 const Container = styled('div', 'h-full flex flex-col gap-4!')
 const ContentCard = styled(Card, 'flex-1 overflow-y-auto mb-4')
@@ -14,11 +13,9 @@ const ControlPanel = styled(Card, 'mt-auto')
 
 interface TestIntroViewProps {
   onStart: () => void
-  hasAccess: boolean
-  daysRemaining: number | null
 }
 
-export function TestIntroView({ onStart, hasAccess, daysRemaining }: TestIntroViewProps) {
+export function TestIntroView({ onStart }: TestIntroViewProps) {
   return (
     <Container>
       <ContentCard>
@@ -94,38 +91,21 @@ export function TestIntroView({ onStart, hasAccess, daysRemaining }: TestIntroVi
       </ContentCard>
 
       <ControlPanel>
-        {!hasAccess ? (
-          <Flex align="center" justify="center" gap={8} style={{ padding: '16px' }}>
-            <Flex vertical align="center" gap={8}>
-              <Text type="secondary" style={{ fontSize: 13, textAlign: 'center' }}>
-                {daysRemaining !== null && daysRemaining < 0
-                  ? 'Gói đăng ký của bạn đã hết hạn'
-                  : 'Bạn chưa có gói đăng ký'}
-              </Text>
-              <Link to="/pricing">
-                <Button type="link" style={{ padding: 0, height: 'auto' }}>
-                  {daysRemaining !== null && daysRemaining < 0 ? 'Gia hạn ngay' : 'Mua gói ngay'}
-                </Button>
-              </Link>
-            </Flex>
-          </Flex>
-        ) : (
-          <Flex justify="end">
-            <StyledButton
-              size="large"
-              type="primary"
-              onClick={onStart}
-              shadowColor={hexToRgba(COLORS.primary, 0.6)}
-              style={{
-                minWidth: 200,
-                backgroundColor: COLORS.primary,
-                borderColor: COLORS.primary,
-              }}
-            >
-              Bắt đầu thi
-            </StyledButton>
-          </Flex>
-        )}
+        <Flex justify="end">
+          <StyledButton
+            size="large"
+            type="primary"
+            onClick={onStart}
+            shadowColor={hexToRgba(COLORS.primary, 0.6)}
+            style={{
+              minWidth: 200,
+              backgroundColor: COLORS.primary,
+              borderColor: COLORS.primary,
+            }}
+          >
+            Bắt đầu thi
+          </StyledButton>
+        </Flex>
       </ControlPanel>
     </Container>
   )

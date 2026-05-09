@@ -9,6 +9,7 @@ import { shareService } from '../services/share.service'
 import { queryKeys } from '@/lib/query-keys'
 import { AudioPlayButton } from './AudioPlayButton'
 import { PublicSharesPanel } from './PublicSharesPanel'
+import { WaveformVisualizer } from './WaveformVisualizer'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/vi'
@@ -31,7 +32,7 @@ interface PracticeHistoryPanelProps {
   partNumber?: number
   onSelectHistory?: (history: {
     transcript: string
-    analysis: {
+    analysis?: {
       score: number
       criteria: {
         accuracy: number
@@ -194,6 +195,7 @@ export function PracticeHistoryPanel({
                 const scoreConfig = item.pronunciationScore
                   ? getScoreConfig(item.pronunciationScore.score, maxScore)
                   : null
+                const hasAnalysis = !!item.pronunciationScore
 
                 return (
                   <Card
@@ -202,17 +204,18 @@ export function PracticeHistoryPanel({
                     style={{
                       cursor: 'pointer',
                       borderColor: scoreConfig?.borderColor || '#d9d9d9',
-                      borderWidth: 3,
+                      borderWidth: hasAnalysis ? 3 : 2,
                       transition: 'all 0.3s',
                     }}
                     styles={{
                       body: { padding: 12 },
                     }}
                     onClick={() => {
-                      if (item.transcript && item.pronunciationScore && onSelectHistory) {
+                      // Allow click for both BASIC and PREMIUM users
+                      if (item.transcript && onSelectHistory) {
                         onSelectHistory({
                           transcript: item.transcript,
-                          analysis: item.pronunciationScore,
+                          analysis: item.pronunciationScore || undefined,
                         })
                       }
                     }}
@@ -265,8 +268,8 @@ export function PracticeHistoryPanel({
                               </div>
                             </>
                           )}
-                          {/* Share button - only show if has transcript */}
-                          {item.transcript && (
+                          {/* Share button - only show if has analysis */}
+                          {item.pronunciationScore && (
                             <Button
                               type="text"
                               size="small"
@@ -281,17 +284,17 @@ export function PracticeHistoryPanel({
                         </Flex>
                       </Flex>
 
-                      {/* Content: Audio + Criteria */}
-                      <Flex gap={12} align="flex-start">
-                        {/* Audio button */}
-                        {item.audioUrl && (
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <AudioPlayButton audioUrl={item.audioUrl} />
-                          </div>
-                        )}
+                      {/* Content: Different UI for BASIC (no analysis) vs PREMIUM (with analysis) */}
+                      {hasAnalysis && item.pronunciationScore ? (
+                        <Flex gap={12} align="flex-start">
+                          {/* Audio button */}
+                          {item.audioUrl && (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <AudioPlayButton audioUrl={item.audioUrl} />
+                            </div>
+                          )}
 
-                        {/* Criteria progress bars */}
-                        {item.pronunciationScore && (
+                          {/* Criteria progress bars */}
                           <Flex vertical gap={6} style={{ flex: 1 }}>
                             <Flex align="center" gap={8}>
                               <Text style={{ fontSize: 12, width: 80, flexShrink: 0 }}>
@@ -371,8 +374,15 @@ export function PracticeHistoryPanel({
                               </Text>
                             </Flex>
                           </Flex>
-                        )}
-                      </Flex>
+                        </Flex>
+                      ) : (
+                        /* BASIC user UI: Just waveform visualizer */
+                        item.audioUrl && (
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <WaveformVisualizer audioUrl={item.audioUrl} />
+                          </div>
+                        )
+                      )}
                     </Flex>
                   </Card>
                 )

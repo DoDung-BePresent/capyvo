@@ -1,13 +1,19 @@
 import { Card, Typography, Flex, Progress, Tag, Tooltip, Space, Skeleton } from 'antd'
+import { Refresh } from '@mui/icons-material'
 import { styled } from '@/shared/utils/cn'
 import type { AnalysisResult } from '@/features/exam/services/session.service'
 import type { PartNumber } from '@/features/admin/types'
 import { AudioPlayButton } from './AudioPlayButton'
+import { UpgradeCTA } from './UpgradeCTA'
+import { StyledButton } from '@/shared/components'
+import { COLORS } from '@/shared/constants/user-color'
+import { hexToRgba } from '@/shared/utils/color'
 
 const { Title, Text, Paragraph } = Typography
 
-const Container = styled('div', 'h-full flex flex-col gap-4')
-const ResultCard = styled(Card, 'flex-1 overflow-y-auto rounded-lg!')
+const Container = styled('div', 'h-full flex flex-col')
+const ResultCard = styled(Card, 'flex-1 overflow-y-auto rounded-lg! min-h-0')
+const ControlPanel = styled(Card, 'rounded-lg! flex-shrink-0 mt-4!')
 const ScoreSection = styled('div', 'flex gap-6')
 const TranscriptSection = styled('div', 'flex-1')
 
@@ -50,6 +56,8 @@ interface ResultViewProps {
   referenceText?: string
   audioUrl?: string
   isLoading?: boolean
+  isPremium?: boolean // New prop to determine if user has premium
+  onReset: () => void // Required callback to practice again (either reset or close result view)
 }
 
 export function ResultView({
@@ -59,34 +67,38 @@ export function ResultView({
   referenceText,
   audioUrl,
   isLoading = false,
+  isPremium = true, // Default to true for backward compatibility
+  onReset,
 }: ResultViewProps) {
   const scale = SCORE_SCALES[partNumber]
 
   // Loading skeleton
-  if (isLoading || !analysis) {
+  if (isLoading) {
     return (
       <Container>
         <ResultCard>
           <ScoreSection>
             {/* Left: Score Circle Skeleton */}
-            <div style={{ width: 200, flexShrink: 0 }}>
-              <Flex vertical align="center" gap={12}>
-                <Skeleton.Avatar active size={160} shape="circle" />
-                <Skeleton.Input active size="small" style={{ width: 120 }} />
-                <div style={{ width: '100%', marginTop: 8 }}>
-                  <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                    <Skeleton.Input active size="small" style={{ width: '100%' }} />
-                    {partNumber !== 1 && (
-                      <>
-                        <Skeleton.Input active size="small" style={{ width: '100%' }} />
-                        <Skeleton.Input active size="small" style={{ width: '100%' }} />
-                      </>
-                    )}
-                    <Skeleton.Input active size="small" style={{ width: '100%' }} />
-                  </Space>
-                </div>
-              </Flex>
-            </div>
+            {isPremium && (
+              <div style={{ width: 200, flexShrink: 0 }}>
+                <Flex vertical align="center" gap={12}>
+                  <Skeleton.Avatar active size={160} shape="circle" />
+                  <Skeleton.Input active size="small" style={{ width: 120 }} />
+                  <div style={{ width: '100%', marginTop: 8 }}>
+                    <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                      <Skeleton.Input active size="small" style={{ width: '100%' }} />
+                      {partNumber !== 1 && (
+                        <>
+                          <Skeleton.Input active size="small" style={{ width: '100%' }} />
+                          <Skeleton.Input active size="small" style={{ width: '100%' }} />
+                        </>
+                      )}
+                      <Skeleton.Input active size="small" style={{ width: '100%' }} />
+                    </Space>
+                  </div>
+                </Flex>
+              </div>
+            )}
 
             {/* Right: Transcript Skeleton */}
             <TranscriptSection>
@@ -113,6 +125,81 @@ export function ResultView({
     )
   }
 
+  // BASIC user: Show transcript only + upgrade CTA
+  if (!isPremium || !analysis) {
+    return (
+      <Container>
+        <ResultCard>
+          <Flex vertical gap={16}>
+            {/* Reference text (if available) */}
+            {referenceText && (
+              <div>
+                <Title level={5} style={{ marginBottom: 8 }}>
+                  Nội dung tham khảo
+                </Title>
+                <Paragraph
+                  style={{
+                    fontSize: 14,
+                    lineHeight: 1.8,
+                    backgroundColor: '#f5f5f5',
+                    padding: 12,
+                    borderRadius: 8,
+                    color: '#595959',
+                  }}
+                >
+                  {referenceText}
+                </Paragraph>
+              </div>
+            )}
+
+            {/* Transcript only */}
+            <div>
+              <Flex align="center" gap={8} style={{ marginBottom: 8 }}>
+                <Title level={5} style={{ margin: 0 }}>
+                  Phiên âm của bạn
+                </Title>
+                {audioUrl && <AudioPlayButton audioUrl={audioUrl} />}
+              </Flex>
+              {transcript && transcript.trim() !== '' ? (
+                <Paragraph style={{ fontSize: 15, lineHeight: 2 }}>{transcript}</Paragraph>
+              ) : (
+                <Paragraph
+                  style={{ fontSize: 15, lineHeight: 2, color: '#8c8c8c', fontStyle: 'italic' }}
+                >
+                  (Không có phiên âm)
+                </Paragraph>
+              )}
+            </div>
+
+            {/* Upgrade CTA inline */}
+            <UpgradeCTA />
+          </Flex>
+        </ResultCard>
+
+        {/* Control Panel with Reset button */}
+        <ControlPanel>
+          <Flex justify="end">
+            <StyledButton
+              size="large"
+              type="primary"
+              icon={<Refresh style={{ fontSize: 20 }} />}
+              onClick={onReset}
+              shadowColor={hexToRgba(COLORS.primary, 0.6)}
+              style={{
+                minWidth: 150,
+                backgroundColor: COLORS.primary,
+                borderColor: COLORS.primary,
+              }}
+            >
+              Luyện lại
+            </StyledButton>
+          </Flex>
+        </ControlPanel>
+      </Container>
+    )
+  }
+
+  // PREMIUM user: Show full analysis
   const normalizedScore = analysis.score // Use score directly from API (already on correct scale)
 
   // Render transcript với highlight lỗi
@@ -378,6 +465,26 @@ export function ResultView({
           </TranscriptSection>
         </ScoreSection>
       </ResultCard>
+
+      {/* Control Panel with Reset button */}
+      <ControlPanel>
+        <Flex justify="end">
+          <StyledButton
+            size="large"
+            type="primary"
+            icon={<Refresh style={{ fontSize: 20 }} />}
+            onClick={onReset}
+            shadowColor={hexToRgba(COLORS.primary, 0.6)}
+            style={{
+              minWidth: 150,
+              backgroundColor: COLORS.primary,
+              borderColor: COLORS.primary,
+            }}
+          >
+            Luyện lại
+          </StyledButton>
+        </Flex>
+      </ControlPanel>
     </Container>
   )
 }

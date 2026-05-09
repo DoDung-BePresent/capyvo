@@ -1,10 +1,13 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, type UseMutationOptions } from '@tanstack/react-query'
 import axiosInstance from '@/lib/axios'
 import type { ApiResponse } from '@/shared/types/api'
 import type { SessionDetail } from '@/features/exam/services/session.service'
 import { queryKeys } from '@/lib/query-keys'
 
-export function useTranscribe(sessionId: string) {
+export function useTranscribe(
+  sessionId: string,
+  options?: UseMutationOptions<string, Error, string>,
+) {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -31,5 +34,6 @@ export function useTranscribe(sessionId: string) {
       // Refetch /me to update subscription status in header
       queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() })
     },
+    ...options,
   })
 }
