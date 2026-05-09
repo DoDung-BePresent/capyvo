@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Card, Empty, Flex, Typography, Progress, Segmented, Button, Modal, message } from 'antd'
-import { ShareAltOutlined } from '@ant-design/icons'
+import { ShareAltOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import { History, CheckCircle, Star, EmojiEvents } from '@mui/icons-material'
 import { styled } from '@/shared/utils/cn'
 import { useQuestionHistory } from '../hooks/useQuestionHistory'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { shareService } from '../services/share.service'
 import { queryKeys } from '@/lib/query-keys'
 import { AudioPlayButton } from './AudioPlayButton'
@@ -31,7 +31,9 @@ interface PracticeHistoryPanelProps {
   questionId: string | null
   partNumber?: number
   onSelectHistory?: (history: {
+    responseId: string
     transcript: string
+    isShared: boolean
     analysis?: {
       score: number
       criteria: {
@@ -65,12 +67,26 @@ export function PracticeHistoryPanel({
   // Part 1 chỉ hiển thị accuracy và fluency
   const shouldShowAllCriteria = partNumber !== 1
 
+  // Fetch user's shares to check which responses are already shared
+  const { data: myShares } = useQuery({
+    queryKey: queryKeys.shares.my(),
+    queryFn: () => shareService.getMyShares(),
+  })
+
+  // Compute sharedResponseIds from myShares using useMemo
+  const sharedResponseIds = useMemo(() => {
+    if (!myShares) return new Set<string>()
+    return new Set(myShares.map((share) => share.response.id))
+  }, [myShares])
+
   const shareMutation = useMutation({
     mutationFn: (responseId: string) => shareService.createShare(responseId),
     onSuccess: () => {
       message.success('Đã chia sẻ bài tập thành công!')
       setShareModalVisible(false)
       setActiveTab('community')
+      // Invalidate queries to refetch shares
+      queryClient.invalidateQueries({ queryKey: queryKeys.shares.my() })
       if (questionId) {
         queryClient.invalidateQueries({ queryKey: queryKeys.shares.byQuestion(questionId) })
       }
@@ -196,6 +212,7 @@ export function PracticeHistoryPanel({
                   ? getScoreConfig(item.pronunciationScore.score, maxScore)
                   : null
                 const hasAnalysis = !!item.pronunciationScore
+                const isShared = sharedResponseIds.has(item.id)
 
                 return (
                   <Card
@@ -214,8 +231,10 @@ export function PracticeHistoryPanel({
                       // Allow click for both BASIC and PREMIUM users
                       if (item.transcript && onSelectHistory) {
                         onSelectHistory({
+                          responseId: item.id,
                           transcript: item.transcript,
                           analysis: item.pronunciationScore || undefined,
+                          isShared,
                         })
                       }
                     }}
@@ -268,17 +287,23 @@ export function PracticeHistoryPanel({
                               </div>
                             </>
                           )}
-                          {/* Share button - only show if has analysis */}
-                          {item.pronunciationScore && (
+                          {/* Share button - show for both BASIC and PREMIUM users */}
+                          {item.transcript && (
                             <Button
                               type="text"
                               size="small"
-                              icon={<ShareAltOutlined />}
+                              icon={isShared ? <CheckCircleOutlined /> : <ShareAltOutlined />}
                               onClick={(e) => {
                                 e.stopPropagation()
-                                handleShareClick(item.id)
+                                if (!isShared) {
+                                  handleShareClick(item.id)
+                                }
                               }}
-                              style={{ padding: '4px 8px' }}
+                              disabled={isShared}
+                              style={{
+                                padding: '4px 8px',
+                                color: isShared ? '#52c41a' : undefined,
+                              }}
                             />
                           )}
                         </Flex>

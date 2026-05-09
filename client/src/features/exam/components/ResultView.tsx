@@ -13,7 +13,7 @@ const { Title, Text, Paragraph } = Typography
 
 const Container = styled('div', 'h-full flex flex-col')
 const ResultCard = styled(Card, 'flex-1 overflow-y-auto rounded-lg! min-h-0')
-const ControlPanel = styled(Card, 'rounded-lg! flex-shrink-0 mt-4!')
+const ControlPanel = styled(Card, 'rounded-lg! shrink-0 mt-4!')
 const ScoreSection = styled('div', 'flex gap-6')
 const TranscriptSection = styled('div', 'flex-1')
 
@@ -56,8 +56,8 @@ interface ResultViewProps {
   referenceText?: string
   audioUrl?: string
   isLoading?: boolean
-  isPremium?: boolean // New prop to determine if user has premium
-  onReset: () => void // Required callback to practice again (either reset or close result view)
+  isPremium?: boolean
+  onReset: () => void
 }
 
 export function ResultView({
@@ -67,7 +67,7 @@ export function ResultView({
   referenceText,
   audioUrl,
   isLoading = false,
-  isPremium = true, // Default to true for backward compatibility
+  isPremium = true,
   onReset,
 }: ResultViewProps) {
   const scale = SCORE_SCALES[partNumber]

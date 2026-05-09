@@ -51,6 +51,7 @@ export function QuestionPracticeView({
     transcript: string
     analysis: AnalysisResult
     audioUrl?: string
+    responseId?: string
   } | null>(null)
   const [isCancelled, setIsCancelled] = useState(false)
   const [userPlan, setUserPlan] = useState<'BASIC' | 'PREMIUM' | null>(null)
@@ -187,11 +188,12 @@ export function QuestionPracticeView({
         try {
           const result = await onRecordingComplete(blob)
           console.log('✅ Audio saved, responseId:', result.responseId)
-          // Store audioUrl for later use
+          // Store audioUrl and responseId for later use
           setAnalysisResult({
             transcript: '',
             analysis: {} as AnalysisResult,
             audioUrl: result.audioUrl,
+            responseId: result.responseId,
           })
 
           // Check user plan and call appropriate API

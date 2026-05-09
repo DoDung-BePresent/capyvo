@@ -6,6 +6,7 @@ import { styled } from '@/shared/utils/cn'
 
 import { questionService } from '@/features/admin/services/question.service'
 import { responseService } from '@/features/exam/services/response.service'
+import { shareService } from '@/features/exam/services/share.service'
 import { sessionService, type AnalysisResult } from '@/features/exam/services/session.service'
 import { queryKeys } from '@/lib/query-keys'
 import { QuestionPracticeView } from '../components/QuestionPracticeView'
@@ -27,8 +28,10 @@ export default function QuestionPracticePage() {
 
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [selectedHistory, setSelectedHistory] = useState<{
+    responseId: string
     transcript: string
     analysis: AnalysisResult
+    isShared: boolean
   } | null>(null)
 
   const { data: question, isLoading } = useQuery({
@@ -79,8 +82,32 @@ export default function QuestionPracticePage() {
     return await saveAudioMutation.mutateAsync(audioBlob)
   }
 
-  const handleSelectHistory = (history: { transcript: string; analysis: AnalysisResult }) => {
+  const handleSelectHistory = (history: {
+    responseId: string
+    transcript: string
+    analysis: AnalysisResult
+    isShared: boolean
+  }) => {
     setSelectedHistory(history)
+  }
+
+  const handleShareHistory = async (responseId: string) => {
+    try {
+      await shareService.createShare(responseId)
+      // Update isShared in selectedHistory
+      if (selectedHistory && selectedHistory.responseId === responseId) {
+        setSelectedHistory({ ...selectedHistory, isShared: true })
+      }
+      // Invalidate my shares query to update history panel
+      queryClient.invalidateQueries({ queryKey: queryKeys.shares.my() })
+      message.success('Đã chia sẻ bài tập thành công!')
+    } catch (error) {
+      console.error('Share failed:', error)
+      const err = error as { response?: { data?: { error?: string; message?: string } } }
+      const errorCode = err.response?.data?.error
+      message.error(errorCode || 'Lỗi khi chia sẻ bài tập')
+      throw error
+    }
   }
 
   const getReferenceText = () => {
@@ -137,6 +164,9 @@ export default function QuestionPracticePage() {
                 analysis={selectedHistory.analysis}
                 referenceText={getReferenceText()}
                 onReset={() => setSelectedHistory(null)}
+                responseId={selectedHistory.responseId}
+                isShared={selectedHistory.isShared}
+                onShare={handleShareHistory}
               />
             ) : (
               <QuestionPracticeView
