@@ -164,6 +164,7 @@ export function PracticeHistoryPanel({
 
           <Segmented
             value={activeTab}
+            size="large"
             onChange={(value) => setActiveTab(value as TabKey)}
             options={[
               { label: 'Lịch sử', value: 'history' },

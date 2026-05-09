@@ -92,7 +92,12 @@ function ShareCard({ share, expanded, onToggleExpand, onReactionClick }: ShareCa
     transcript.length > 100 ? transcript.slice(0, 100) + '...' : transcript
 
   return (
-    <Card size="small" hoverable onClick={onToggleExpand} style={{ cursor: 'pointer' }}>
+    <Card
+      className="rounded-lg!"
+      size="small"
+      onClick={onToggleExpand}
+      style={{ cursor: 'pointer' }}
+    >
       <Flex vertical gap={12}>
         {/* User info */}
         <Flex align="center" gap={8}>
