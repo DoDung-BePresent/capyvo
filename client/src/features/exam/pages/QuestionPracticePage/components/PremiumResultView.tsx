@@ -1,13 +1,31 @@
-import { Card, Typography, Flex, Progress, Tag, Tooltip, Space, Skeleton } from 'antd'
+/**
+ * Icons
+ */
 import { Refresh } from '@mui/icons-material'
+
+/**
+ * Utils
+ */
+import { hexToRgba } from '@/shared/utils/color'
 import { styled } from '@/shared/utils/cn'
+
+/**
+ * Types
+ */
 import type { AnalysisResult } from '@/features/exam/services/session.service'
 import type { PartNumber } from '@/shared/types/domain'
-import { AudioPlayButton } from './AudioPlayButton'
-import { UpgradeCTA } from './UpgradeCTA'
+
+/**
+ * Components
+ */
+import { AudioPlayButton } from '@/features/exam/components/AudioPlayButton'
 import { StyledButton } from '@/shared/components'
+import { Card, Typography, Flex, Progress, Tag, Tooltip, Space, Skeleton } from 'antd'
+
+/**
+ * Constants
+ */
 import { COLORS } from '@/shared/constants/user-color'
-import { hexToRgba } from '@/shared/utils/color'
 
 const { Title, Text, Paragraph } = Typography
 
@@ -19,14 +37,14 @@ const TranscriptSection = styled('div', 'flex-1')
 
 // Màu sắc cho từng loại lỗi
 const ERROR_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  omission: { bg: '#fff1f0', border: '#ffa39e', text: '#cf1322' }, // Đỏ nhạt
-  addition: { bg: '#fff7e6', border: '#ffd591', text: '#d46b08' }, // Cam nhạt
-  morphology: { bg: '#f6ffed', border: '#b7eb8f', text: '#389e0d' }, // Xanh lá nhạt
-  pronunciation: { bg: '#e6f7ff', border: '#91d5ff', text: '#096dd9' }, // Xanh dương nhạt
-  substitution: { bg: '#f9f0ff', border: '#d3adf7', text: '#531dab' }, // Tím nhạt
-  order: { bg: '#fff0f6', border: '#ffadd2', text: '#c41d7f' }, // Hồng nhạt
-  grammar: { bg: '#fffbe6', border: '#ffe58f', text: '#d48806' }, // Vàng nhạt
-  vocabulary: { bg: '#e6fffb', border: '#87e8de', text: '#08979c' }, // Xanh ngọc nhạt
+  omission: { bg: '#fff1f0', border: '#ffa39e', text: '#cf1322' },
+  addition: { bg: '#fff7e6', border: '#ffd591', text: '#d46b08' },
+  morphology: { bg: '#f6ffed', border: '#b7eb8f', text: '#389e0d' },
+  pronunciation: { bg: '#e6f7ff', border: '#91d5ff', text: '#096dd9' },
+  substitution: { bg: '#f9f0ff', border: '#d3adf7', text: '#531dab' },
+  order: { bg: '#fff0f6', border: '#ffadd2', text: '#c41d7f' },
+  grammar: { bg: '#fffbe6', border: '#ffe58f', text: '#d48806' },
+  vocabulary: { bg: '#e6fffb', border: '#87e8de', text: '#08979c' },
 }
 
 const ERROR_LABELS: Record<string, string> = {
@@ -49,27 +67,25 @@ const SCORE_SCALES: Record<PartNumber, { max: number; label: string }> = {
   5: { max: 5, label: 'Nêu quan điểm' },
 }
 
-interface ResultViewProps {
+interface PremiumResultViewProps {
   partNumber: PartNumber
   transcript?: string
   analysis?: AnalysisResult
   referenceText?: string
   audioUrl?: string
   isLoading?: boolean
-  isPremium?: boolean
   onReset: () => void
 }
 
-export function ResultView({
+export function PremiumResultView({
   partNumber,
   transcript,
   analysis,
   referenceText,
   audioUrl,
   isLoading = false,
-  isPremium = true,
   onReset,
-}: ResultViewProps) {
+}: PremiumResultViewProps) {
   const scale = SCORE_SCALES[partNumber]
 
   // Loading skeleton
@@ -79,26 +95,24 @@ export function ResultView({
         <ResultCard>
           <ScoreSection>
             {/* Left: Score Circle Skeleton */}
-            {isPremium && (
-              <div style={{ width: 200, flexShrink: 0 }}>
-                <Flex vertical align="center" gap={12}>
-                  <Skeleton.Avatar active size={160} shape="circle" />
-                  <Skeleton.Input active size="small" style={{ width: 120 }} />
-                  <div style={{ width: '100%', marginTop: 8 }}>
-                    <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                      <Skeleton.Input active size="small" style={{ width: '100%' }} />
-                      {partNumber !== 1 && (
-                        <>
-                          <Skeleton.Input active size="small" style={{ width: '100%' }} />
-                          <Skeleton.Input active size="small" style={{ width: '100%' }} />
-                        </>
-                      )}
-                      <Skeleton.Input active size="small" style={{ width: '100%' }} />
-                    </Space>
-                  </div>
-                </Flex>
-              </div>
-            )}
+            <div style={{ width: 200, flexShrink: 0 }}>
+              <Flex vertical align="center" gap={12}>
+                <Skeleton.Avatar active size={160} shape="circle" />
+                <Skeleton.Input active size="small" style={{ width: 120 }} />
+                <div style={{ width: '100%', marginTop: 8 }}>
+                  <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                    <Skeleton.Input active size="small" style={{ width: '100%' }} />
+                    {partNumber !== 1 && (
+                      <>
+                        <Skeleton.Input active size="small" style={{ width: '100%' }} />
+                        <Skeleton.Input active size="small" style={{ width: '100%' }} />
+                      </>
+                    )}
+                    <Skeleton.Input active size="small" style={{ width: '100%' }} />
+                  </Space>
+                </div>
+              </Flex>
+            </div>
 
             {/* Right: Transcript Skeleton */}
             <TranscriptSection>
@@ -125,82 +139,11 @@ export function ResultView({
     )
   }
 
-  // BASIC user: Show transcript only + upgrade CTA
-  if (!isPremium || !analysis) {
-    return (
-      <Container>
-        <ResultCard>
-          <Flex vertical gap={16}>
-            {/* Reference text (if available) */}
-            {referenceText && (
-              <div>
-                <Title level={5} style={{ marginBottom: 8 }}>
-                  Nội dung tham khảo
-                </Title>
-                <Paragraph
-                  style={{
-                    fontSize: 14,
-                    lineHeight: 1.8,
-                    backgroundColor: '#f5f5f5',
-                    padding: 12,
-                    borderRadius: 8,
-                    color: '#595959',
-                  }}
-                >
-                  {referenceText}
-                </Paragraph>
-              </div>
-            )}
-
-            {/* Transcript only */}
-            <div>
-              <Flex align="center" gap={8} style={{ marginBottom: 8 }}>
-                <Title level={5} style={{ margin: 0 }}>
-                  Phiên âm của bạn
-                </Title>
-                {audioUrl && <AudioPlayButton audioUrl={audioUrl} />}
-              </Flex>
-              {transcript && transcript.trim() !== '' ? (
-                <Paragraph style={{ fontSize: 15, lineHeight: 2 }}>{transcript}</Paragraph>
-              ) : (
-                <Paragraph
-                  style={{ fontSize: 15, lineHeight: 2, color: '#8c8c8c', fontStyle: 'italic' }}
-                >
-                  (Không có phiên âm)
-                </Paragraph>
-              )}
-            </div>
-
-            {/* Upgrade CTA inline */}
-            <UpgradeCTA />
-          </Flex>
-        </ResultCard>
-
-        {/* Control Panel with Reset button */}
-        <ControlPanel>
-          <Flex justify="end">
-            <StyledButton
-              size="large"
-              type="primary"
-              icon={<Refresh style={{ fontSize: 20 }} />}
-              onClick={onReset}
-              shadowColor={hexToRgba(COLORS.primary, 0.6)}
-              style={{
-                minWidth: 150,
-                backgroundColor: COLORS.primary,
-                borderColor: COLORS.primary,
-              }}
-            >
-              Luyện lại
-            </StyledButton>
-          </Flex>
-        </ControlPanel>
-      </Container>
-    )
+  if (!analysis) {
+    return null
   }
 
-  // PREMIUM user: Show full analysis
-  const normalizedScore = analysis.score // Use score directly from API (already on correct scale)
+  const scorePercentage = (analysis.score / scale.max) * 100
 
   // Render transcript với highlight lỗi
   const renderHighlightedTranscript = () => {
@@ -316,11 +259,11 @@ export function ResultView({
             <Flex vertical align="center" gap={12}>
               <Progress
                 type="circle"
-                percent={(normalizedScore / scale.max) * 100}
+                percent={scorePercentage}
                 format={() => (
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 32, fontWeight: 700, lineHeight: 1 }}>
-                      {normalizedScore}
+                      {analysis.score.toFixed(1)}
                     </div>
                     <div style={{ fontSize: 14, color: '#8c8c8c', marginTop: 4 }}>
                       / {scale.max}
@@ -328,8 +271,8 @@ export function ResultView({
                   </div>
                 )}
                 strokeColor={{
-                  '0%': normalizedScore >= scale.max * 0.8 ? '#52c41a' : '#1890ff',
-                  '100%': normalizedScore >= scale.max * 0.8 ? '#73d13d' : '#40a9ff',
+                  '0%': scorePercentage >= 80 ? '#52c41a' : '#1890ff',
+                  '100%': scorePercentage >= 80 ? '#73d13d' : '#40a9ff',
                 }}
                 strokeWidth={10}
                 size={160}
@@ -466,9 +409,9 @@ export function ResultView({
         </ScoreSection>
       </ResultCard>
 
-      {/* Control Panel with Reset button */}
+      {/* Control Panel */}
       <ControlPanel>
-        <Flex justify="end">
+        <Flex justify="flex-end">
           <StyledButton
             size="large"
             type="primary"

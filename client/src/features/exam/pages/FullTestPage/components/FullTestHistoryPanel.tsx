@@ -1,23 +1,52 @@
-import { Card, Empty, Flex, Typography, Tag, Spin, Progress } from 'antd'
-import { History, CheckCircle, Star, EmojiEvents } from '@mui/icons-material'
-import { styled } from '@/shared/utils/cn'
-import { useQuery } from '@tanstack/react-query'
-import { sessionService } from '../services/session.service'
-import { responseService } from '../services/response.service'
-import { queryKeys } from '@/lib/query-keys'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/vi'
+import { Card, Empty, Flex, Typography, Tag, Spin, Progress } from 'antd'
 
+/**
+ * Icons
+ */
+import { History, CheckCircle, Star, EmojiEvents } from '@mui/icons-material'
+
+/**
+ * Utils
+ */
+import { styled } from '@/shared/utils/cn'
+
+/**
+ * Hooks
+ */
+import { useQuery } from '@tanstack/react-query'
+
+/**
+ * QUERY_KEYS
+ */
+import { queryKeys } from '@/lib/query-keys'
+
+/**
+ * Services
+ */
+import { sessionService } from '@/features/exam/services/session.service'
+import { responseService } from '@/features/exam/services/response.service'
+
+/**
+ * Setup Time
+ */
 dayjs.extend(relativeTime)
 dayjs.locale('vi')
 
 const { Text } = Typography
 
+/**
+ * Styled components
+ */
 const Container = styled('div', 'h-full flex flex-col')
 const Header = styled('div', 'mb-4 pb-4 border-b border-gray-200')
 const HistoryList = styled('div', 'flex-1 overflow-y-auto space-y-3!')
 
+/**
+ * [FullTestHistoruPanel] Types
+ */
 interface FullTestHistoryPanelProps {
   examSetId: string
   currentSessionId?: string | null
@@ -136,6 +165,9 @@ export function FullTestHistoryPanel({
   )
 }
 
+/**
+ * [SessionHistoryCard] Types
+ */
 interface SessionHistoryCardProps {
   sessionId: string
   attemptNumber: number

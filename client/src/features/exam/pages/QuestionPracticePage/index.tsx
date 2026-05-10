@@ -1,19 +1,42 @@
+/**
+ * Hooks
+ */
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Flex, message, Spin } from 'antd'
+
+/**
+ * Utils
+ */
 import { styled } from '@/shared/utils/cn'
 
+/**
+ * Services
+ */
 import { questionService } from '@/features/admin/services/question.service'
 import { responseService } from '@/features/exam/services/response.service'
 import { sessionService, type AnalysisResult } from '@/features/exam/services/session.service'
+
+/**
+ * QUERY_KEYS
+ */
 import { queryKeys } from '@/lib/query-keys'
-import { QuestionPracticeView } from '../components/QuestionPracticeView'
-import { PracticeHistoryPanel } from '../components/PracticeHistoryPanel'
-import { ResultView } from '../components/ResultView'
-import { MicPermissionGate } from '../components/MicPermissionGate'
+
+/**
+ * Components
+ */
+import { Flex, message, Spin } from 'antd'
+import { QuestionPracticeView } from './components/QuestionPracticeView'
+import { PracticeHistoryPanel } from './components/PracticeHistoryPanel'
+import { BasicResultView } from './components/BasicResultView'
+import { PremiumResultView } from './components/PremiumResultView'
+import { MicPermissionGate } from '../../components/MicPermissionGate'
 import { PageHeader } from '@/shared/components'
-import { PART_META, type PartNumber } from '@/features/admin/types'
+
+/**
+ * Types
+ */
+import { PART_META, type PartNumber } from '@/shared/types/domain'
 
 const PageContainer = styled('div', 'flex h-screen')
 const LeftPanel = styled('div', 'flex-1 p-6 flex flex-col overflow-hidden')
@@ -27,8 +50,12 @@ export default function QuestionPracticePage() {
 
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [selectedHistory, setSelectedHistory] = useState<{
+    responseId: string
     transcript: string
-    analysis: AnalysisResult
+    audioUrl?: string
+    analysis?: AnalysisResult
+    isShared: boolean
+    isPremium: boolean
   } | null>(null)
 
   const { data: question, isLoading } = useQuery({
@@ -63,7 +90,7 @@ export default function QuestionPracticePage() {
       console.log('📤 Calling responseService.saveAudio...')
       const result = await responseService.saveAudio(sid, questionId!, audioBlob)
       console.log('✅ saveAudio result:', result)
-      return { responseId: result.responseId, ...result }
+      return result
     },
     onSuccess: (data) => {
       console.log('✅ saveAudioMutation success:', data)
@@ -79,8 +106,17 @@ export default function QuestionPracticePage() {
     return await saveAudioMutation.mutateAsync(audioBlob)
   }
 
-  const handleSelectHistory = (history: { transcript: string; analysis: AnalysisResult }) => {
-    setSelectedHistory(history)
+  const handleSelectHistory = (history: {
+    responseId: string
+    transcript: string
+    audioUrl?: string
+    analysis?: AnalysisResult
+    isShared: boolean
+  }) => {
+    setSelectedHistory({
+      ...history,
+      isPremium: !!history.analysis,
+    })
   }
 
   const getReferenceText = () => {
@@ -131,12 +167,26 @@ export default function QuestionPracticePage() {
           />
           <LeftContent>
             {selectedHistory ? (
-              <ResultView
-                partNumber={part}
-                transcript={selectedHistory.transcript}
-                analysis={selectedHistory.analysis}
-                referenceText={getReferenceText()}
-              />
+              <>
+                {selectedHistory.isPremium ? (
+                  <PremiumResultView
+                    partNumber={part}
+                    transcript={selectedHistory.transcript}
+                    analysis={selectedHistory.analysis}
+                    referenceText={getReferenceText()}
+                    audioUrl={selectedHistory.audioUrl}
+                    onReset={() => setSelectedHistory(null)}
+                  />
+                ) : (
+                  <BasicResultView
+                    partNumber={part}
+                    transcript={selectedHistory.transcript}
+                    referenceText={getReferenceText()}
+                    audioUrl={selectedHistory.audioUrl}
+                    onReset={() => setSelectedHistory(null)}
+                  />
+                )}
+              </>
             ) : (
               <QuestionPracticeView
                 key={question.id}

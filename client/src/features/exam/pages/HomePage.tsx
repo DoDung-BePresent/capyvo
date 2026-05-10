@@ -1,18 +1,32 @@
+/**
+ * Hooks
+ */
 import { useMemo } from 'react'
-import { Card, Flex, Space, Typography } from 'antd'
+
+/**
+ * Components
+ */
+import { Card, Flex, Space, Typography, Row, Col } from 'antd'
+import { Heatmap, StreakWidget } from '@/shared/components'
+
+/**
+ * Hooks
+ */
 import { useSession } from '@/features/auth/hooks/useSession'
 import { useGetMe } from '@/features/auth/hooks/useAuth'
-import { Heatmap } from '@/shared/components'
+import { useActivity } from '@/features/exam/hooks/useActivity'
 
 const { Title, Text } = Typography
 
-// ─── Page ─── //
 export default function HomePage() {
   const { session } = useSession()
   const { data: user } = useGetMe(session)
+  const { data: activity } = useActivity(!!session)
 
-  // TODO: replace with real practice session data when API is ready
-  const activityByDate = useMemo(() => new Map<string, number>(), [])
+  const activityByDate = useMemo(() => {
+    if (!activity?.activityByDate) return new Map<string, number>()
+    return new Map(Object.entries(activity.activityByDate))
+  }, [activity])
 
   return (
     <Space direction="vertical" size={24} style={{ width: '100%' }}>
@@ -23,24 +37,37 @@ export default function HomePage() {
         <Text type="secondary">Hôm nay bạn muốn luyện tập phần nào?</Text>
       </div>
 
-      <Card
-        title={
-          <Flex align="baseline" gap={8}>
-            <Text strong>Hoạt động luyện tập</Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              (12 tháng qua)
-            </Text>
-          </Flex>
-        }
-        styles={{
-          body: {
-            paddingLeft: 10,
-          },
-        }}
-        className="w-fit"
-      >
-        <Heatmap activityByDate={activityByDate} />
-      </Card>
+      <Row gutter={[16, 16]}>
+        {/* Streak Widget */}
+        <Col xs={24} lg={8}>
+          <StreakWidget
+            currentStreak={activity?.currentStreak ?? 0}
+            longestStreak={activity?.longestStreak ?? 0}
+          />
+        </Col>
+
+        {/* Heatmap */}
+        <Col xs={24} lg={16}>
+          <Card
+            title={
+              <Flex align="baseline" gap={8}>
+                <Text strong>Hoạt động luyện tập</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  (3 tháng qua)
+                </Text>
+              </Flex>
+            }
+            styles={{
+              body: {
+                paddingLeft: 20,
+              },
+            }}
+            className="w-fit! rounded-lg!"
+          >
+            <Heatmap activityByDate={activityByDate} />
+          </Card>
+        </Col>
+      </Row>
     </Space>
   )
 }

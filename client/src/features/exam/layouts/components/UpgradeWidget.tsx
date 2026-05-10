@@ -1,4 +1,4 @@
-import { Button, Progress } from 'antd'
+import { Button, Progress, Tag } from 'antd'
 
 /**
  * Icons
@@ -27,6 +27,7 @@ interface UpgradeWidgetProps {
   isPremium?: boolean
   daysRemaining?: number | null
   totalDays?: number
+  planName?: string // "BASIC" or "PREMIUM"
 }
 
 const Container = styled('div', 'p-4 pb-10')
@@ -48,6 +49,7 @@ export function UpgradeWidget({
   isPremium = false,
   daysRemaining = null,
   totalDays = 30,
+  planName,
 }: UpgradeWidgetProps) {
   // Calculate percentage for progress circle
   const percentage =
@@ -100,6 +102,14 @@ export function UpgradeWidget({
       <ExpandedView>
         {isPremium && daysRemaining !== null && daysRemaining > 0 ? (
           <div className="flex flex-col items-center gap-2">
+            {planName && (
+              <Tag
+                color={planName === 'PREMIUM' ? 'gold' : 'blue'}
+                style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}
+              >
+                {planName}
+              </Tag>
+            )}
             <Progress
               type="circle"
               percent={percentage}

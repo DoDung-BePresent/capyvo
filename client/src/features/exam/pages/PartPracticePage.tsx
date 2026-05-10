@@ -1,15 +1,38 @@
+/**
+ * Hooks
+ */
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Card, Empty, Flex, Spin, Typography, Tag } from 'antd'
-import { PlayCircle } from '@mui/icons-material'
-import { styled } from '@/shared/utils/cn'
-import { StyledButton } from '@/shared/components'
 import { usePartQuestions, usePartExamSets } from '@/features/exam/hooks/usePartQuestions'
-import { PART_META } from '@/features/admin/types'
-import type { PartNumber, Question } from '@/features/admin/types'
+
+/**
+ * Components
+ */
 import { PageHeader } from '@/shared/components'
-import { COLORS } from '@/shared/constants/user-color'
+import { StyledButton } from '@/shared/components'
+import { Card, Empty, Flex, Spin, Typography, Tag } from 'antd'
+
+/**
+ * Icons
+ */
+import { PlayCircle } from '@mui/icons-material'
+
+/**
+ * Utils
+ */
+import { styled } from '@/shared/utils/cn'
 import { hexToRgba } from '@/shared/utils/color'
+
+/**
+ * Types
+ */
+import { PART_META } from '@/shared/types/domain'
+import type { PartNumber, Question } from '@/shared/types/domain'
+
+/**
+ * Constants
+ */
+import { COLORS } from '@/shared/constants/user-color'
 
 const { Text, Title } = Typography
 

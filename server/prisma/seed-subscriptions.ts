@@ -10,27 +10,27 @@ async function seedSubscriptionPlans() {
 
   const plans = [
     {
-      id: SubscriptionPlanId.MONTHLY,
-      name: '1 THÁNG',
+      id: SubscriptionPlanId.BASIC,
+      name: 'Cơ bản',
       durationDays: 30,
-      price: 90000,
-      pricePerMonth: 90000,
+      price: 49000,
+      pricePerMonth: 49000,
       isActive: true,
     },
     {
-      id: SubscriptionPlanId.QUARTERLY,
-      name: '3 THÁNG',
-      durationDays: 90,
-      price: 255000,
-      pricePerMonth: 85000,
+      id: SubscriptionPlanId.PREMIUM,
+      name: 'Premium',
+      durationDays: 30,
+      price: 99000,
+      pricePerMonth: 99000,
       isActive: true,
     },
     {
-      id: SubscriptionPlanId.BIANNUAL,
-      name: '6 THÁNG',
-      durationDays: 180,
-      price: 480000,
-      pricePerMonth: 80000,
+      id: SubscriptionPlanId.CLASSROOM,
+      name: 'Lớp học',
+      durationDays: 365, // 1 year default, will be customized per teacher
+      price: 0, // Contact for pricing
+      pricePerMonth: 0,
       isActive: true,
     },
   ]

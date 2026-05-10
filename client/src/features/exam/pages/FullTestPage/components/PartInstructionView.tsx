@@ -1,8 +1,28 @@
-import { useEffect, useRef } from 'react'
 import { Card, Typography, Flex } from 'antd'
+
+/**
+ * Hooks
+ */
+import { useEffect, useRef } from 'react'
+
+/**
+ * Utils
+ */
 import { styled } from '@/shared/utils/cn'
+
+/**
+ * Components
+ */
 import { StyledButton } from '@/shared/components'
-import type { PartInstruction } from '../types/full-test.types'
+
+/**
+ * Types
+ */
+import type { PartInstruction } from '@/features/exam/types/full-test.types'
+
+/**
+ * Assets
+ */
 import instructionPart1 from '@/assets/sounds/instructions/instruction-part-1.mp3'
 import instructionPart2 from '@/assets/sounds/instructions/instruction-part-2.mp3'
 import instructionPart3 from '@/assets/sounds/instructions/instruction-part-3.mp3'

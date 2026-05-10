@@ -18,12 +18,22 @@ export class SessionService {
   }
 
   async getUserSessionsBySet(userId: string, examSetId: string, partNumber?: number | null) {
+    const where: {
+      userId: string
+      examSetId: string
+      partNumber?: number | null
+    } = {
+      userId,
+      examSetId,
+    }
+
+    // Only add partNumber filter if explicitly provided
+    if (partNumber !== undefined) {
+      where.partNumber = partNumber
+    }
+
     return prisma.practiceSession.findMany({
-      where: {
-        userId,
-        examSetId,
-        partNumber: partNumber != null ? partNumber : null,
-      },
+      where,
       include: {
         _count: { select: { userResponses: true } },
         examSet: { select: { title: true } },
@@ -59,13 +69,21 @@ export class SessionService {
   }
 
   async getSetStats(examSetId: string, partNumber?: number | null) {
-    const totalAttempts = await prisma.practiceSession.count({
-      where: {
-        examSetId,
-        status: 'COMPLETED',
-        partNumber: partNumber != null ? partNumber : null,
-      },
-    })
+    const where: {
+      examSetId: string
+      status: 'COMPLETED'
+      partNumber?: number | null
+    } = {
+      examSetId,
+      status: 'COMPLETED',
+    }
+
+    // Only add partNumber filter if explicitly provided
+    if (partNumber !== undefined) {
+      where.partNumber = partNumber
+    }
+
+    const totalAttempts = await prisma.practiceSession.count({ where })
     return { totalAttempts }
   }
 
