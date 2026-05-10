@@ -198,8 +198,11 @@ function AssignDrawer({
           <Space direction="vertical" style={{ width: '100%' }} size={8}>
             {pool.map((q) => {
               const isSelected = selectedId === q.id
-              const assignedElsewhere = q.examSetId !== null && q.examSetId !== currentExamSetId
-              const assignedHere = q.examSetId === currentExamSetId
+              // Check if question is assigned to current exam set
+              const assignedHere = q.examSets?.some((s) => s.id === currentExamSetId) ?? false
+              // Check if question is assigned to other exam sets
+              const otherExamSets = q.examSets?.filter((s) => s.id !== currentExamSetId) ?? []
+              const assignedElsewhere = otherExamSets.length > 0
 
               return (
                 <Radio
@@ -218,23 +221,20 @@ function AssignDrawer({
                   }}
                 >
                   <Space direction="vertical" size={6} style={{ flex: 1, marginLeft: 8 }}>
-                    {/* Assignment badge */}
-                    <Flex align="center" gap={6}>
+                    {/* Assignment badges */}
+                    <Flex align="center" gap={6} wrap="wrap">
                       {assignedHere && (
                         <Tag color="green" icon={<CheckOutlined />}>
                           Bộ đề này
                         </Tag>
                       )}
-                      {assignedElsewhere && (
-                        <Tag color="orange" icon={<LinkOutlined />}>
-                          Đã gán: {q.examSet?.title ?? q.examSetId}
+                      {otherExamSets.map((set) => (
+                        <Tag key={set.id} color="blue" icon={<LinkOutlined />}>
+                          {set.title}
                         </Tag>
-                      )}
-                      {!q.examSetId && <Tag color="default">Chưa gán</Tag>}
-                      {assignedElsewhere && (
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                          · sẽ tự động gỡ khỏi bộ đề kia
-                        </Text>
+                      ))}
+                      {!assignedHere && otherExamSets.length === 0 && (
+                        <Tag color="default">Chưa gán</Tag>
                       )}
                     </Flex>
 

@@ -2,7 +2,10 @@
 
 export interface Question {
   id: string
-  examSetId: string | null
+  // Many-to-many: A question can belong to multiple exam sets
+  examSets?: Array<{ id: string; title: string }>
+  // Deprecated fields (for backward compatibility during migration)
+  examSetId?: string | null
   examSet?: { id: string; title: string } | null
   partNumber: number
   questionNumber: number
