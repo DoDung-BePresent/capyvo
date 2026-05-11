@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react'
 import { Result, Button, Flex } from 'antd'
+import { Sentry } from '@/lib/sentry'
 
 interface Props {
   children: ReactNode
@@ -10,6 +11,7 @@ interface Props {
 interface State {
   hasError: boolean
   error?: Error
+  eventId?: string
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -22,20 +24,45 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  componentDidCatch(error: Error, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: { componentStack?: string }) {
     console.error('ErrorBoundary caught:', error, errorInfo)
 
-    // TODO: Send to monitoring service (Sentry, LogRocket, etc.)
-    // monitoringService.logError(error, {
-    //   componentStack: errorInfo.componentStack,
-    //   errorBoundary: true,
-    // })
+    // Send to Sentry
+    const eventId = Sentry.captureException(error, {
+      level: 'error',
+      tags: {
+        errorBoundary: true,
+      },
+      extra: {
+        componentStack: errorInfo.componentStack,
+      },
+    })
+
+    this.setState({ eventId })
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: undefined })
+    this.setState({ hasError: false, error: undefined, eventId: undefined })
     this.props.onReset?.()
+  }
+
+  handleReportFeedback = () => {
+    if (this.state.eventId) {
+      Sentry.showReportDialog({
+        eventId: this.state.eventId,
+        title: 'Có lỗi xảy ra',
+        subtitle: 'Vui lòng mô tả những gì bạn đang làm khi lỗi xảy ra.',
+        subtitle2: 'Chúng tôi sẽ khắc phục sớm nhất có thể.',
+        labelName: 'Tên',
+        labelEmail: 'Email',
+        labelComments: 'Mô tả chi tiết',
+        labelClose: 'Đóng',
+        labelSubmit: 'Gửi báo cáo',
+        errorGeneric: 'Có lỗi khi gửi báo cáo. Vui lòng thử lại.',
+        errorFormEntry: 'Vui lòng điền đầy đủ thông tin.',
+        successMessage: 'Cảm ơn bạn đã báo cáo! Chúng tôi sẽ xem xét sớm nhất.',
+      })
+    }
   }
 
   render() {
@@ -69,8 +96,8 @@ export class ErrorBoundary extends Component<Props, State> {
         <Flex className="min-h-dvh" vertical align="center" justify="center">
           <Result
             status="error"
-            title="Something went wrong"
-            subTitle="An unexpected error occurred. Please try refreshing the page or contact support if the problem persists."
+            title="Có lỗi xảy ra"
+            subTitle="Đã xảy ra lỗi không mong muốn. Vui lòng thử làm mới trang hoặc liên hệ hỗ trợ nếu vấn đề vẫn tiếp diễn."
             extra={[
               <Button
                 key="refresh"
@@ -78,11 +105,16 @@ export class ErrorBoundary extends Component<Props, State> {
                 size="large"
                 onClick={() => window.location.reload()}
               >
-                Refresh Page
+                Làm mới trang
               </Button>,
               <Button key="reset" size="large" onClick={this.handleReset}>
-                Try Again
+                Thử lại
               </Button>,
+              this.state.eventId && (
+                <Button key="report" size="large" onClick={this.handleReportFeedback}>
+                  Báo cáo lỗi
+                </Button>
+              ),
             ]}
           />
           {import.meta.env.DEV && this.state.error && (
@@ -93,6 +125,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   {this.state.error.message}
                   {'\n\n'}
                   {this.state.error.stack}
+                  {this.state.eventId && `\n\nSentry Event ID: ${this.state.eventId}`}
                 </pre>
               </details>
             </div>

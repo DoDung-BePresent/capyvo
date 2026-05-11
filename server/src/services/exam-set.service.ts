@@ -16,7 +16,7 @@ export class ExamSetService {
   async findAll() {
     return prisma.examSet.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { questions: true } } },
+      include: { _count: { select: { questionAssignments: true } } },
     })
   }
 
@@ -24,11 +24,22 @@ export class ExamSetService {
     const examSet = await prisma.examSet.findUnique({
       where: { id },
       include: {
-        questions: { orderBy: { questionNumber: 'asc' } },
+        questionAssignments: {
+          orderBy: { questionNumber: 'asc' },
+          include: { question: true },
+        },
       },
     })
     if (!examSet) throw new NotFoundError('ExamSet')
-    return examSet
+
+    // Transform to match old structure for backward compatibility
+    return {
+      ...examSet,
+      questions: examSet.questionAssignments.map((qa) => ({
+        ...qa.question,
+        questionNumber: qa.questionNumber, // Use position in this exam set
+      })),
+    }
   }
 
   async create(body: unknown, userId: string) {
@@ -46,8 +57,7 @@ export class ExamSetService {
 
   async remove(id: string) {
     await this.findById(id)
-    // Unlink all questions before deleting
-    await prisma.question.updateMany({ where: { examSetId: id }, data: { examSetId: null } })
+    // Delete all question assignments (cascade will handle this automatically)
     return prisma.examSet.delete({ where: { id } })
   }
 
@@ -55,46 +65,102 @@ export class ExamSetService {
     await this.findById(examSetId)
     const question = await prisma.question.findUnique({ where: { id: questionId } })
     if (!question) throw new NotFoundError('Question')
-    if (question.examSetId && question.examSetId !== examSetId) {
-      throw new ValidationError('This question is already assigned to another exam set')
-    }
-    // Unassign any existing question with same questionNumber in this examSet
-    await prisma.question.updateMany({
-      where: { examSetId, questionNumber: question.questionNumber },
-      data: { examSetId: null },
+
+    // Check if question is already assigned to this exam set
+    const existing = await prisma.questionAssignment.findFirst({
+      where: { examSetId, questionId },
     })
-    return prisma.question.update({ where: { id: questionId }, data: { examSetId } })
+    if (existing) {
+      throw new ValidationError('This question is already assigned to this exam set')
+    }
+
+    // Find if there's already a question at this position in the exam set
+    const conflicting = await prisma.questionAssignment.findUnique({
+      where: {
+        examSetId_questionNumber: {
+          examSetId,
+          questionNumber: question.questionNumber,
+        },
+      },
+    })
+
+    if (conflicting) {
+      // Remove the conflicting assignment
+      await prisma.questionAssignment.delete({ where: { id: conflicting.id } })
+    }
+
+    // Create new assignment
+    await prisma.questionAssignment.create({
+      data: {
+        examSetId,
+        questionId,
+        questionNumber: question.questionNumber,
+      },
+    })
+
+    return question
   }
 
   async unassignQuestion(examSetId: string, questionId: string) {
-    const question = await prisma.question.findUnique({ where: { id: questionId } })
-    if (!question) throw new NotFoundError('Question')
-    if (question.examSetId !== examSetId) throw new ValidationError('Question not in this exam set')
-    return prisma.question.update({ where: { id: questionId }, data: { examSetId: null } })
+    const assignment = await prisma.questionAssignment.findFirst({
+      where: { examSetId, questionId },
+    })
+    if (!assignment) {
+      throw new ValidationError('Question not assigned to this exam set')
+    }
+
+    await prisma.questionAssignment.delete({ where: { id: assignment.id } })
+
+    return prisma.question.findUnique({ where: { id: questionId } })
   }
 
   async findPublished() {
     return prisma.examSet.findMany({
       where: { isPublished: true },
       orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { questions: true } } },
+      include: { _count: { select: { questionAssignments: true } } },
     })
   }
 
   async findPublishedById(id: string) {
     const examSet = await prisma.examSet.findUnique({
       where: { id, isPublished: true },
-      include: { questions: { orderBy: { questionNumber: 'asc' } } },
+      include: {
+        questionAssignments: {
+          orderBy: { questionNumber: 'asc' },
+          include: { question: true },
+        },
+      },
     })
     if (!examSet) throw new NotFoundError('ExamSet')
-    return examSet
+
+    // Transform to match old structure
+    return {
+      ...examSet,
+      questions: examSet.questionAssignments.map((qa) => ({
+        ...qa.question,
+        questionNumber: qa.questionNumber,
+      })),
+    }
   }
 
   async getPoolQuestions(questionNumber: number) {
-    return prisma.question.findMany({
+    const questions = await prisma.question.findMany({
       where: { questionNumber },
       orderBy: { createdAt: 'desc' },
-      include: { examSet: { select: { id: true, title: true } } },
+      include: {
+        examSetAssignments: {
+          include: {
+            examSet: { select: { id: true, title: true } },
+          },
+        },
+      },
     })
+
+    // Transform to show all exam sets this question belongs to
+    return questions.map((q) => ({
+      ...q,
+      examSets: q.examSetAssignments.map((qa) => qa.examSet),
+    }))
   }
 }

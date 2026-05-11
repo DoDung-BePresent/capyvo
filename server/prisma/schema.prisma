@@ -89,17 +89,16 @@ model ExamSet {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  questions        Question[]
-  practiceSessions PracticeSession[]
+  questionAssignments QuestionAssignment[]
+  practiceSessions    PracticeSession[]
 
   @@map("exam_sets")
 }
 
 model Question {
   id             String   @id @default(uuid())
-  examSetId      String?
   partNumber     Int // 1-5
-  questionNumber Int // 1-11
+  questionNumber Int // Question number within the part (not globally unique)
   // Part 1: read aloud
   contentText    String?
   // Part 3, 4: context
@@ -116,12 +115,28 @@ model Question {
   responseTimeSeconds Int
   createdAt        DateTime @default(now())
 
-  examSet       ExamSet?       @relation(fields: [examSetId], references: [id], onDelete: SetNull)
-  userResponses UserResponse[]
-  publicShares  PublicShare[]
+  examSetAssignments QuestionAssignment[]
+  userResponses      UserResponse[]
+  publicShares       PublicShare[]
+
+  @@map("questions")
+}
+
+// Junction table for many-to-many relationship between Question and ExamSet
+model QuestionAssignment {
+  id             String   @id @default(uuid())
+  examSetId      String
+  questionId     String
+  questionNumber Int      // Position in this specific exam set (1-11)
+  createdAt      DateTime @default(now())
+
+  examSet  ExamSet  @relation(fields: [examSetId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([examSetId, questionNumber])
-  @@map("questions")
+  @@index([examSetId])
+  @@index([questionId])
+  @@map("question_assignments")
 }
 
 model PartInstruction {

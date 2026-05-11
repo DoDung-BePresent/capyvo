@@ -239,8 +239,24 @@ export class QuestionService {
   }
 
   async getQuestions(partNumber: number, examSetId?: string) {
+    if (examSetId) {
+      // Get questions assigned to specific exam set
+      const assignments = await prisma.questionAssignment.findMany({
+        where: { examSetId },
+        include: { question: true },
+        orderBy: { questionNumber: 'asc' },
+      })
+      return assignments
+        .filter((a) => a.question.partNumber === partNumber)
+        .map((a) => ({
+          ...a.question,
+          questionNumber: a.questionNumber,
+        }))
+    }
+
+    // Get all questions for this part
     return prisma.question.findMany({
-      where: { partNumber, ...(examSetId ? { examSetId } : {}) },
+      where: { partNumber },
       orderBy: [{ questionNumber: 'asc' }, { createdAt: 'desc' }],
     })
   }
@@ -248,32 +264,35 @@ export class QuestionService {
   // Returns each published exam set that has questions for this partNumber,
   // along with those questions — one card per exam set on the practice page.
   async getPracticeSets(partNumber: number) {
-    const questions = await prisma.question.findMany({
+    const examSets = await prisma.examSet.findMany({
       where: {
-        partNumber,
-        examSetId: { not: null },
-        examSet: { isPublished: true },
+        isPublished: true,
+        questionAssignments: {
+          some: {
+            question: { partNumber },
+          },
+        },
       },
-      include: { examSet: { select: { id: true, title: true } } },
-      orderBy: { questionNumber: 'asc' },
+      include: {
+        questionAssignments: {
+          where: {
+            question: { partNumber },
+          },
+          include: { question: true },
+          orderBy: { questionNumber: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
     })
 
-    const groups = new Map<
-      string,
-      { examSetId: string; examSetTitle: string; questions: typeof questions }
-    >()
-    for (const q of questions) {
-      if (!q.examSetId || !q.examSet) continue
-      if (!groups.has(q.examSetId)) {
-        groups.set(q.examSetId, {
-          examSetId: q.examSetId,
-          examSetTitle: q.examSet.title,
-          questions: [],
-        })
-      }
-      groups.get(q.examSetId)!.questions.push(q)
-    }
-    return Array.from(groups.values())
+    return examSets.map((set) => ({
+      examSetId: set.id,
+      examSetTitle: set.title,
+      questions: set.questionAssignments.map((qa) => ({
+        ...qa.question,
+        questionNumber: qa.questionNumber,
+      })),
+    }))
   }
 
   async deleteQuestion(id: string) {
@@ -380,13 +399,13 @@ export class QuestionService {
    * Tối ưu cho UI grid questions
    */
   async getQuestionsByPart(partNumber: number) {
-    const questions = await prisma.question.findMany({
+    const assignments = await prisma.questionAssignment.findMany({
       where: {
-        partNumber,
-        examSetId: { not: null },
+        question: { partNumber },
         examSet: { isPublished: true },
       },
       include: {
+        question: true,
         examSet: {
           select: {
             id: true,
@@ -397,11 +416,11 @@ export class QuestionService {
       orderBy: [{ examSetId: 'asc' }, { questionNumber: 'asc' }],
     })
 
-    return questions.map((q) => ({
-      ...q,
-      examSetId: q.examSet?.id ?? '',
-      examSetTitle: q.examSet?.title ?? '',
-      examSet: undefined, // Remove nested object
+    return assignments.map((a) => ({
+      ...a.question,
+      questionNumber: a.questionNumber,
+      examSetId: a.examSet.id,
+      examSetTitle: a.examSet.title,
     }))
   }
 
@@ -412,9 +431,9 @@ export class QuestionService {
     const examSets = await prisma.examSet.findMany({
       where: {
         isPublished: true,
-        questions: {
+        questionAssignments: {
           some: {
-            partNumber,
+            question: { partNumber },
           },
         },
       },
@@ -423,9 +442,9 @@ export class QuestionService {
         title: true,
         _count: {
           select: {
-            questions: {
+            questionAssignments: {
               where: {
-                partNumber,
+                question: { partNumber },
               },
             },
           },
@@ -439,7 +458,7 @@ export class QuestionService {
     return examSets.map((set) => ({
       id: set.id,
       title: set.title,
-      questionCount: set._count.questions,
+      questionCount: set._count.questionAssignments,
     }))
   }
 }
