@@ -9,6 +9,7 @@ import { checkMaintenance } from '@/middlewares/check-maintenance'
 import { maintenanceService } from '@/services/maintenance.service'
 import apiRouter from '@/routes'
 import swaggerSpec from '@/lib/swagger'
+import { serverAdapter } from '@/lib/bull-board'
 
 const app = express()
 
@@ -27,6 +28,9 @@ app.use(express.urlencoded({ extended: true }))
 
 // Request logging
 app.use(requestLogger)
+
+// Bull Board (Queue Dashboard) - Admin only
+app.use('/admin/queues', serverAdapter.getRouter())
 
 // API Docs (dev only)
 if (process.env.NODE_ENV !== 'production') {

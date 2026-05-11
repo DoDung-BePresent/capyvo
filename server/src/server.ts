@@ -2,6 +2,15 @@ import app from './app'
 import logger from '@/lib/logger'
 import { startSubscriptionCheckJob } from './jobs/check-expired-subscriptions.job'
 
+// Initialize Redis connection
+import './lib/redis'
+
+// Initialize queues
+import './queues/transcription.queue'
+
+// Start workers
+import './workers/transcription.worker'
+
 const PORT = Number(process.env.PORT) || 3000
 
 const server = app.listen(PORT, () => {
@@ -11,6 +20,8 @@ const server = app.listen(PORT, () => {
 
   // Start cron jobs
   startSubscriptionCheckJob()
+
+  logger.info('Bull Board available at /admin/queues')
 })
 
 // Graceful shutdown
