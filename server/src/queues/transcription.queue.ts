@@ -1,10 +1,16 @@
 import { Queue } from 'bullmq'
 import { redis } from '@/lib/redis'
 
+if (!redis) {
+  throw new Error(
+    'Redis is required for queue functionality. Please set REDIS_URL in environment variables.',
+  )
+}
+
 const connection = {
-  host: redis.options.host,
-  port: redis.options.port,
-  password: redis.options.password,
+  host: redis.options.host as string,
+  port: redis.options.port as number,
+  password: redis.options.password as string | undefined,
 }
 
 // Queue for transcription only

@@ -8,11 +8,7 @@ if (dsn) {
   Sentry.init({
     dsn,
     environment,
-    integrations: [
-      nodeProfilingIntegration(),
-      // Automatically instrument Node.js libraries and frameworks
-      ...Sentry.autoDiscoverNodePerformanceMonitoringIntegrations(),
-    ],
+    integrations: [nodeProfilingIntegration()],
     // Performance Monitoring
     tracesSampleRate: environment === 'production' ? 0.1 : 1.0, // 10% in prod, 100% in dev
     // Profiling
@@ -25,5 +21,3 @@ if (dsn) {
 } else {
   console.log('⚠️  Sentry DSN not found, error tracking disabled')
 }
-
-export { Sentry }

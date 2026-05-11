@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from 'express'
 import { ZodError, type ZodIssue } from 'zod'
 import { AppError } from '@/errors/app-error'
 import logger from '@/lib/logger'
-import { Sentry } from '@/lib/sentry'
+import * as Sentry from '@sentry/node'
 
 export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {
   // Zod validation errors

@@ -1,26 +1,25 @@
 import 'dotenv/config'
 
 // Initialize Sentry FIRST (before any other imports)
-import './lib/sentry'
+import '@/lib/sentry'
 
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import swaggerUi from 'swagger-ui-express'
-import { Sentry } from '@/lib/sentry'
+import * as Sentry from '@sentry/node'
 import { requestLogger } from '@/middlewares/request-logger'
 import { errorHandler } from '@/middlewares/error-handler'
 import { checkMaintenance } from '@/middlewares/check-maintenance'
 import { maintenanceService } from '@/services/maintenance.service'
 import apiRouter from '@/routes'
 import swaggerSpec from '@/lib/swagger'
-import { serverAdapter } from '@/lib/bull-board'
+import { redis } from '@/lib/redis'
 
 const app = express()
 
-// Sentry request handler (must be first middleware)
-app.use(Sentry.Handlers.requestHandler())
-app.use(Sentry.Handlers.tracingHandler())
+// Sentry instrumentation (must be first middleware)
+Sentry.setupExpressErrorHandler(app)
 
 // Security
 app.use(helmet({ contentSecurityPolicy: false })) // disable CSP for Swagger UI
@@ -38,8 +37,12 @@ app.use(express.urlencoded({ extended: true }))
 // Request logging
 app.use(requestLogger)
 
-// Bull Board (Queue Dashboard) - Admin only
-app.use('/admin/queues', serverAdapter.getRouter())
+// Bull Board (Queue Dashboard) - Only if Redis is available
+if (redis) {
+  import('@/lib/bull-board').then(({ serverAdapter }) => {
+    app.use('/admin/queues', serverAdapter.getRouter())
+  })
+}
 
 // API Docs (dev only)
 if (process.env.NODE_ENV !== 'production') {
@@ -67,9 +70,6 @@ if (process.env.NODE_ENV !== 'production') {
     throw new Error('Test error for Sentry')
   })
 }
-
-// Sentry error handler (must be before other error handlers)
-app.use(Sentry.Handlers.errorHandler())
 
 // Global error handler (must be last)
 app.use(errorHandler)

@@ -2,10 +2,14 @@ import { Worker, Job } from 'bullmq'
 import { redis } from '@/lib/redis'
 import { ResponseService } from '@/services/response.service'
 
+if (!redis) {
+  throw new Error('Redis is required for workers. Please set REDIS_URL in environment variables.')
+}
+
 const connection = {
-  host: redis.options.host,
-  port: redis.options.port,
-  password: redis.options.password,
+  host: redis.options.host as string,
+  port: redis.options.port as number,
+  password: redis.options.password as string | undefined,
 }
 
 const responseService = new ResponseService()
