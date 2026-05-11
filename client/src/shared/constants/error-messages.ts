@@ -1,5 +1,7 @@
 export const ERROR_MESSAGES: Record<string, string> = {
   subscription_expired: 'Gói đăng ký của bạn đã hết hạn. Vui lòng gia hạn để tiếp tục!',
+  premium_required:
+    'Tính năng phân tích AI chỉ dành cho gói Premium. Vui lòng nâng cấp để sử dụng!',
   no_subscription: 'Bạn chưa có gói đăng ký. Vui lòng mua gói để sử dụng tính năng này!',
   transcription_failed: 'Không thể chuyển đổi giọng nói thành văn bản. Vui lòng thử lại!',
   analysis_failed: 'Không thể phân tích bài làm. Vui lòng thử lại!',

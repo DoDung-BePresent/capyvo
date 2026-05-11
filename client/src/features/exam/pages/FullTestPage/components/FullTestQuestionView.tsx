@@ -1,10 +1,34 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
 import { Card, Typography, Tag, Flex, Space, Progress, message } from 'antd'
+
+/**
+ * Hooks
+ */
+import { useState, useEffect, useCallback, useRef } from 'react'
+
+/**
+ * Utils
+ */
 import { styled } from '@/shared/utils/cn'
+
+/**
+ * Components
+ */
 import { StyledButton } from '@/shared/components'
-import { MicWaveform } from './MicWaveform'
-import type { Question } from '@/features/admin/types'
+import { MicWaveform } from '@/features/exam/components/MicWaveform'
+
+/**
+ * Types
+ */
+import type { Question } from '@/shared/types/domain'
+
+/**
+ * Constants
+ */
 import { COLORS } from '@/shared/constants/user-color'
+
+/**
+ * Assets
+ */
 import beginPreparingSound from '@/assets/sounds/instructions/begin-preparing-now.mp3'
 import beginSpeakingSound from '@/assets/sounds/instructions/begin-speaking-now.mp3'
 

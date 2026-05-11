@@ -1,8 +1,17 @@
 import app from './app'
 import logger from '@/lib/logger'
 import { startSubscriptionCheckJob } from './jobs/check-expired-subscriptions.job'
+import { redis } from '@/lib/redis'
 
 const PORT = Number(process.env.PORT) || 3000
+
+// Initialize queues and workers only if Redis is available
+if (redis) {
+  import('./queues/transcription.queue')
+  import('./workers/transcription.worker')
+} else {
+  logger.warn('⚠️  Redis not available - Queue functionality disabled')
+}
 
 const server = app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`, {
@@ -11,6 +20,10 @@ const server = app.listen(PORT, () => {
 
   // Start cron jobs
   startSubscriptionCheckJob()
+
+  if (redis) {
+    logger.info('Bull Board available at /admin/queues')
+  }
 })
 
 // Graceful shutdown

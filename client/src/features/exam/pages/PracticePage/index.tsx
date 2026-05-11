@@ -1,9 +1,25 @@
-import { useNavigate } from 'react-router-dom'
 import { Row, Col } from 'antd'
+
+/**
+ * Hooks
+ */
+import { useNavigate } from 'react-router-dom'
+
+/**
+ * Components
+ */
 import { PageHeader } from '@/shared/components'
-import PartCard from '@/features/exam/components/PartCard'
+import PartCard from './components/PartCard'
+
+/**
+ * Configs
+ */
 import { PART_CONFIGS } from '@/features/exam/config/part-config'
-import type { PartNumber } from '@/features/admin/types'
+
+/**
+ * Types
+ */
+import type { PartNumber } from '@/shared/types/domain'
 
 const PART_NUMBERS: PartNumber[] = [1, 2, 3, 4, 5]
 

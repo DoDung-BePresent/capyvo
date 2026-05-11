@@ -1,6 +1,7 @@
 export { PageHeader } from './PageHeader'
 export { DataTable } from './DataTable'
 export { Heatmap } from './Heatmap'
+export { StreakWidget } from './StreakWidget'
 export { ErrorBoundary } from './ErrorBoundary'
 export { NotFoundPage, ForbiddenPage, MaintenancePage, ServerErrorPage } from './ErrorPages'
 export { NetworkStatusBanner } from './NetworkStatusBanner'

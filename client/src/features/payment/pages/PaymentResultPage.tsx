@@ -20,8 +20,13 @@ export default function PaymentResultPage() {
     if (payment?.status === 'PAID') {
       queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() })
       message.success('Thanh toán thành công! Gói đăng ký đã được kích hoạt.')
+
+      // Redirect to home after 1 seconds
+      setTimeout(() => {
+        navigate('/')
+      }, 1000)
     }
-  }, [payment?.status, queryClient])
+  }, [payment?.status, queryClient, navigate])
 
   if (!orderCode) {
     return (

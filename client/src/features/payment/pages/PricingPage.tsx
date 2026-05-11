@@ -5,52 +5,56 @@ import { useCreateSubscriptionOrder } from '@/features/payment/hooks/usePayment'
 
 const PRICING_PLANS: PricingPlan[] = [
   {
-    id: 'MONTHLY',
-    name: '1 THÁNG',
+    id: 'BASIC',
+    name: 'CƠ BẢN',
     duration: '30 NGÀY',
-    price: 90000,
-    pricePerMonth: 90,
-    description: 'Thử xem LuyenNoi có gì :)',
+    price: 49000,
+    pricePerMonth: 49,
+    description: 'Luyện tập cơ bản với transcript',
     features: [
       'Luyện tập không giới hạn',
-      'Phân tích chi tiết phát âm',
+      'AI Transcription',
+      'Xem transcript chi tiết',
+      'Share bài tập & reactions',
       'Thi thử toàn bộ đề',
-      'Hỗ trợ qua email',
     ],
-    color: '#7C3AED', // Purple
+    color: '#1890ff', // Blue
   },
   {
-    id: 'QUARTERLY',
-    name: '3 THÁNG',
-    duration: '90 NGÀY',
-    price: 255000,
-    pricePerMonth: 85,
-    description: 'Ôn speaking thôi, chứ không trượt gì :)',
+    id: 'PREMIUM',
+    name: 'PREMIUM',
+    duration: '30 NGÀY',
+    price: 99000,
+    pricePerMonth: 99,
+    description: 'Phân tích chuyên sâu với AI',
     features: [
-      'Tất cả tính năng gói 1 tháng',
-      'Tiết kiệm 15.000đ',
-      'Theo dõi tiến độ chi tiết',
-      'Ưu tiên hỗ trợ',
+      'Tất cả tính năng gói Cơ bản',
+      'AI Analysis & Scoring',
+      'Feedback chi tiết theo tiêu chí',
+      'Phân tích lỗi cụ thể',
+      'Ước tính điểm TOEIC',
     ],
-    color: '#4F46E5', // Indigo
+    color: '#faad14', // Gold
     isPopular: true,
-    discount: 'Tiết kiệm 5%',
   },
   {
-    id: 'BIANNUAL',
-    name: '6 THÁNG',
-    duration: '180 NGÀY',
-    price: 480000,
-    pricePerMonth: 80,
-    description: 'Phá đảo speaking - chắc chắn lên band :)',
+    id: 'CLASSROOM',
+    name: 'LỚP HỌC',
+    duration: 'GIẢNG VIÊN',
+    price: 0,
+    pricePerMonth: 0,
+    description: 'Đang phát triển - Liên hệ để được tư vấn và đặt trước',
     features: [
-      'Tất cả tính năng gói 3 tháng',
-      'Tiết kiệm 60.000đ',
-      'Báo cáo tiến độ hàng tuần',
-      'Hỗ trợ ưu tiên 24/7',
+      'Xem kết quả học viên (View only)',
+      'Quản lý nhiều lớp học',
+      'Báo cáo tiến độ lớp',
+      'Dashboard giảng viên',
+      'Hỗ trợ tùy chỉnh',
     ],
-    color: '#0891B2', // Cyan
-    discount: 'Tiết kiệm 11%',
+    color: '#059669', // Green
+    isContactPlan: true,
+    contactUrl: 'https://zalo.me/0352195876',
+    badge: 'Sắp ra mắt',
   },
 ]
 

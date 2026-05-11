@@ -1,5 +1,5 @@
 import { RecordVoiceOver, Image, QuestionAnswer, Info, Campaign } from '@mui/icons-material'
-import type { PartNumber } from '@/features/admin/types'
+import type { PartNumber } from '@/shared/types/domain'
 
 export interface PartConfig {
   partNumber: PartNumber
