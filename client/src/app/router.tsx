@@ -50,10 +50,6 @@ const router = createBrowserRouter([
               },
               { path: '/exam', lazy: lazy(() => import('@/features/exam/pages/ExamListPage')) },
               {
-                path: '/payment',
-                lazy: lazy(() => import('@/features/payment/pages/PaymentPage')),
-              },
-              {
                 path: '/payment/result',
                 lazy: lazy(() => import('@/features/payment/pages/PaymentResultPage')),
               },
