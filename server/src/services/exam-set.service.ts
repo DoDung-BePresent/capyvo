@@ -50,21 +50,20 @@ export class ExamSetService {
   }
 
   async update(id: string, body: unknown) {
-    await this.findById(id)
+    const examSet = await this.findById(id)
     const dto = UpdateExamSetSchema.parse(body)
 
     // If trying to publish, validate that exam set is complete (has 11 questions)
     if (dto.isPublished === true) {
-      const count = await prisma.questionAssignment.count({
-        where: { examSetId: id },
-      })
-      if (count < 11) {
+      // Check current isComplete status
+      if (!examSet.isComplete) {
+        const count = await prisma.questionAssignment.count({
+          where: { examSetId: id },
+        })
         throw new ValidationError(
           `Cannot publish exam set with only ${count}/11 questions. Please add all 11 questions first.`,
         )
       }
-      // Auto-set isComplete to true when publishing with 11 questions
-      dto.isComplete = true
     }
 
     return prisma.examSet.update({ where: { id }, data: dto })

@@ -10,9 +10,30 @@ import type {
   Part5FormValues,
   UpdateQuestionPayload,
   ExamSetWithQuestions,
+  QuestionType,
+  QuestionStatus,
+  QuestionWithTopics,
+  TopicWithCount,
 } from '../types'
 
 export const questionService = {
+  /**
+   * Get all questions with optional filters
+   */
+  getAll: async (filters?: {
+    partNumber?: number
+    type?: QuestionType
+    status?: QuestionStatus
+    topicId?: string
+    examSetId?: string
+    search?: string
+  }): Promise<QuestionWithTopics[]> => {
+    const { data } = await axiosInstance.get<ApiResponse<QuestionWithTopics[]>>('/questions', {
+      params: filters,
+    })
+    return data.data
+  },
+
   getByPart: async (partNumber: number): Promise<Question[]> => {
     const { data } = await axiosInstance.get<ApiResponse<Question[]>>('/questions', {
       params: { partNumber },
@@ -31,14 +52,14 @@ export const questionService = {
   },
 
   /**
-   * Lấy tất cả câu hỏi của một part (flat list với examSetId)
+   * Lấy tất cả câu hỏi của một part (flat list với examSetId và topics)
    * Tối ưu cho UI grid questions
    */
   getQuestionsByPart: async (
     partNumber: number,
-  ): Promise<(Question & { examSetId: string; examSetTitle: string })[]> => {
+  ): Promise<(QuestionWithTopics & { examSetId: string; examSetTitle: string })[]> => {
     const { data } = await axiosInstance.get<
-      ApiResponse<(Question & { examSetId: string; examSetTitle: string })[]>
+      ApiResponse<(QuestionWithTopics & { examSetId: string; examSetTitle: string })[]>
     >(`/questions/part/${partNumber}/all`)
     return data.data
   },
@@ -52,6 +73,16 @@ export const questionService = {
     const { data } = await axiosInstance.get<
       ApiResponse<{ id: string; title: string; questionCount: number }[]>
     >(`/questions/part/${partNumber}/exam-sets`)
+    return data.data
+  },
+
+  /**
+   * Lấy danh sách topics của một part với số lượng câu hỏi published
+   */
+  getTopicsByPart: async (partNumber: number): Promise<TopicWithCount[]> => {
+    const { data } = await axiosInstance.get<ApiResponse<TopicWithCount[]>>(
+      `/questions/part/${partNumber}/topics`,
+    )
     return data.data
   },
 
@@ -123,6 +154,30 @@ export const questionService = {
 
   update: async (id: string, payload: UpdateQuestionPayload): Promise<Question> => {
     const { data } = await axiosInstance.patch<ApiResponse<Question>>(`/questions/${id}`, payload)
+    return data.data
+  },
+
+  /**
+   * Update question status
+   */
+  updateStatus: async (id: string, status: QuestionStatus): Promise<Question> => {
+    const { data } = await axiosInstance.patch<ApiResponse<Question>>(`/questions/${id}/status`, {
+      status,
+    })
+    return data.data
+  },
+
+  /**
+   * Bulk update question status
+   */
+  bulkUpdateStatus: async (
+    questionIds: string[],
+    status: QuestionStatus,
+  ): Promise<{ updated: number }> => {
+    const { data } = await axiosInstance.patch<ApiResponse<{ updated: number }>>(
+      '/questions/bulk/status',
+      { questionIds, status },
+    )
     return data.data
   },
 

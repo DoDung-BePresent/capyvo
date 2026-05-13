@@ -82,4 +82,10 @@ export const queryKeys = {
     byQuestion: (questionId: string) => ['shares', 'question', questionId] as const,
     my: () => ['shares', 'my'] as const,
   },
+
+  // Topics
+  topics: {
+    list: () => ['topics'] as const,
+    detail: (id: string) => ['topics', 'detail', id] as const,
+  },
 }

@@ -105,6 +105,10 @@ const router = createBrowserRouter([
                 path: '/admin/instructions',
                 lazy: lazy(() => import('@/features/admin/pages/PartInstructionsPage')),
               },
+              {
+                path: '/admin/topics',
+                lazy: lazy(() => import('@/features/admin/pages/TopicManagementPage')),
+              },
             ],
           },
         ],

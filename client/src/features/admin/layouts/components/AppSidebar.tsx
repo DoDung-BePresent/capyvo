@@ -4,7 +4,13 @@ import { useNavigate, useLocation } from 'react-router-dom'
 /**
  * Icons
  */
-import { DashboardOutlined, FileDoneOutlined, ReadOutlined, SoundOutlined } from '@ant-design/icons'
+import {
+  DashboardOutlined,
+  FileDoneOutlined,
+  ReadOutlined,
+  SoundOutlined,
+  TagsOutlined,
+} from '@ant-design/icons'
 
 /**
  * Types
@@ -45,6 +51,11 @@ const MENU_ITEMS = [
     key: '/admin/exam-sets',
     icon: <FileDoneOutlined />,
     label: 'Bộ đề',
+  },
+  {
+    key: '/admin/topics',
+    icon: <TagsOutlined />,
+    label: 'Chủ đề',
   },
   {
     key: '/admin/instructions',

@@ -9,6 +9,9 @@ export interface Question {
   examSet?: { id: string; title: string } | null
   partNumber: number
   questionNumber: number
+  // Question type and status (optional for backward compatibility)
+  type?: string
+  status?: string
   contentText: string | null
   contextText: string | null
   contextAudioUrl: string | null

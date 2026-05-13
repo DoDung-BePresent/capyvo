@@ -3,7 +3,8 @@
  */
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { usePartQuestions, usePartExamSets } from '@/features/exam/hooks/usePartQuestions'
+import { usePartExamSets } from '@/features/exam/hooks/usePartQuestions'
+import { useQuery } from '@tanstack/react-query'
 
 /**
  * Components
@@ -11,6 +12,7 @@ import { usePartQuestions, usePartExamSets } from '@/features/exam/hooks/usePart
 import { PageHeader } from '@/shared/components'
 import { StyledButton } from '@/shared/components'
 import { Card, Empty, Flex, Spin, Typography, Tag } from 'antd'
+import { TopicFilter } from '@/features/exam/components/TopicFilter'
 
 /**
  * Icons
@@ -27,7 +29,9 @@ import { hexToRgba } from '@/shared/utils/color'
  * Types
  */
 import { PART_META } from '@/shared/types/domain'
-import type { PartNumber, Question } from '@/shared/types/domain'
+import type { PartNumber } from '@/shared/types/domain'
+import { questionService } from '@/features/exam/services/question.service'
+import type { QuestionWithTopics } from '@/features/exam/services/question.service'
 
 /**
  * Constants
@@ -76,7 +80,7 @@ function FilterItem({ title, questionCount, isActive, onClick }: FilterItemProps
 }
 
 interface QuestionItemProps {
-  question: Question & { examSetId: string; examSetTitle: string }
+  question: QuestionWithTopics
   onPractice: () => void
 }
 
@@ -99,9 +103,6 @@ function QuestionItem({ question, onPractice }: QuestionItemProps) {
         </Flex>
 
         <div style={{ flex: 1 }}>
-          <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
-            {question.examSetTitle}
-          </Text>
           <Text
             style={{
               fontSize: 14,
@@ -119,6 +120,17 @@ function QuestionItem({ question, onPractice }: QuestionItemProps) {
           <Tag color="purple" style={{ width: 'fit-content' }}>
             Có hình ảnh
           </Tag>
+        )}
+
+        {/* Display topic tags */}
+        {question.topics && question.topics.length > 0 && (
+          <Flex gap={4} wrap="wrap">
+            {question.topics.map((topic) => (
+              <Tag key={topic.id} color="green" style={{ margin: 0 }}>
+                {topic.name}
+              </Tag>
+            ))}
+          </Flex>
         )}
 
         <StyledButton
@@ -147,24 +159,51 @@ export default function PartPracticePage() {
   const meta = PART_META[part]
 
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null)
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null)
 
-  // Fetch all questions
-  const { data: allQuestions = [], isLoading: questionsLoading } = usePartQuestions(part)
+  // Fetch all questions with topic filtering support
+  const {
+    data: allQuestions = [],
+    isLoading: questionsLoading,
+    isFetching: questionsFetching,
+  } = useQuery({
+    queryKey: ['questions', 'part', part, 'all', selectedTopicId],
+    queryFn: () => questionService.getByPart(part, selectedTopicId ?? undefined),
+    enabled: !!part && part >= 1 && part <= 5,
+  })
 
   // Fetch exam sets for filter
   const { data: examSets = [], isLoading: setsLoading } = usePartExamSets(part)
 
-  const isLoading = questionsLoading || setsLoading
+  // Fetch topics for filter
+  const { data: topics = [], isLoading: topicsLoading } = useQuery({
+    queryKey: ['questions', 'part', part, 'topics'],
+    queryFn: () => questionService.getTopicsByPart(part),
+    enabled: !!part && part >= 1 && part <= 5,
+  })
 
-  // Filter questions by selected set
+  const isLoading = questionsLoading || setsLoading || topicsLoading
+
+  // Filter questions by selected exam set (if any)
   const filteredQuestions = selectedSetId
     ? allQuestions.filter((q) => q.examSetId === selectedSetId)
     : allQuestions
 
   const selectedSet = examSets.find((s) => s.id === selectedSetId)
+  const selectedTopic = topics.find((t) => t.id === selectedTopicId)
 
-  const handlePracticeQuestion = (question: Question & { examSetId: string }) => {
+  const handlePracticeQuestion = (question: QuestionWithTopics) => {
     navigate(`/practice/part/${part}/question/${question.id}`)
+  }
+
+  const handleTopicSelect = (topicId: string | null) => {
+    setSelectedTopicId(topicId)
+    setSelectedSetId(null) // Clear exam set filter when topic is selected
+  }
+
+  const handleExamSetSelect = (setId: string) => {
+    setSelectedSetId(setId)
+    setSelectedTopicId(null) // Clear topic filter when exam set is selected
   }
 
   if (isLoading) {
@@ -185,7 +224,8 @@ export default function PartPracticePage() {
     )
   }
 
-  if (examSets.length === 0) {
+  // Show empty state if no exam sets and no topics
+  if (examSets.length === 0 && topics.length === 0) {
     return (
       <>
         <PageHeader
@@ -197,7 +237,7 @@ export default function PartPracticePage() {
           ]}
         />
         <Empty
-          description="Chưa có bộ đề nào được công bố cho phần này"
+          description="Chưa có câu hỏi nào được công bố cho phần này"
           style={{ marginTop: 48 }}
         />
       </>
@@ -216,37 +256,60 @@ export default function PartPracticePage() {
       />
 
       <Container>
-        {/* Sidebar - Filter by exam set */}
+        {/* Sidebar - Filter by topic and exam set */}
         <Sidebar>
-          <Title level={5} style={{ marginBottom: 16 }}>
-            Bộ đề
-          </Title>
+          {/* Topic Filter Section */}
+          {topics.length > 0 && (
+            <>
+              <Title level={5} style={{ marginBottom: 16 }}>
+                Chủ đề
+              </Title>
+              <TopicFilter
+                topics={topics}
+                selectedTopicId={selectedTopicId}
+                onSelectTopic={handleTopicSelect}
+              />
+            </>
+          )}
 
-          {examSets.map((set) => (
-            <FilterItem
-              key={set.id}
-              id={set.id}
-              title={set.title}
-              questionCount={set.questionCount}
-              isActive={selectedSetId === set.id}
-              onClick={() => setSelectedSetId(set.id)}
-            />
-          ))}
+          {/* Exam Set Filter Section */}
+          {examSets.length > 0 && (
+            <>
+              <Title level={5} style={{ marginBottom: 16, marginTop: topics.length > 0 ? 24 : 0 }}>
+                Bộ đề
+              </Title>
+              {examSets.map((set) => (
+                <FilterItem
+                  key={set.id}
+                  id={set.id}
+                  title={set.title}
+                  questionCount={set.questionCount}
+                  isActive={selectedSetId === set.id}
+                  onClick={() => handleExamSetSelect(set.id)}
+                />
+              ))}
+            </>
+          )}
         </Sidebar>
 
         {/* Main content - Questions grid */}
         <MainContent>
           <Flex align="center" justify="space-between" style={{ marginBottom: 16 }}>
             <Title level={5} style={{ margin: 0 }}>
-              {selectedSet ? selectedSet.title : 'Chọn bộ đề'}
+              {selectedTopic
+                ? selectedTopic.name
+                : selectedSet
+                  ? selectedSet.title
+                  : 'Tất cả câu hỏi'}
             </Title>
-            <Text type="secondary">{filteredQuestions.length} câu hỏi</Text>
+            <Flex align="center" gap={8}>
+              {questionsFetching && <Spin size="small" />}
+              <Text type="secondary">{filteredQuestions.length} câu hỏi</Text>
+            </Flex>
           </Flex>
 
-          {!selectedSetId ? (
-            <Empty description="Chọn một bộ đề để xem câu hỏi" />
-          ) : filteredQuestions.length === 0 ? (
-            <Empty description="Không có câu hỏi nào" />
+          {filteredQuestions.length === 0 ? (
+            <Empty description="Không có câu hỏi nào phù hợp với bộ lọc" />
           ) : (
             <QuestionGrid>
               {filteredQuestions.map((question) => (

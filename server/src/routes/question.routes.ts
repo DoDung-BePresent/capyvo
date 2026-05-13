@@ -15,12 +15,15 @@ router.get(
   authenticate,
   asyncHandler(ctrl.getExamSetsByPart.bind(ctrl)),
 )
+router.get('/part/:partNumber/topics', authenticate, asyncHandler(ctrl.getTopicsByPart.bind(ctrl)))
 
 // Admin-only routes
 router.use(authenticate, requireRole('ADMIN'))
 
 router.delete('/:id', asyncHandler(ctrl.deleteQuestion.bind(ctrl)))
 router.patch('/:id', asyncHandler(ctrl.updateQuestion.bind(ctrl)))
+router.patch('/:id/status', asyncHandler(ctrl.updateQuestionStatus.bind(ctrl)))
+router.patch('/bulk/status', asyncHandler(ctrl.bulkUpdateQuestionStatus.bind(ctrl)))
 router.post('/upload/image', upload.single('image'), asyncHandler(ctrl.uploadImage.bind(ctrl)))
 router.post('/upload/audio', uploadAudio.single('audio'), asyncHandler(ctrl.uploadAudio.bind(ctrl)))
 router.post('/analyze-image', asyncHandler(ctrl.analyzeImage.bind(ctrl)))

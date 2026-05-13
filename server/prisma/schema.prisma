@@ -22,6 +22,18 @@ enum ExamSetType {
   CUSTOM
 }
 
+enum QuestionType {
+  PRACTICE
+  FORECAST
+  CUSTOM
+}
+
+enum QuestionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 enum SessionStatus {
   IN_PROGRESS
   COMPLETED
@@ -101,6 +113,11 @@ model Question {
   id             String   @id @default(uuid())
   partNumber     Int // 1-5
   questionNumber Int // Question number within the part (not globally unique)
+  
+  // Question type and status
+  type           QuestionType   @default(PRACTICE)
+  status         QuestionStatus @default(DRAFT)
+  
   // Part 1: read aloud
   contentText    String?
   // Part 3, 4: context
@@ -116,11 +133,17 @@ model Question {
   prepTimeSeconds     Int
   responseTimeSeconds Int
   createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   examSetAssignments QuestionAssignment[]
+  topicAssignments   QuestionTopicAssignment[]
   userResponses      UserResponse[]
   publicShares       PublicShare[]
 
+  @@index([partNumber])
+  @@index([type])
+  @@index([status])
+  @@index([partNumber, status])
   @@map("questions")
 }
 
@@ -139,6 +162,34 @@ model QuestionAssignment {
   @@index([examSetId])
   @@index([questionId])
   @@map("question_assignments")
+}
+
+model Topic {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  questionAssignments QuestionTopicAssignment[]
+
+  @@map("topics")
+}
+
+// Junction table for many-to-many relationship between Question and Topic
+model QuestionTopicAssignment {
+  id         String   @id @default(uuid())
+  questionId String
+  topicId    String
+  createdAt  DateTime @default(now())
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  topic    Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, topicId])
+  @@index([questionId])
+  @@index([topicId])
+  @@map("question_topic_assignments")
 }
 
 model PartInstruction {

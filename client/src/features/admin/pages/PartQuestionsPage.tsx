@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   Typography,
@@ -9,8 +9,9 @@ import {
   Empty,
   Form,
   Drawer,
-  Input,
   Tabs,
+  Tag,
+  Checkbox,
 } from 'antd'
 
 /**
@@ -23,8 +24,8 @@ import { DeleteOutlined, EditOutlined, PlusOutlined, SoundOutlined } from '@ant-
  */
 import type { FormInstance } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { PART_META } from '../types'
-import type { PartNumber, Question, UpdateQuestionPayload } from '../types'
+import { PART_META, QuestionType, QuestionStatus } from '../types'
+import type { PartNumber, UpdateQuestionPayload, QuestionWithTopics } from '../types'
 import type {
   Part1FormValues,
   Part2FormValues,
@@ -43,12 +44,14 @@ import Part3Form from '../components/Part3Form'
 import Part4Form from '../components/Part4Form'
 import Part5Form from '../components/Part5Form'
 import EditQuestionForm from '../components/EditQuestionForm'
+import QuestionFilters from '../components/QuestionFilters'
+import BulkActionsToolbar from '../components/BulkActionsToolbar'
 
 /**
  * Hooks
  */
 import {
-  useGetQuestions,
+  useQuestions,
   useCreatePart1,
   useCreatePart2,
   useCreatePart3,
@@ -57,6 +60,7 @@ import {
   useDeleteQuestion,
   useUpdateQuestion,
 } from '../hooks/useQuestion'
+import { useTopics } from '../hooks/useTopic'
 
 /**
  * Configs
@@ -65,27 +69,94 @@ import { DRAWER_WIDTHS } from '@/config'
 
 const { Text } = Typography
 
+// ─── Tag Components ─── //
+function TypeTag({ type }: { type: QuestionType }) {
+  const colorMap: Record<QuestionType, string> = {
+    [QuestionType.PRACTICE]: 'blue',
+    [QuestionType.FORECAST]: 'orange',
+    [QuestionType.CUSTOM]: 'purple',
+  }
+  return <Tag color={colorMap[type]}>{type}</Tag>
+}
+
+function StatusTag({ status }: { status: QuestionStatus }) {
+  const colorMap: Record<QuestionStatus, string> = {
+    [QuestionStatus.DRAFT]: 'default',
+    [QuestionStatus.PUBLISHED]: 'green',
+    [QuestionStatus.ARCHIVED]: 'red',
+  }
+  return <Tag color={colorMap[status]}>{status}</Tag>
+}
+
+function TopicTags({ topics }: { topics: Array<{ id: string; name: string }> }) {
+  if (!topics || topics.length === 0) {
+    return <Text type="secondary">—</Text>
+  }
+  return (
+    <Space size={4} wrap>
+      {topics.map((topic) => (
+        <Tag key={topic.id}>{topic.name}</Tag>
+      ))}
+    </Space>
+  )
+}
+
 // ─── Column definitions ─── //
 function getColumns(
   partNumber: PartNumber,
-  onEdit: (record: Question) => void,
+  onEdit: (record: QuestionWithTopics) => void,
   onDelete: (id: string) => void,
   deleting: boolean,
-): ColumnsType<Question> {
-  const baseColumns: ColumnsType<Question> = [
+  selectedIds: string[],
+  onSelectChange: (id: string, checked: boolean) => void,
+): ColumnsType<QuestionWithTopics> {
+  const checkboxColumn: ColumnsType<QuestionWithTopics>[number] = {
+    title: (
+      <Checkbox
+        indeterminate={
+          selectedIds.length > 0 &&
+          selectedIds.length <
+            (partNumber === 1
+              ? 2
+              : partNumber === 2
+                ? 2
+                : partNumber === 3
+                  ? 3
+                  : partNumber === 4
+                    ? 3
+                    : 1)
+        }
+        checked={selectedIds.length > 0}
+        onChange={() => {
+          // This will be handled by the parent component
+        }}
+      />
+    ),
+    key: 'select',
+    width: 50,
+    render: (_: unknown, record: QuestionWithTopics) => (
+      <Checkbox
+        checked={selectedIds.includes(record.id)}
+        onChange={(_e) => onSelectChange(record.id, _e.target.checked)}
+      />
+    ),
+  }
+
+  const baseColumns: ColumnsType<QuestionWithTopics> = [
+    checkboxColumn,
     {
       title: 'No.',
       key: 'no',
       width: 60,
-      render: (_: unknown, __: Question, index: number) => index + 1,
+      render: (_: unknown, __: QuestionWithTopics, index: number) => index + 1,
     },
   ]
 
-  const actionsColumn: ColumnsType<Question>[number] = {
+  const actionsColumn: ColumnsType<QuestionWithTopics>[number] = {
     title: '',
     key: 'actions',
     width: 90,
-    render: (_: unknown, record: Question) => (
+    render: (_: unknown, record: QuestionWithTopics) => (
       <Space size={4}>
         <Button type="text" icon={<EditOutlined />} onClick={() => onEdit(record)} />
         <Popconfirm
@@ -101,6 +172,32 @@ function getColumns(
     ),
   }
 
+  // Common columns for type, status, and topics
+  const typeColumn: ColumnsType<QuestionWithTopics>[number] = {
+    title: 'Loại',
+    key: 'type',
+    width: 100,
+    render: (_: unknown, record: QuestionWithTopics) => (
+      <TypeTag type={record.type || QuestionType.PRACTICE} />
+    ),
+  }
+
+  const statusColumn: ColumnsType<QuestionWithTopics>[number] = {
+    title: 'Trạng thái',
+    key: 'status',
+    width: 110,
+    render: (_: unknown, record: QuestionWithTopics) => (
+      <StatusTag status={record.status || QuestionStatus.DRAFT} />
+    ),
+  }
+
+  const topicsColumn: ColumnsType<QuestionWithTopics>[number] = {
+    title: 'Chủ đề',
+    key: 'topics',
+    width: 200,
+    render: (_: unknown, record: QuestionWithTopics) => <TopicTags topics={record.topics || []} />,
+  }
+
   if (partNumber === 1) {
     return [
       ...baseColumns,
@@ -114,6 +211,9 @@ function getColumns(
         ),
         width: 120,
       },
+      typeColumn,
+      statusColumn,
+      topicsColumn,
       actionsColumn,
     ]
   }
@@ -128,6 +228,9 @@ function getColumns(
           urls[0] ? <Image src={urls[0]} height={60} style={{ objectFit: 'cover' }} /> : '—',
         width: 100,
       },
+      typeColumn,
+      statusColumn,
+      topicsColumn,
       actionsColumn,
     ]
   }
@@ -139,7 +242,7 @@ function getColumns(
       { title: 'Câu hỏi', dataIndex: 'questionText', ellipsis: true },
       {
         title: 'Audio',
-        render: (_: unknown, r: Question) =>
+        render: (_: unknown, r: QuestionWithTopics) =>
           r.questionAudioUrl ? (
             <a href={r.questionAudioUrl} target="_blank" rel="noreferrer">
               <SoundOutlined /> Nghe
@@ -149,6 +252,9 @@ function getColumns(
           ),
         width: 90,
       },
+      typeColumn,
+      statusColumn,
+      topicsColumn,
       actionsColumn,
     ]
   }
@@ -166,7 +272,7 @@ function getColumns(
       { title: 'Câu hỏi', dataIndex: 'questionText', ellipsis: true },
       {
         title: 'Audio',
-        render: (_: unknown, r: Question) =>
+        render: (_: unknown, r: QuestionWithTopics) =>
           r.questionAudioUrl ? (
             <a href={r.questionAudioUrl} target="_blank" rel="noreferrer">
               <SoundOutlined /> Nghe
@@ -176,6 +282,9 @@ function getColumns(
           ),
         width: 90,
       },
+      typeColumn,
+      statusColumn,
+      topicsColumn,
       actionsColumn,
     ]
   }
@@ -185,7 +294,7 @@ function getColumns(
     { title: 'Câu hỏi', dataIndex: 'questionText', ellipsis: true },
     {
       title: 'Audio',
-      render: (_: unknown, r: Question) =>
+      render: (_: unknown, r: QuestionWithTopics) =>
         r.questionAudioUrl ? (
           <a href={r.questionAudioUrl} target="_blank" rel="noreferrer">
             <SoundOutlined /> Nghe
@@ -195,6 +304,9 @@ function getColumns(
         ),
       width: 90,
     },
+    typeColumn,
+    statusColumn,
+    topicsColumn,
     actionsColumn,
   ]
 }
@@ -237,24 +349,62 @@ export default function PartQuestionsPage() {
   const { partNumber: partParam } = useParams<{ partNumber: string }>()
   const partNumber = Number(partParam) as PartNumber
 
+  // Drawer states
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
-  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null)
+  const [editingQuestion, setEditingQuestion] = useState<QuestionWithTopics | null>(null)
+
+  // Filter states
+  const [type, setType] = useState<QuestionType | 'ALL'>('ALL')
+  const [status, setStatus] = useState<QuestionStatus | 'ALL'>('ALL')
+  const [topicId, setTopicId] = useState<string | undefined>(undefined)
   const [search, setSearch] = useState('')
+
+  // Selection state
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([])
+
+  // Forms
   const [drawerForm] = Form.useForm()
   const [editForm] = Form.useForm()
+
+  // Active question number for tabs
   const [activeQNum, setActiveQNum] = useState<number>(
     () => PART_META[partNumber]?.questionNumbers[0] ?? 1,
   )
   const [prevPartNumber, setPrevPartNumber] = useState(partNumber)
 
+  // Reset filters when part changes
   if (prevPartNumber !== partNumber) {
     setPrevPartNumber(partNumber)
     setActiveQNum(PART_META[partNumber]?.questionNumbers[0] ?? 1)
     setSearch('')
+    setType('ALL')
+    setStatus('ALL')
+    setTopicId(undefined)
+    setSelectedQuestionIds([])
   }
 
-  const { data: questions = [], isLoading } = useGetQuestions(partNumber)
+  // Build filter object for useQuestions hook
+  const filters = useMemo(() => {
+    const f: {
+      partNumber: number
+      type?: QuestionType
+      status?: QuestionStatus
+      topicId?: string
+      search?: string
+    } = { partNumber }
+
+    if (type !== 'ALL') f.type = type
+    if (status !== 'ALL') f.status = status
+    if (topicId) f.topicId = topicId
+    if (search) f.search = search
+
+    return f
+  }, [partNumber, type, status, topicId, search])
+
+  // Fetch data
+  const { data: questions = [], isLoading } = useQuestions(filters)
+  const { data: topics = [] } = useTopics()
   const { mutate: deleteQuestion, isPending: deleting } = useDeleteQuestion(partNumber)
   const updateQuestion = useUpdateQuestion(partNumber)
 
@@ -270,6 +420,39 @@ export default function PartQuestionsPage() {
     3: createPart3.isPending,
     4: createPart4.isPending,
     5: createPart5.isPending,
+  }
+
+  // Calculate filter counts
+  const filterCounts = useMemo(() => {
+    const allQuestions = questions as QuestionWithTopics[]
+    const total = allQuestions.length
+
+    const byType: Record<QuestionType | 'ALL', number> = {
+      ALL: total,
+      [QuestionType.PRACTICE]: allQuestions.filter((q) => q.type === QuestionType.PRACTICE).length,
+      [QuestionType.FORECAST]: allQuestions.filter((q) => q.type === QuestionType.FORECAST).length,
+      [QuestionType.CUSTOM]: allQuestions.filter((q) => q.type === QuestionType.CUSTOM).length,
+    }
+
+    const byStatus: Record<QuestionStatus | 'ALL', number> = {
+      ALL: total,
+      [QuestionStatus.DRAFT]: allQuestions.filter((q) => q.status === QuestionStatus.DRAFT).length,
+      [QuestionStatus.PUBLISHED]: allQuestions.filter((q) => q.status === QuestionStatus.PUBLISHED)
+        .length,
+      [QuestionStatus.ARCHIVED]: allQuestions.filter((q) => q.status === QuestionStatus.ARCHIVED)
+        .length,
+    }
+
+    return { total, byType, byStatus }
+  }, [questions])
+
+  // Handle selection
+  const handleSelectChange = (id: string, checked: boolean) => {
+    setSelectedQuestionIds((prev) => (checked ? [...prev, id] : prev.filter((qid) => qid !== id)))
+  }
+
+  const handleClearSelection = () => {
+    setSelectedQuestionIds([])
   }
 
   const handleFormFinish = (values: unknown) => {
@@ -296,7 +479,7 @@ export default function PartQuestionsPage() {
     }
   }
 
-  function openEditDrawer(question: Question) {
+  function openEditDrawer(question: QuestionWithTopics) {
     setEditingQuestion(question)
     setEditDrawerOpen(true)
     setTimeout(() => {
@@ -397,35 +580,22 @@ export default function PartQuestionsPage() {
   }
 
   const questionNumbers = [...meta.questionNumbers]
-  const columns = getColumns(partNumber, openEditDrawer, deleteQuestion, deleting)
+  const columns = getColumns(
+    partNumber,
+    openEditDrawer,
+    deleteQuestion,
+    deleting,
+    selectedQuestionIds,
+    handleSelectChange,
+  )
 
   const responseTimeText =
     'responseTimeOverride' in meta
       ? `${meta.responseTime}s (câu cuối ${Object.values(meta.responseTimeOverride as Record<number, number>)[0]}s)`
       : `${meta.responseTime}s`
 
-  const getFilteredData = (qNum: number): Question[] =>
-    questions.filter((q) => {
-      if (q.questionNumber !== qNum) return false
-      if (!search) return true
-      const s = search.toLowerCase()
-      return (
-        q.questionText?.toLowerCase().includes(s) ||
-        q.contentText?.toLowerCase().includes(s) ||
-        q.contextText?.toLowerCase().includes(s)
-      )
-    })
-
-  const searchNode = (
-    <Input.Search
-      placeholder="Tìm kiếm câu hỏi..."
-      allowClear
-      size="large"
-      style={{ width: 300 }}
-      value={search}
-      onChange={(e) => setSearch(e.target.value)}
-    />
-  )
+  const getFilteredData = (qNum: number): QuestionWithTopics[] =>
+    (questions as QuestionWithTopics[]).filter((q) => q.questionNumber === qNum)
 
   return (
     <Space vertical size={0} style={{ width: '100%' }}>
@@ -445,13 +615,37 @@ export default function PartQuestionsPage() {
         }
       />
 
+      {/* Question Filters */}
+      <div style={{ padding: '24px', marginBottom: '20px', background: '#fff' }}>
+        <QuestionFilters
+          type={type}
+          status={status}
+          topicId={topicId}
+          search={search}
+          onTypeChange={setType}
+          onStatusChange={setStatus}
+          onTopicChange={setTopicId}
+          onSearchChange={setSearch}
+          topics={topics}
+          counts={filterCounts}
+        />
+      </div>
+
+      {/* Bulk Actions Toolbar */}
+      <div style={{ padding: '0 24px' }}>
+        <BulkActionsToolbar
+          selectedQuestionIds={selectedQuestionIds}
+          onClearSelection={handleClearSelection}
+        />
+      </div>
+
+      {/* Question Table with Tabs */}
       {questionNumbers.length > 1 ? (
         <Tabs
           type="card"
           size="large"
           activeKey={String(activeQNum)}
           onChange={(k) => setActiveQNum(Number(k))}
-          tabBarExtraContent={searchNode}
           tabBarStyle={{ marginBottom: 0 }}
           items={questionNumbers.map((n) => ({
             key: String(n),
@@ -465,6 +659,12 @@ export default function PartQuestionsPage() {
                 size="large"
                 loading={isLoading}
                 locale={{ emptyText: <Empty description="Chưa có câu hỏi nào" /> }}
+                pagination={{
+                  pageSize: 50,
+                  showSizeChanger: true,
+                  showTotal: (total) => `Tổng ${total} câu hỏi`,
+                  pageSizeOptions: ['20', '50', '100'],
+                }}
               />
             ),
           }))}
@@ -477,7 +677,12 @@ export default function PartQuestionsPage() {
           size="large"
           loading={isLoading}
           locale={{ emptyText: <Empty description="Chưa có câu hỏi nào" /> }}
-          filter={searchNode}
+          pagination={{
+            pageSize: 50,
+            showSizeChanger: true,
+            showTotal: (total) => `Tổng ${total} câu hỏi`,
+            pageSizeOptions: ['20', '50', '100'],
+          }}
         />
       )}
 

@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Form, Input, Segmented, Spin, Typography } from 'antd'
+import { Form, Input, Segmented, Spin, Typography, Select, Divider } from 'antd'
 import type { FormInstance } from 'antd'
 import { RobotOutlined } from '@ant-design/icons'
 import ImageUpload from './ImageUpload'
 import { questionService } from '../services/question.service'
 import type { Part2FormValues } from '../types'
+import { QuestionType, QuestionStatus } from '../types'
+import { TopicMultiSelect } from './TopicMultiSelect'
 
 const { Text } = Typography
 
@@ -76,6 +78,42 @@ export default function Part2Form({ form, onSubmit }: Props) {
         }
       >
         <Input.TextArea rows={4} placeholder="AI sẽ tự mô tả hình ảnh sau khi upload..." />
+      </Form.Item>
+
+      <Divider style={{ margin: '16px 0' }} />
+
+      <Form.Item
+        label="Loại câu hỏi"
+        name="type"
+        rules={[{ required: true, message: 'Chọn loại câu hỏi' }]}
+        initialValue={QuestionType.PRACTICE}
+      >
+        <Select
+          options={[
+            { label: 'PRACTICE', value: QuestionType.PRACTICE },
+            { label: 'FORECAST', value: QuestionType.FORECAST },
+            { label: 'CUSTOM', value: QuestionType.CUSTOM },
+          ]}
+        />
+      </Form.Item>
+
+      <Form.Item
+        label="Trạng thái"
+        name="status"
+        rules={[{ required: true, message: 'Chọn trạng thái' }]}
+        initialValue={QuestionStatus.DRAFT}
+      >
+        <Select
+          options={[
+            { label: 'DRAFT', value: QuestionStatus.DRAFT },
+            { label: 'PUBLISHED', value: QuestionStatus.PUBLISHED },
+            { label: 'ARCHIVED', value: QuestionStatus.ARCHIVED },
+          ]}
+        />
+      </Form.Item>
+
+      <Form.Item label="Chủ đề" name="topicIds">
+        <TopicMultiSelect />
       </Form.Item>
     </Form>
   )

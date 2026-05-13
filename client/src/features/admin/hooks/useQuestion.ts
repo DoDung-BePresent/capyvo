@@ -9,8 +9,32 @@ import type {
   Part4FormValues,
   Part5FormValues,
   UpdateQuestionPayload,
+  QuestionType,
+  QuestionStatus,
 } from '../types'
 
+/**
+ * Hook to fetch questions with optional filters
+ * Supports filtering by partNumber, type, status, topicId, examSetId, and search
+ */
+export function useQuestions(filters?: {
+  partNumber?: number
+  type?: QuestionType
+  status?: QuestionStatus
+  topicId?: string
+  examSetId?: string
+  search?: string
+}) {
+  return useQuery({
+    queryKey: ['questions', filters],
+    queryFn: () => questionService.getAll(filters),
+  })
+}
+
+/**
+ * Legacy hook for backward compatibility
+ * @deprecated Use useQuestions({ partNumber }) instead
+ */
 export function useGetQuestions(partNumber: number) {
   return useQuery({
     queryKey: queryKeys.questions.byPart(partNumber),
@@ -69,6 +93,51 @@ export function useUpdateQuestion(partNumber: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.questions.byPart(partNumber) })
       message.success('Cập nhật câu hỏi thành công!')
+    },
+    onError: (err: Error) => {
+      message.error(err.message || 'Có lỗi xảy ra, vui lòng thử lại')
+    },
+  })
+}
+
+/**
+ * Hook to update a single question's status
+ * Invalidates all question queries to ensure UI consistency
+ */
+export function useUpdateQuestionStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: QuestionStatus }) =>
+      questionService.updateStatus(id, status),
+    onSuccess: (updatedQuestion) => {
+      // Invalidate all question queries to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ['questions'] })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.questions.byPart(updatedQuestion.partNumber),
+      })
+      message.success('Cập nhật trạng thái thành công!')
+    },
+    onError: (err: Error) => {
+      message.error(err.message || 'Có lỗi xảy ra, vui lòng thử lại')
+    },
+  })
+}
+
+/**
+ * Hook to bulk update status for multiple questions
+ * Invalidates all question queries to ensure UI consistency
+ */
+export function useBulkUpdateStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ questionIds, status }: { questionIds: string[]; status: QuestionStatus }) =>
+      questionService.bulkUpdateStatus(questionIds, status),
+    onSuccess: (result) => {
+      // Invalidate all question queries to ensure consistency across all views
+      queryClient.invalidateQueries({ queryKey: ['questions'] })
+      // Also invalidate topics queries as question counts may have changed
+      queryClient.invalidateQueries({ queryKey: queryKeys.topics.list() })
+      message.success(`Đã cập nhật ${result.updated} câu hỏi thành công!`)
     },
     onError: (err: Error) => {
       message.error(err.message || 'Có lỗi xảy ra, vui lòng thử lại')

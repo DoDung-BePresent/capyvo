@@ -1,7 +1,9 @@
-import { Form, Input } from 'antd'
+import { Form, Input, Select, Divider } from 'antd'
 import type { FormInstance } from 'antd'
 import AudioUploadField from './AudioUploadField'
 import type { Part5FormValues } from '../types'
+import { QuestionType, QuestionStatus } from '../types'
+import { TopicMultiSelect } from './TopicMultiSelect'
 
 interface Props {
   form?: FormInstance
@@ -30,6 +32,42 @@ export default function Part5Form({ form, onSubmit }: Props) {
       </Form.Item>
       <Form.Item label="Audio câu hỏi" name="questionAudioUrl">
         <AudioUploadField />
+      </Form.Item>
+
+      <Divider style={{ margin: '16px 0' }} />
+
+      <Form.Item
+        label="Loại câu hỏi"
+        name="type"
+        rules={[{ required: true, message: 'Chọn loại câu hỏi' }]}
+        initialValue={QuestionType.PRACTICE}
+      >
+        <Select
+          options={[
+            { label: 'PRACTICE', value: QuestionType.PRACTICE },
+            { label: 'FORECAST', value: QuestionType.FORECAST },
+            { label: 'CUSTOM', value: QuestionType.CUSTOM },
+          ]}
+        />
+      </Form.Item>
+
+      <Form.Item
+        label="Trạng thái"
+        name="status"
+        rules={[{ required: true, message: 'Chọn trạng thái' }]}
+        initialValue={QuestionStatus.DRAFT}
+      >
+        <Select
+          options={[
+            { label: 'DRAFT', value: QuestionStatus.DRAFT },
+            { label: 'PUBLISHED', value: QuestionStatus.PUBLISHED },
+            { label: 'ARCHIVED', value: QuestionStatus.ARCHIVED },
+          ]}
+        />
+      </Form.Item>
+
+      <Form.Item label="Chủ đề" name="topicIds">
+        <TopicMultiSelect />
       </Form.Item>
     </Form>
   )
