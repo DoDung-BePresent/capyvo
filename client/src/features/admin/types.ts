@@ -12,6 +12,7 @@ export interface ExamSet {
   description: string | null
   type: ExamSetType
   isPublished: boolean
+  isComplete: boolean
   createdBy: string
   createdAt: string
   updatedAt: string

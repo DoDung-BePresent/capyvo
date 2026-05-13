@@ -52,6 +52,21 @@ export class ExamSetService {
   async update(id: string, body: unknown) {
     await this.findById(id)
     const dto = UpdateExamSetSchema.parse(body)
+
+    // If trying to publish, validate that exam set is complete (has 11 questions)
+    if (dto.isPublished === true) {
+      const count = await prisma.questionAssignment.count({
+        where: { examSetId: id },
+      })
+      if (count < 11) {
+        throw new ValidationError(
+          `Cannot publish exam set with only ${count}/11 questions. Please add all 11 questions first.`,
+        )
+      }
+      // Auto-set isComplete to true when publishing with 11 questions
+      dto.isComplete = true
+    }
+
     return prisma.examSet.update({ where: { id }, data: dto })
   }
 
@@ -98,6 +113,9 @@ export class ExamSetService {
       },
     })
 
+    // Update isComplete status
+    await this.updateCompleteStatus(examSetId)
+
     return question
   }
 
@@ -111,12 +129,45 @@ export class ExamSetService {
 
     await prisma.questionAssignment.delete({ where: { id: assignment.id } })
 
+    // Update isComplete status
+    await this.updateCompleteStatus(examSetId)
+
     return prisma.question.findUnique({ where: { id: questionId } })
+  }
+
+  /**
+   * Update isComplete status based on question count
+   * If exam set has < 11 questions and is published, unpublish it
+   */
+  private async updateCompleteStatus(examSetId: string) {
+    const count = await prisma.questionAssignment.count({
+      where: { examSetId },
+    })
+
+    const isComplete = count === 11
+
+    // If not complete and currently published, unpublish it
+    const examSet = await prisma.examSet.findUnique({
+      where: { id: examSetId },
+      select: { isPublished: true },
+    })
+
+    if (!isComplete && examSet?.isPublished) {
+      await prisma.examSet.update({
+        where: { id: examSetId },
+        data: { isComplete, isPublished: false },
+      })
+    } else {
+      await prisma.examSet.update({
+        where: { id: examSetId },
+        data: { isComplete },
+      })
+    }
   }
 
   async findPublished() {
     return prisma.examSet.findMany({
-      where: { isPublished: true },
+      where: { isPublished: true, isComplete: true },
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { questionAssignments: true } } },
     })
@@ -124,7 +175,7 @@ export class ExamSetService {
 
   async findPublishedById(id: string) {
     const examSet = await prisma.examSet.findUnique({
-      where: { id, isPublished: true },
+      where: { id, isPublished: true, isComplete: true },
       include: {
         questionAssignments: {
           orderBy: { questionNumber: 'asc' },

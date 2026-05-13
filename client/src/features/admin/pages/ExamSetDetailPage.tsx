@@ -297,8 +297,14 @@ export default function ExamSetDetailPage() {
             <Switch
               checked={examSet.isPublished}
               loading={updateMutation.isPending}
+              disabled={!examSet.isComplete}
               onChange={(checked) => updateMutation.mutate({ isPublished: checked })}
             />
+            {!examSet.isComplete && (
+              <Text type="warning" style={{ fontSize: 12 }}>
+                (Cần đủ 11 câu)
+              </Text>
+            )}
           </Space>
         }
       />

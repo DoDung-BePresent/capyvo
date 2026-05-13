@@ -86,6 +86,7 @@ model ExamSet {
   description String?
   type        ExamSetType @default(PRACTICE)
   isPublished Boolean     @default(false)
+  isComplete  Boolean     @default(false) // true if has all 11 questions
   createdBy   String
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
