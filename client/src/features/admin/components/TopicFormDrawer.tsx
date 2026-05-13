@@ -1,6 +1,6 @@
-import { Modal, Form, Input, Button, Space, App } from 'antd'
+import { Drawer, Form, Input, Button, App } from 'antd'
 import { useEffect } from 'react'
-import { MODAL_WIDTHS } from '@/config'
+import { DRAWER_WIDTHS } from '@/config'
 import { useCreateTopic, useUpdateTopic } from '../hooks/useTopic'
 import type { Topic } from '../types'
 
@@ -16,10 +16,10 @@ interface FormValues {
 }
 
 /**
- * Modal for creating and editing topics
+ * Drawer for creating and editing topics
  * Validates: Requirements 8.1, 8.3, 8.6
  */
-export function TopicFormModal({ open, onClose, topic }: Props) {
+export function TopicFormDrawer({ open, onClose, topic }: Props) {
   const [form] = Form.useForm<FormValues>()
   const { message } = App.useApp()
   const createMutation = useCreateTopic()
@@ -86,13 +86,29 @@ export function TopicFormModal({ open, onClose, topic }: Props) {
   }
 
   return (
-    <Modal
+    <Drawer
       title={isEditMode ? 'Chỉnh sửa chủ đề' : 'Tạo chủ đề mới'}
       open={open}
-      onCancel={handleCancel}
-      footer={null}
-      width={MODAL_WIDTHS.medium}
-      destroyOnClose
+      onClose={handleCancel}
+      width={DRAWER_WIDTHS.small}
+      destroyOnHidden
+      closeIcon={null}
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <Button size="large" onClick={handleCancel}>
+            Huỷ
+          </Button>
+          <Button
+            type="primary"
+            size="large"
+            htmlType="submit"
+            loading={isLoading}
+            onClick={() => form.submit()}
+          >
+            {isEditMode ? 'Cập nhật' : 'Tạo chủ đề'}
+          </Button>
+        </div>
+      }
     >
       <Form
         form={form}
@@ -129,16 +145,7 @@ export function TopicFormModal({ open, onClose, topic }: Props) {
             showCount
           />
         </Form.Item>
-
-        <Form.Item style={{ marginBottom: 0 }}>
-          <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-            <Button onClick={handleCancel}>Huỷ</Button>
-            <Button type="primary" htmlType="submit" loading={isLoading}>
-              {isEditMode ? 'Cập nhật' : 'Tạo chủ đề'}
-            </Button>
-          </Space>
-        </Form.Item>
       </Form>
-    </Modal>
+    </Drawer>
   )
 }

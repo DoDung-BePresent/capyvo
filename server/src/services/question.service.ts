@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma'
 import supabaseAdmin from '@/lib/supabase'
 import { ValidationError } from '@/errors/app-error'
 import { optimizeImage, compressAudio } from '@/lib/media'
+import { Prisma } from '@prisma/client'
 
 // ─── Zod schemas ──────────────────────────────────────────────────────────────
 
@@ -644,24 +645,22 @@ export class QuestionService {
    * Validates: Requirements 1.6, 3.1, 3.2, 5.4
    */
   async getByPart(partNumber: number, topicId?: string) {
-    const where: Prisma.ExamSetQuestionWhereInput = {
-      question: {
-        partNumber,
-        status: 'PUBLISHED',
-      },
-      examSet: { isPublished: true },
-    }
-
-    // Add topic filter if provided
-    if (topicId) {
-      where.question = {
-        ...where.question,
-        topicAssignments: {
-          some: {
-            topicId,
+    const where: Prisma.QuestionAssignmentWhereInput = {
+      question: topicId
+        ? {
+            partNumber,
+            status: 'PUBLISHED',
+            topicAssignments: {
+              some: {
+                topicId,
+              },
+            },
+          }
+        : {
+            partNumber,
+            status: 'PUBLISHED',
           },
-        },
-      }
+      examSet: { isPublished: true },
     }
 
     const assignments = await prisma.questionAssignment.findMany({

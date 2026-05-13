@@ -6,7 +6,7 @@ import type { ColumnsType } from 'antd/es/table'
 import { PageHeader, DataTable } from '@/shared/components'
 import type { TopicWithCount } from '../types'
 import { useTopics, useDeleteTopic } from '../hooks/useTopic'
-import { TopicFormModal } from '../components/TopicFormModal'
+import { TopicFormDrawer } from '../components/TopicFormDrawer'
 
 const { Text } = Typography
 
@@ -115,7 +115,7 @@ export default function TopicManagementPage() {
         loading={isLoading}
       />
 
-      <TopicFormModal open={modalOpen} topic={editingTopic} onClose={handleCloseModal} />
+      <TopicFormDrawer open={modalOpen} topic={editingTopic} onClose={handleCloseModal} />
     </Space>
   )
 }

@@ -1,55 +1,23 @@
 import { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import {
-  Typography,
-  Button,
-  Space,
-  Popconfirm,
-  Image,
-  Empty,
-  Form,
-  Drawer,
-  Tabs,
-  Tag,
-  Checkbox,
-} from 'antd'
+import { Button, Space, Empty, Form, Drawer, Tabs } from 'antd'
+import { PlusOutlined } from '@ant-design/icons'
 
-/**
- * Icons
- */
-import { DeleteOutlined, EditOutlined, PlusOutlined, SoundOutlined } from '@ant-design/icons'
-
-/**
- * Types
- */
-import type { FormInstance } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
-import { PART_META, QuestionType, QuestionStatus } from '../types'
-import type { PartNumber, UpdateQuestionPayload, QuestionWithTopics } from '../types'
+import type { PartNumber, UpdateQuestionPayload, QuestionWithTopics } from '@/features/admin/types'
 import type {
   Part1FormValues,
   Part2FormValues,
   Part3FormValues,
   Part4FormValues,
   Part5FormValues,
-} from '../types'
+} from '@/features/admin/types'
+import { PART_META, QuestionType, QuestionStatus } from '@/features/admin/types'
 
-/**
- * Components
- */
 import { PageHeader, DataTable } from '@/shared/components'
-import Part1Form from '../components/Part1Form'
-import Part2Form from '../components/Part2Form'
-import Part3Form from '../components/Part3Form'
-import Part4Form from '../components/Part4Form'
-import Part5Form from '../components/Part5Form'
-import EditQuestionForm from '../components/EditQuestionForm'
-import QuestionFilters from '../components/QuestionFilters'
-import BulkActionsToolbar from '../components/BulkActionsToolbar'
+import EditQuestionForm from '@/features/admin/components/EditQuestionForm'
+import QuestionFilters from '@/features/admin/components/QuestionFilters'
+import BulkActionsToolbar from '@/features/admin/components/BulkActionsToolbar'
 
-/**
- * Hooks
- */
 import {
   useQuestions,
   useCreatePart1,
@@ -59,292 +27,15 @@ import {
   useCreatePart5,
   useDeleteQuestion,
   useUpdateQuestion,
-} from '../hooks/useQuestion'
-import { useTopics } from '../hooks/useTopic'
+} from '@/features/admin/hooks/useQuestion'
+import { useTopics } from '@/features/admin/hooks/useTopic'
 
-/**
- * Configs
- */
 import { DRAWER_WIDTHS } from '@/config'
 
-const { Text } = Typography
+import { getColumns } from './components/getColumns'
+import { PartFormContent } from './components/PartFormContent'
+import { SUBMIT_LABEL } from './constants'
 
-// ─── Tag Components ─── //
-function TypeTag({ type }: { type: QuestionType }) {
-  const colorMap: Record<QuestionType, string> = {
-    [QuestionType.PRACTICE]: 'blue',
-    [QuestionType.FORECAST]: 'orange',
-    [QuestionType.CUSTOM]: 'purple',
-  }
-  return <Tag color={colorMap[type]}>{type}</Tag>
-}
-
-function StatusTag({ status }: { status: QuestionStatus }) {
-  const colorMap: Record<QuestionStatus, string> = {
-    [QuestionStatus.DRAFT]: 'default',
-    [QuestionStatus.PUBLISHED]: 'green',
-    [QuestionStatus.ARCHIVED]: 'red',
-  }
-  return <Tag color={colorMap[status]}>{status}</Tag>
-}
-
-function TopicTags({ topics }: { topics: Array<{ id: string; name: string }> }) {
-  if (!topics || topics.length === 0) {
-    return <Text type="secondary">—</Text>
-  }
-  return (
-    <Space size={4} wrap>
-      {topics.map((topic) => (
-        <Tag key={topic.id}>{topic.name}</Tag>
-      ))}
-    </Space>
-  )
-}
-
-// ─── Column definitions ─── //
-function getColumns(
-  partNumber: PartNumber,
-  onEdit: (record: QuestionWithTopics) => void,
-  onDelete: (id: string) => void,
-  deleting: boolean,
-  selectedIds: string[],
-  onSelectChange: (id: string, checked: boolean) => void,
-): ColumnsType<QuestionWithTopics> {
-  const checkboxColumn: ColumnsType<QuestionWithTopics>[number] = {
-    title: (
-      <Checkbox
-        indeterminate={
-          selectedIds.length > 0 &&
-          selectedIds.length <
-            (partNumber === 1
-              ? 2
-              : partNumber === 2
-                ? 2
-                : partNumber === 3
-                  ? 3
-                  : partNumber === 4
-                    ? 3
-                    : 1)
-        }
-        checked={selectedIds.length > 0}
-        onChange={() => {
-          // This will be handled by the parent component
-        }}
-      />
-    ),
-    key: 'select',
-    width: 50,
-    render: (_: unknown, record: QuestionWithTopics) => (
-      <Checkbox
-        checked={selectedIds.includes(record.id)}
-        onChange={(_e) => onSelectChange(record.id, _e.target.checked)}
-      />
-    ),
-  }
-
-  const baseColumns: ColumnsType<QuestionWithTopics> = [
-    checkboxColumn,
-    {
-      title: 'No.',
-      key: 'no',
-      width: 60,
-      render: (_: unknown, __: QuestionWithTopics, index: number) => index + 1,
-    },
-  ]
-
-  const actionsColumn: ColumnsType<QuestionWithTopics>[number] = {
-    title: '',
-    key: 'actions',
-    width: 90,
-    render: (_: unknown, record: QuestionWithTopics) => (
-      <Space size={4}>
-        <Button type="text" icon={<EditOutlined />} onClick={() => onEdit(record)} />
-        <Popconfirm
-          title="Xóa câu hỏi này?"
-          okText="Xóa"
-          cancelText="Hủy"
-          okButtonProps={{ danger: true }}
-          onConfirm={() => onDelete(record.id)}
-        >
-          <Button type="text" danger icon={<DeleteOutlined />} loading={deleting} />
-        </Popconfirm>
-      </Space>
-    ),
-  }
-
-  // Common columns for type, status, and topics
-  const typeColumn: ColumnsType<QuestionWithTopics>[number] = {
-    title: 'Loại',
-    key: 'type',
-    width: 100,
-    render: (_: unknown, record: QuestionWithTopics) => (
-      <TypeTag type={record.type || QuestionType.PRACTICE} />
-    ),
-  }
-
-  const statusColumn: ColumnsType<QuestionWithTopics>[number] = {
-    title: 'Trạng thái',
-    key: 'status',
-    width: 110,
-    render: (_: unknown, record: QuestionWithTopics) => (
-      <StatusTag status={record.status || QuestionStatus.DRAFT} />
-    ),
-  }
-
-  const topicsColumn: ColumnsType<QuestionWithTopics>[number] = {
-    title: 'Chủ đề',
-    key: 'topics',
-    width: 200,
-    render: (_: unknown, record: QuestionWithTopics) => <TopicTags topics={record.topics || []} />,
-  }
-
-  if (partNumber === 1) {
-    return [
-      ...baseColumns,
-      { title: 'Nội dung đọc', dataIndex: 'contentText', ellipsis: true },
-      {
-        title: 'Thời gian',
-        render: (_, r) => (
-          <Text type="secondary">
-            {r.prepTimeSeconds}s / {r.responseTimeSeconds}s
-          </Text>
-        ),
-        width: 120,
-      },
-      typeColumn,
-      statusColumn,
-      topicsColumn,
-      actionsColumn,
-    ]
-  }
-
-  if (partNumber === 2) {
-    return [
-      ...baseColumns,
-      {
-        title: 'Hình ảnh',
-        dataIndex: 'imageUrls',
-        render: (urls: string[]) =>
-          urls[0] ? <Image src={urls[0]} height={60} style={{ objectFit: 'cover' }} /> : '—',
-        width: 100,
-      },
-      typeColumn,
-      statusColumn,
-      topicsColumn,
-      actionsColumn,
-    ]
-  }
-
-  if (partNumber === 3) {
-    return [
-      ...baseColumns,
-      { title: 'Bối cảnh', dataIndex: 'contextText', ellipsis: true },
-      { title: 'Câu hỏi', dataIndex: 'questionText', ellipsis: true },
-      {
-        title: 'Audio',
-        render: (_: unknown, r: QuestionWithTopics) =>
-          r.questionAudioUrl ? (
-            <a href={r.questionAudioUrl} target="_blank" rel="noreferrer">
-              <SoundOutlined /> Nghe
-            </a>
-          ) : (
-            '—'
-          ),
-        width: 90,
-      },
-      typeColumn,
-      statusColumn,
-      topicsColumn,
-      actionsColumn,
-    ]
-  }
-
-  if (partNumber === 4) {
-    return [
-      ...baseColumns,
-      {
-        title: 'Ảnh',
-        dataIndex: 'imageUrls',
-        render: (urls: string[]) =>
-          urls[0] ? <Image src={urls[0]} height={50} style={{ objectFit: 'cover' }} /> : '—',
-        width: 80,
-      },
-      { title: 'Câu hỏi', dataIndex: 'questionText', ellipsis: true },
-      {
-        title: 'Audio',
-        render: (_: unknown, r: QuestionWithTopics) =>
-          r.questionAudioUrl ? (
-            <a href={r.questionAudioUrl} target="_blank" rel="noreferrer">
-              <SoundOutlined /> Nghe
-            </a>
-          ) : (
-            '—'
-          ),
-        width: 90,
-      },
-      typeColumn,
-      statusColumn,
-      topicsColumn,
-      actionsColumn,
-    ]
-  }
-
-  return [
-    ...baseColumns,
-    { title: 'Câu hỏi', dataIndex: 'questionText', ellipsis: true },
-    {
-      title: 'Audio',
-      render: (_: unknown, r: QuestionWithTopics) =>
-        r.questionAudioUrl ? (
-          <a href={r.questionAudioUrl} target="_blank" rel="noreferrer">
-            <SoundOutlined /> Nghe
-          </a>
-        ) : (
-          '—'
-        ),
-      width: 90,
-    },
-    typeColumn,
-    statusColumn,
-    topicsColumn,
-    actionsColumn,
-  ]
-}
-
-// ─── Part form renderer (no mutations, no buttons) ─── //
-function PartFormContent({
-  partNumber,
-  form,
-  onSubmit,
-}: {
-  partNumber: PartNumber
-  form: FormInstance
-  onSubmit: (values: unknown) => void
-}) {
-  switch (partNumber) {
-    case 1:
-      return <Part1Form form={form} onSubmit={onSubmit as (v: Part1FormValues) => void} />
-    case 2:
-      return <Part2Form form={form} onSubmit={onSubmit as (v: Part2FormValues) => void} />
-    case 3:
-      return <Part3Form form={form} onSubmit={onSubmit as (v: Part3FormValues) => void} />
-    case 4:
-      return <Part4Form form={form} onSubmit={onSubmit as (v: Part4FormValues) => void} />
-    default:
-      return <Part5Form form={form} onSubmit={onSubmit as (v: Part5FormValues) => void} />
-  }
-}
-
-// ─── Submit label per part ─── //
-const SUBMIT_LABEL: Record<PartNumber, string> = {
-  1: 'Lưu câu hỏi',
-  2: 'Lưu câu hỏi',
-  3: 'Tạo 3 câu + Gen audio',
-  4: 'Tạo 3 câu + Gen audio',
-  5: 'Tạo câu + Gen audio',
-}
-
-// ─── Page ─── //
 export default function PartQuestionsPage() {
   const { partNumber: partParam } = useParams<{ partNumber: string }>()
   const partNumber = Number(partParam) as PartNumber
@@ -616,7 +307,7 @@ export default function PartQuestionsPage() {
       />
 
       {/* Question Filters */}
-      <div style={{ padding: '24px', marginBottom: '20px', background: '#fff' }}>
+      <div style={{ padding: '24px', marginBottom: '24px', background: '#fff' }}>
         <QuestionFilters
           type={type}
           status={status}
@@ -670,20 +361,22 @@ export default function PartQuestionsPage() {
           }))}
         />
       ) : (
-        <DataTable
-          dataSource={getFilteredData(questionNumbers[0])}
-          columns={columns}
-          rowKey="id"
-          size="large"
-          loading={isLoading}
-          locale={{ emptyText: <Empty description="Chưa có câu hỏi nào" /> }}
-          pagination={{
-            pageSize: 50,
-            showSizeChanger: true,
-            showTotal: (total) => `Tổng ${total} câu hỏi`,
-            pageSizeOptions: ['20', '50', '100'],
-          }}
-        />
+        <div>
+          <DataTable
+            dataSource={getFilteredData(questionNumbers[0])}
+            columns={columns}
+            rowKey="id"
+            size="large"
+            loading={isLoading}
+            locale={{ emptyText: <Empty description="Chưa có câu hỏi nào" /> }}
+            pagination={{
+              pageSize: 50,
+              showSizeChanger: true,
+              showTotal: (total) => `Tổng ${total} câu hỏi`,
+              pageSizeOptions: ['20', '50', '100'],
+            }}
+          />
+        </div>
       )}
 
       <Drawer

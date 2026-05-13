@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Select, Button, Space, Typography } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { useTopics } from '../hooks/useTopic'
-import { TopicFormModal } from './TopicFormModal'
+import { TopicFormDrawer } from './TopicFormDrawer'
 
 const { Text } = Typography
 
@@ -61,7 +61,7 @@ export function TopicMultiSelect({ value, onChange }: Props) {
         )}
       </Space>
 
-      <TopicFormModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <TopicFormDrawer open={modalOpen} onClose={() => setModalOpen(false)} />
     </>
   )
 }
