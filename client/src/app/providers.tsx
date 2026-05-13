@@ -8,6 +8,7 @@ import queryClient from '@/lib/query-client'
 import { antTheme } from '@/config'
 import { useAuthSync } from '@/features/auth/hooks/useAuth'
 import { ErrorBoundary, MaintenanceGate } from '@/shared/components'
+import { ScreenSizeProvider } from './providers/ScreenSizeProvider'
 
 function AuthSync() {
   useAuthSync()
@@ -26,7 +27,9 @@ export default function Providers({ children }: ProvidersProps) {
         <ConfigProvider theme={antTheme}>
           <AntdApp>
             <ErrorBoundary>
-              <MaintenanceGate>{children}</MaintenanceGate>
+              <ScreenSizeProvider>
+                <MaintenanceGate>{children}</MaintenanceGate>
+              </ScreenSizeProvider>
             </ErrorBoundary>
           </AntdApp>
         </ConfigProvider>
