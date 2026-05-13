@@ -8,7 +8,12 @@ export class AuthController {
 
   async getMe(req: Request, res: Response, _next: NextFunction): Promise<void> {
     const authReq = req as AuthRequest
-    const user = await this.service.findOrCreateUser(authReq.userId, authReq.userEmail)
+    const user = await this.service.findOrCreateUser(
+      authReq.userId,
+      authReq.userEmail,
+      authReq.userMetadata?.full_name,
+      authReq.userMetadata?.avatar_url,
+    )
     if (!user) throw new NotFoundError('User')
     res.json({ success: true, data: user })
   }

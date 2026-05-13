@@ -33,8 +33,16 @@ export function UserHeader({ collapsed, onCollapse }: UserHeaderProps) {
 
   const menuItems = [
     {
-      key: 'email',
-      label: <Text type="secondary">{user?.email}</Text>,
+      key: 'name',
+      label: (
+        <div>
+          <Text strong>{user?.fullName || 'Người dùng'}</Text>
+          <br />
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {user?.email}
+          </Text>
+        </div>
+      ),
       disabled: true,
     },
     { type: 'divider' as const },
@@ -56,7 +64,12 @@ export function UserHeader({ collapsed, onCollapse }: UserHeaderProps) {
         style={{ fontSize: 16, color: '#666' }}
       />
       <Dropdown menu={{ items: menuItems }} trigger={['click']} placement="bottomRight">
-        <Avatar shape="square" icon={<UserOutlined />} style={{ cursor: 'pointer' }} />
+        <Avatar
+          shape="square"
+          src={user?.avatarUrl}
+          icon={!user?.avatarUrl && <UserOutlined />}
+          style={{ cursor: 'pointer' }}
+        />
       </Dropdown>
     </Header>
   )

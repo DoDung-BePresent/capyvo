@@ -5,6 +5,10 @@ import { UnauthorizedError } from '@/errors/app-error'
 export interface AuthRequest extends Request {
   userId: string
   userEmail: string
+  userMetadata?: {
+    full_name?: string
+    avatar_url?: string
+  }
 }
 
 export async function authenticate(
@@ -27,6 +31,10 @@ export async function authenticate(
 
     ;(req as AuthRequest).userId = data.user.id
     ;(req as AuthRequest).userEmail = data.user.email ?? ''
+    ;(req as AuthRequest).userMetadata = {
+      full_name: data.user.user_metadata?.full_name,
+      avatar_url: data.user.user_metadata?.avatar_url,
+    }
 
     next()
   } catch (err) {
