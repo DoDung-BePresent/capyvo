@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { Button, Popconfirm, Space, Tag, Typography, Tabs } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
@@ -32,22 +32,6 @@ export default function TopicManagementPage() {
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingTopic, setEditingTopic] = useState<TopicWithCount | null>(null)
-
-  // Count topics by part
-  const topicCounts = useMemo(() => {
-    const counts: Record<PartNumber | 'ALL', number> = {
-      ALL: topics.length,
-      1: 0,
-      2: 0,
-      3: 0,
-      4: 0,
-      5: 0,
-    }
-    topics.forEach((topic) => {
-      counts[topic.partNumber as PartNumber]++
-    })
-    return counts
-  }, [topics])
 
   const openCreate = () => {
     setEditingTopic(null)
@@ -138,13 +122,13 @@ export default function TopicManagementPage() {
   const tabItems = [
     {
       key: 'ALL',
-      label: `Tất cả (${topicCounts.ALL})`,
+      label: `Tất cả`,
     },
     ...([1, 2, 3, 4, 5] as PartNumber[]).map((partNumber) => {
       const meta = PART_META[partNumber]
       return {
         key: String(partNumber),
-        label: `${meta.label} (${topicCounts[partNumber]})`,
+        label: `${meta.label}`,
       }
     }),
   ]
@@ -162,14 +146,14 @@ export default function TopicManagementPage() {
         }
       />
 
-      <div style={{ padding: '0 24px', background: '#fff' }}>
-        <Tabs
-          activeKey={String(selectedPart)}
-          onChange={(key) => setSelectedPart(key === 'ALL' ? 'ALL' : (Number(key) as PartNumber))}
-          items={tabItems}
-          size="large"
-        />
-      </div>
+      <Tabs
+        type="card"
+        size="large"
+        activeKey={String(selectedPart)}
+        onChange={(key) => setSelectedPart(key === 'ALL' ? 'ALL' : (Number(key) as PartNumber))}
+        items={tabItems}
+        tabBarStyle={{ marginBottom: 0 }}
+      />
 
       <DataTable
         noCard
