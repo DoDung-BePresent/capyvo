@@ -47,6 +47,8 @@ function useCreateQuestion<T>(partNumber: number, mutateFn: (payload: T) => Prom
   return useMutation({
     mutationFn: mutateFn,
     onSuccess: () => {
+      // Invalidate all questions queries to ensure UI updates
+      queryClient.invalidateQueries({ queryKey: ['questions'] })
       queryClient.invalidateQueries({ queryKey: queryKeys.questions.byPart(partNumber) })
       message.success('Thêm câu hỏi thành công!')
     },
@@ -76,6 +78,8 @@ export function useDeleteQuestion(partNumber: number) {
   return useMutation({
     mutationFn: questionService.delete,
     onSuccess: () => {
+      // Invalidate all questions queries to ensure UI updates
+      queryClient.invalidateQueries({ queryKey: ['questions'] })
       queryClient.invalidateQueries({ queryKey: queryKeys.questions.byPart(partNumber) })
       message.success('Đã xóa câu hỏi')
     },
@@ -91,6 +95,8 @@ export function useUpdateQuestion(partNumber: number) {
     mutationFn: ({ id, payload }: { id: string; payload: UpdateQuestionPayload }) =>
       questionService.update(id, payload),
     onSuccess: () => {
+      // Invalidate all questions queries to ensure UI updates
+      queryClient.invalidateQueries({ queryKey: ['questions'] })
       queryClient.invalidateQueries({ queryKey: queryKeys.questions.byPart(partNumber) })
       message.success('Cập nhật câu hỏi thành công!')
     },

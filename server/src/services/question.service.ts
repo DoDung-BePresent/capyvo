@@ -85,6 +85,9 @@ export const UpdateQuestionSchema = z.object({
   questionAudioUrl: z.string().url().nullable().optional(),
   imageUrls: z.array(z.string().url()).optional(),
   imageContext: z.string().nullable().optional(),
+  type: z.enum(['PRACTICE', 'FORECAST', 'CUSTOM']).optional(),
+  status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
+  topicIds: z.array(z.string()).optional(),
 })
 
 export type UpdateQuestionDto = z.infer<typeof UpdateQuestionSchema>
@@ -437,13 +440,24 @@ export class QuestionService {
       // Get questions assigned to specific exam set
       const assignments = await prisma.questionAssignment.findMany({
         where: { examSetId: filters.examSetId },
-        include: { question: true },
+        include: {
+          question: {
+            include: {
+              topicAssignments: {
+                include: {
+                  topic: true,
+                },
+              },
+            },
+          },
+        },
         orderBy: { questionNumber: 'asc' },
       })
 
       let results = assignments.map((a) => ({
         ...a.question,
         questionNumber: a.questionNumber,
+        topics: a.question.topicAssignments.map((ta) => ta.topic),
       }))
 
       // Apply additional filters if provided
@@ -483,11 +497,23 @@ export class QuestionService {
       }
     }
 
-    // Get all questions with filters
-    return prisma.question.findMany({
+    // Get all questions with filters and include topics
+    const questions = await prisma.question.findMany({
       where,
+      include: {
+        topicAssignments: {
+          include: {
+            topic: true,
+          },
+        },
+      },
       orderBy: [{ partNumber: 'asc' }, { questionNumber: 'asc' }, { createdAt: 'desc' }],
     })
+
+    return questions.map((q) => ({
+      ...q,
+      topics: q.topicAssignments.map((ta) => ta.topic),
+    }))
   }
 
   /**
@@ -611,7 +637,47 @@ export class QuestionService {
       }
     }
 
-    return prisma.question.update({ where: { id }, data: dto })
+    // Handle topic assignments update
+    if (dto.topicIds !== undefined) {
+      // Delete existing topic assignments
+      await prisma.questionTopicAssignment.deleteMany({
+        where: { questionId: id },
+      })
+
+      // Create new topic assignments
+      if (dto.topicIds.length > 0) {
+        await prisma.questionTopicAssignment.createMany({
+          data: dto.topicIds.map((topicId) => ({
+            questionId: id,
+            topicId,
+          })),
+        })
+      }
+    }
+
+    // Extract topicIds from dto before updating question
+    const { topicIds: _topicIds, ...questionData } = dto
+
+    const updated = await prisma.question.update({ where: { id }, data: questionData })
+
+    // Return question with topics
+    const withTopics = await prisma.question.findUnique({
+      where: { id },
+      include: {
+        topicAssignments: {
+          include: {
+            topic: true,
+          },
+        },
+      },
+    })
+
+    if (!withTopics) return updated
+
+    return {
+      ...withTopics,
+      topics: withTopics.topicAssignments.map((ta) => ta.topic),
+    }
   }
 
   async analyzeImage(imageUrl: string): Promise<string> {

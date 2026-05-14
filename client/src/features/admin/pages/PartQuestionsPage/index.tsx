@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { Button, Space, Empty, Form, Drawer, Tabs } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 
-import type { PartNumber, UpdateQuestionPayload, QuestionWithTopics } from '@/features/admin/types'
+import type { PartNumber, QuestionWithTopics, UpdateQuestionPayload } from '@/features/admin/types'
 import type {
   Part1FormValues,
   Part2FormValues,
@@ -14,9 +14,7 @@ import type {
 import { PART_META, QuestionType, QuestionStatus } from '@/features/admin/types'
 
 import { PageHeader, DataTable } from '@/shared/components'
-import EditQuestionForm from '@/features/admin/components/EditQuestionForm'
 import QuestionFilters from '@/features/admin/components/QuestionFilters'
-import BulkActionsToolbar from '@/features/admin/components/BulkActionsToolbar'
 
 import {
   useQuestions,
@@ -27,6 +25,7 @@ import {
   useCreatePart5,
   useDeleteQuestion,
   useUpdateQuestion,
+  useUpdateQuestionStatus,
 } from '@/features/admin/hooks/useQuestion'
 import { useTopics } from '@/features/admin/hooks/useTopic'
 
@@ -51,9 +50,6 @@ export default function PartQuestionsPage() {
   const [topicId, setTopicId] = useState<string | undefined>(undefined)
   const [search, setSearch] = useState('')
 
-  // Selection state
-  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([])
-
   // Forms
   const [drawerForm] = Form.useForm()
   const [editForm] = Form.useForm()
@@ -72,7 +68,6 @@ export default function PartQuestionsPage() {
     setType('ALL')
     setStatus('ALL')
     setTopicId(undefined)
-    setSelectedQuestionIds([])
   }
 
   // Build filter object for useQuestions hook
@@ -98,6 +93,7 @@ export default function PartQuestionsPage() {
   const { data: topics = [] } = useTopics()
   const { mutate: deleteQuestion, isPending: deleting } = useDeleteQuestion(partNumber)
   const updateQuestion = useUpdateQuestion(partNumber)
+  const { mutate: updateStatus } = useUpdateQuestionStatus()
 
   const createPart1 = useCreatePart1()
   const createPart2 = useCreatePart2()
@@ -137,15 +133,6 @@ export default function PartQuestionsPage() {
     return { total, byType, byStatus }
   }, [questions])
 
-  // Handle selection
-  const handleSelectChange = (id: string, checked: boolean) => {
-    setSelectedQuestionIds((prev) => (checked ? [...prev, id] : prev.filter((qid) => qid !== id)))
-  }
-
-  const handleClearSelection = () => {
-    setSelectedQuestionIds([])
-  }
-
   const handleFormFinish = (values: unknown) => {
     const onSuccess = () => {
       drawerForm.resetFields()
@@ -175,32 +162,55 @@ export default function PartQuestionsPage() {
     setEditDrawerOpen(true)
     setTimeout(() => {
       if (partNumber === 1) {
-        editForm.setFieldsValue({ contentText: question.contentText ?? '' })
+        editForm.setFieldsValue({
+          questionNumber: question.questionNumber as 1 | 2,
+          contentText: question.contentText ?? '',
+          type: question.type,
+          status: question.status,
+          topicIds: question.topics?.map((t) => t.id) ?? [],
+        })
       } else if (partNumber === 2) {
         editForm.setFieldsValue({
+          questionNumber: question.questionNumber as 3 | 4,
           imageUrl: question.imageUrls[0] ?? '',
           imageContext: question.imageContext ?? '',
+          type: question.type,
+          status: question.status,
+          topicIds: question.topics?.map((t) => t.id) ?? [],
         })
       } else if (partNumber === 3) {
+        // For Part 3, map single question to the appropriate q5/q6/q7 field
+        const qNum = question.questionNumber
         editForm.setFieldsValue({
           contextText: question.contextText ?? '',
           contextAudioUrl: question.contextAudioUrl ?? undefined,
-          questionText: question.questionText ?? '',
-          questionAudioUrl: question.questionAudioUrl ?? undefined,
+          [`q${qNum}`]: question.questionText ?? '',
+          [`q${qNum}AudioUrl`]: question.questionAudioUrl ?? undefined,
+          type: question.type,
+          status: question.status,
+          topicIds: question.topics?.map((t) => t.id) ?? [],
         })
       } else if (partNumber === 4) {
+        // For Part 4, map single question to the appropriate q8/q9/q10 field
+        const qNum = question.questionNumber
         editForm.setFieldsValue({
           imageUrl: question.imageUrls[0] ?? '',
           imageContext: question.imageContext ?? '',
           contextText: question.contextText ?? '',
           contextAudioUrl: question.contextAudioUrl ?? undefined,
-          questionText: question.questionText ?? '',
-          questionAudioUrl: question.questionAudioUrl ?? undefined,
+          [`q${qNum}`]: question.questionText ?? '',
+          [`q${qNum}AudioUrl`]: question.questionAudioUrl ?? undefined,
+          type: question.type,
+          status: question.status,
+          topicIds: question.topics?.map((t) => t.id) ?? [],
         })
       } else {
         editForm.setFieldsValue({
           questionText: question.questionText ?? '',
           questionAudioUrl: question.questionAudioUrl ?? undefined,
+          type: question.type,
+          status: question.status,
+          topicIds: question.topics?.map((t) => t.id) ?? [],
         })
       }
     }, 0)
@@ -214,54 +224,73 @@ export default function PartQuestionsPage() {
 
   const handleEditFormFinish = (values: unknown) => {
     if (!editingQuestion) return
-    const id = editingQuestion.id
-    let payload: UpdateQuestionPayload = {}
 
-    if (partNumber === 1) {
-      const v = values as { contentText: string }
-      payload = { contentText: v.contentText }
-    } else if (partNumber === 2) {
-      const v = values as { imageUrl: string; imageContext?: string }
-      payload = { imageUrls: [v.imageUrl], imageContext: v.imageContext ?? null }
-    } else if (partNumber === 3) {
-      const v = values as {
-        contextText: string
-        contextAudioUrl?: string
-        questionText: string
-        questionAudioUrl?: string
-      }
+    const onSuccess = () => {
+      editForm.resetFields()
+      setEditDrawerOpen(false)
+      setEditingQuestion(null)
+    }
+
+    // For Part 3 and Part 4, we need to extract only the relevant question data
+    let payload: UpdateQuestionPayload
+
+    if (partNumber === 3) {
+      const formValues = values as Part3FormValues
+      const qNum = editingQuestion.questionNumber
       payload = {
-        contextText: v.contextText,
-        contextAudioUrl: v.contextAudioUrl ?? null,
-        questionText: v.questionText,
-        questionAudioUrl: v.questionAudioUrl ?? null,
+        contextText: formValues.contextText,
+        contextAudioUrl: formValues.contextAudioUrl ?? null,
+        questionText: formValues[`q${qNum}` as keyof Part3FormValues] as string,
+        questionAudioUrl:
+          (formValues[`q${qNum}AudioUrl` as keyof Part3FormValues] as string) ?? null,
+        type: formValues.type,
+        status: formValues.status,
+        topicIds: formValues.topicIds,
       }
     } else if (partNumber === 4) {
-      const v = values as {
-        imageUrl: string
-        imageContext?: string
-        contextText: string
-        contextAudioUrl?: string
-        questionText: string
-        questionAudioUrl?: string
-      }
+      const formValues = values as Part4FormValues
+      const qNum = editingQuestion.questionNumber
       payload = {
-        imageUrls: [v.imageUrl],
-        imageContext: v.imageContext ?? null,
-        contextText: v.contextText,
-        contextAudioUrl: v.contextAudioUrl ?? null,
-        questionText: v.questionText,
-        questionAudioUrl: v.questionAudioUrl ?? null,
+        contextText: formValues.contextText,
+        contextAudioUrl: formValues.contextAudioUrl ?? null,
+        imageUrls: [formValues.imageUrl],
+        imageContext: formValues.imageContext ?? null,
+        questionText: formValues[`q${qNum}` as keyof Part4FormValues] as string,
+        questionAudioUrl:
+          (formValues[`q${qNum}AudioUrl` as keyof Part4FormValues] as string) ?? null,
+        type: formValues.type,
+        status: formValues.status,
+        topicIds: formValues.topicIds,
+      }
+    } else if (partNumber === 1) {
+      const formValues = values as Part1FormValues
+      payload = {
+        contentText: formValues.contentText,
+        type: formValues.type,
+        status: formValues.status,
+        topicIds: formValues.topicIds,
+      }
+    } else if (partNumber === 2) {
+      const formValues = values as Part2FormValues
+      payload = {
+        imageUrls: [formValues.imageUrl],
+        imageContext: formValues.imageContext ?? null,
+        type: formValues.type,
+        status: formValues.status,
+        topicIds: formValues.topicIds,
       }
     } else {
-      const v = values as { questionText: string; questionAudioUrl?: string }
+      const formValues = values as Part5FormValues
       payload = {
-        questionText: v.questionText,
-        questionAudioUrl: v.questionAudioUrl ?? null,
+        questionText: formValues.questionText,
+        questionAudioUrl: formValues.questionAudioUrl ?? null,
+        type: formValues.type,
+        status: formValues.status,
+        topicIds: formValues.topicIds,
       }
     }
 
-    updateQuestion.mutate({ id, payload }, { onSuccess: closeEditDrawer })
+    updateQuestion.mutate({ id: editingQuestion.id, payload }, { onSuccess })
   }
 
   const meta = PART_META[partNumber]
@@ -271,13 +300,16 @@ export default function PartQuestionsPage() {
   }
 
   const questionNumbers = [...meta.questionNumbers]
+  const handleUpdateStatus = (id: string, status: QuestionStatus) => {
+    updateStatus({ id, status })
+  }
+
   const columns = getColumns(
     partNumber,
     openEditDrawer,
     deleteQuestion,
     deleting,
-    selectedQuestionIds,
-    handleSelectChange,
+    handleUpdateStatus,
   )
 
   const responseTimeText =
@@ -307,7 +339,7 @@ export default function PartQuestionsPage() {
       />
 
       {/* Question Filters */}
-      <div style={{ padding: '24px', marginBottom: '24px', background: '#fff' }}>
+      <div style={{ padding: 24, marginBottom: 24, background: '#fff' }}>
         <QuestionFilters
           type={type}
           status={status}
@@ -319,14 +351,6 @@ export default function PartQuestionsPage() {
           onSearchChange={setSearch}
           topics={topics}
           counts={filterCounts}
-        />
-      </div>
-
-      {/* Bulk Actions Toolbar */}
-      <div style={{ padding: '0 24px' }}>
-        <BulkActionsToolbar
-          selectedQuestionIds={selectedQuestionIds}
-          onClearSelection={handleClearSelection}
         />
       </div>
 
@@ -430,7 +454,7 @@ export default function PartQuestionsPage() {
           </div>
         }
       >
-        <EditQuestionForm partNumber={partNumber} form={editForm} onSubmit={handleEditFormFinish} />
+        <PartFormContent partNumber={partNumber} form={editForm} onSubmit={handleEditFormFinish} />
       </Drawer>
     </Space>
   )

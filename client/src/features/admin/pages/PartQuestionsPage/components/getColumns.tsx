@@ -1,5 +1,14 @@
-import { Button, Space, Popconfirm, Image, Checkbox, Typography } from 'antd'
-import { DeleteOutlined, EditOutlined, SoundOutlined } from '@ant-design/icons'
+import { Button, Dropdown, Image, Typography } from 'antd'
+import type { MenuProps } from 'antd'
+import {
+  DeleteOutlined,
+  EditOutlined,
+  SoundOutlined,
+  MoreOutlined,
+  CheckCircleOutlined,
+  MinusCircleOutlined,
+  InboxOutlined,
+} from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import type { PartNumber, QuestionWithTopics } from '@/features/admin/types'
 import { QuestionType, QuestionStatus } from '@/features/admin/types'
@@ -14,43 +23,9 @@ export function getColumns(
   onEdit: (record: QuestionWithTopics) => void,
   onDelete: (id: string) => void,
   deleting: boolean,
-  selectedIds: string[],
-  onSelectChange: (id: string, checked: boolean) => void,
+  onUpdateStatus: (id: string, status: QuestionStatus) => void,
 ): ColumnsType<QuestionWithTopics> {
-  const checkboxColumn: ColumnsType<QuestionWithTopics>[number] = {
-    title: (
-      <Checkbox
-        indeterminate={
-          selectedIds.length > 0 &&
-          selectedIds.length <
-            (partNumber === 1
-              ? 2
-              : partNumber === 2
-                ? 2
-                : partNumber === 3
-                  ? 3
-                  : partNumber === 4
-                    ? 3
-                    : 1)
-        }
-        checked={selectedIds.length > 0}
-        onChange={() => {
-          // This will be handled by the parent component
-        }}
-      />
-    ),
-    key: 'select',
-    width: 50,
-    render: (_: unknown, record: QuestionWithTopics) => (
-      <Checkbox
-        checked={selectedIds.includes(record.id)}
-        onChange={(_e) => onSelectChange(record.id, _e.target.checked)}
-      />
-    ),
-  }
-
   const baseColumns: ColumnsType<QuestionWithTopics> = [
-    checkboxColumn,
     {
       title: 'No.',
       key: 'no',
@@ -60,23 +35,63 @@ export function getColumns(
   ]
 
   const actionsColumn: ColumnsType<QuestionWithTopics>[number] = {
-    title: '',
+    title: 'Thao tác',
     key: 'actions',
-    width: 90,
-    render: (_: unknown, record: QuestionWithTopics) => (
-      <Space size={4}>
-        <Button type="text" icon={<EditOutlined />} onClick={() => onEdit(record)} />
-        <Popconfirm
-          title="Xóa câu hỏi này?"
-          okText="Xóa"
-          cancelText="Hủy"
-          okButtonProps={{ danger: true }}
-          onConfirm={() => onDelete(record.id)}
-        >
-          <Button type="text" danger icon={<DeleteOutlined />} loading={deleting} />
-        </Popconfirm>
-      </Space>
-    ),
+    width: 100,
+    render: (_: unknown, record: QuestionWithTopics) => {
+      const menuItems: MenuProps['items'] = [
+        {
+          key: 'edit',
+          label: 'Chỉnh sửa',
+          icon: <EditOutlined style={{ fontSize: 14 }} />,
+          onClick: () => onEdit(record),
+        },
+        {
+          type: 'divider',
+        },
+        {
+          key: 'publish',
+          label: 'Xuất bản',
+          icon: <CheckCircleOutlined style={{ fontSize: 14 }} />,
+          disabled: record.status === QuestionStatus.PUBLISHED,
+          onClick: () => onUpdateStatus(record.id, QuestionStatus.PUBLISHED),
+        },
+        {
+          key: 'unpublish',
+          label: 'Bỏ xuất bản',
+          icon: <MinusCircleOutlined style={{ fontSize: 14 }} />,
+          disabled: record.status === QuestionStatus.DRAFT,
+          onClick: () => onUpdateStatus(record.id, QuestionStatus.DRAFT),
+        },
+        {
+          key: 'archive',
+          label: 'Lưu trữ',
+          icon: <InboxOutlined style={{ fontSize: 14 }} />,
+          disabled: record.status === QuestionStatus.ARCHIVED,
+          onClick: () => onUpdateStatus(record.id, QuestionStatus.ARCHIVED),
+        },
+        {
+          type: 'divider',
+        },
+        {
+          key: 'delete',
+          label: 'Xóa',
+          icon: <DeleteOutlined style={{ fontSize: 14 }} />,
+          danger: true,
+          onClick: () => {
+            if (window.confirm('Bạn có chắc chắn muốn xóa câu hỏi này?')) {
+              onDelete(record.id)
+            }
+          },
+        },
+      ]
+
+      return (
+        <Dropdown menu={{ items: menuItems }} trigger={['click']} placement="bottomRight">
+          <Button type="text" icon={<MoreOutlined />} loading={deleting} />
+        </Dropdown>
+      )
+    },
   }
 
   // Common columns for type, status, and topics

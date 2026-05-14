@@ -191,4 +191,7 @@ export interface UpdateQuestionPayload {
   questionAudioUrl?: string | null
   imageUrls?: string[]
   imageContext?: string | null
+  type?: QuestionType
+  status?: QuestionStatus
+  topicIds?: string[]
 }
