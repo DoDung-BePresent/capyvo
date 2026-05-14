@@ -50,16 +50,6 @@ export const queryKeys = {
     questionHistory: (questionId: string) => ['responses', 'question-history', questionId] as const,
   },
 
-  // System audio
-  systemAudio: {
-    all: () => ['system-audio'] as const,
-  },
-
-  // Part instructions (manual audio per part)
-  partInstructions: {
-    all: () => ['part-instructions'] as const,
-  },
-
   // System stats (storage, AI cost)
   systemStats: {
     all: () => ['system-stats'] as const,

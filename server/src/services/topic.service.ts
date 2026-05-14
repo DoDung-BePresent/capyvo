@@ -6,6 +6,7 @@ import { ValidationError, ConflictError, NotFoundError } from '@/errors/app-erro
 
 export const CreateTopicSchema = z.object({
   name: z.string().min(1, 'Topic name cannot be empty').max(100, 'Topic name too long'),
+  partNumber: z.number().int().min(1).max(5),
   description: z.string().optional(),
 })
 
@@ -40,34 +41,39 @@ export class TopicService {
       throw new ValidationError('Topic name cannot be empty')
     }
 
-    // Check for duplicate name (case-insensitive)
+    // Check for duplicate name within the same part (case-insensitive)
     const existing = await prisma.topic.findFirst({
       where: {
         name: {
           equals: trimmedName,
           mode: 'insensitive',
         },
+        partNumber: dto.partNumber,
       },
     })
 
     if (existing) {
-      throw new ConflictError(`A topic with the name "${trimmedName}" already exists`)
+      throw new ConflictError(
+        `A topic with the name "${trimmedName}" already exists for Part ${dto.partNumber}`,
+      )
     }
 
     return prisma.topic.create({
       data: {
         name: trimmedName,
+        partNumber: dto.partNumber,
         description: dto.description,
       },
     })
   }
 
   /**
-   * Get all topics with question counts
+   * Get all topics with question counts, optionally filtered by partNumber
    * Validates: Requirements 8.2, 8.7
    */
-  async findAll() {
+  async findAll(partNumber?: number) {
     const topics = await prisma.topic.findMany({
+      where: partNumber ? { partNumber } : undefined,
       include: {
         _count: {
           select: {
@@ -75,14 +81,13 @@ export class TopicService {
           },
         },
       },
-      orderBy: {
-        name: 'asc',
-      },
+      orderBy: [{ partNumber: 'asc' }, { name: 'asc' }],
     })
 
     return topics.map((topic) => ({
       id: topic.id,
       name: topic.name,
+      partNumber: topic.partNumber,
       description: topic.description,
       createdAt: topic.createdAt,
       updatedAt: topic.updatedAt,
@@ -113,6 +118,7 @@ export class TopicService {
     return {
       id: topic.id,
       name: topic.name,
+      partNumber: topic.partNumber,
       description: topic.description,
       createdAt: topic.createdAt,
       updatedAt: topic.updatedAt,
@@ -136,20 +142,21 @@ export class TopicService {
       throw new NotFoundError('Topic')
     }
 
-    // If updating name, validate and check for duplicates
+    // If updating name, validate and check for duplicates within the same part
     if (dto.name !== undefined) {
       const trimmedName = dto.name.trim()
       if (trimmedName.length === 0) {
         throw new ValidationError('Topic name cannot be empty')
       }
 
-      // Check for duplicate name (case-insensitive), excluding current topic
+      // Check for duplicate name within the same part (case-insensitive), excluding current topic
       const duplicate = await prisma.topic.findFirst({
         where: {
           name: {
             equals: trimmedName,
             mode: 'insensitive',
           },
+          partNumber: existing.partNumber,
           id: {
             not: id,
           },
@@ -157,7 +164,9 @@ export class TopicService {
       })
 
       if (duplicate) {
-        throw new ConflictError(`A topic with the name "${trimmedName}" already exists`)
+        throw new ConflictError(
+          `A topic with the name "${trimmedName}" already exists for Part ${existing.partNumber}`,
+        )
       }
 
       dto.name = trimmedName

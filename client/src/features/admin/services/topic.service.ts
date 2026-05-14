@@ -4,11 +4,13 @@ import type { Topic, TopicWithCount } from '../types'
 
 export const topicService = {
   /**
-   * Get all topics with question counts
+   * Get all topics with question counts, optionally filtered by partNumber
    * Validates: Requirements 8.2
    */
-  getAll: async (): Promise<TopicWithCount[]> => {
-    const { data } = await axiosInstance.get<ApiResponse<TopicWithCount[]>>('/topics')
+  getAll: async (partNumber?: number): Promise<TopicWithCount[]> => {
+    const { data } = await axiosInstance.get<ApiResponse<TopicWithCount[]>>('/topics', {
+      params: partNumber ? { partNumber } : undefined,
+    })
     return data.data
   },
 
@@ -16,7 +18,11 @@ export const topicService = {
    * Create a new topic
    * Validates: Requirements 8.1
    */
-  create: async (payload: { name: string; description?: string }): Promise<Topic> => {
+  create: async (payload: {
+    name: string
+    partNumber: number
+    description?: string
+  }): Promise<Topic> => {
     const { data } = await axiosInstance.post<ApiResponse<Topic>>('/topics', payload)
     return data.data
   },

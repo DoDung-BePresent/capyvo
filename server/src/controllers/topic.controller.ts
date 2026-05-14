@@ -6,11 +6,12 @@ export class TopicController {
 
   /**
    * GET /api/topics
-   * Get all topics with question counts
+   * Get all topics with question counts, optionally filtered by partNumber
    * Validates: Requirements 8.2, 8.7
    */
   async getAll(req: Request, res: Response, _next: NextFunction): Promise<void> {
-    const topics = await this.service.findAll()
+    const partNumber = req.query['partNumber'] ? Number(req.query['partNumber']) : undefined
+    const topics = await this.service.findAll(partNumber)
     res.json({ success: true, data: topics })
   }
 

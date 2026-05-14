@@ -4,13 +4,13 @@ import { queryKeys } from '@/lib/query-keys'
 import { topicService } from '../services/topic.service'
 
 /**
- * Hook to fetch all topics with question counts
+ * Hook to fetch all topics with question counts, optionally filtered by partNumber
  * Validates: Requirements 8.2
  */
-export function useTopics() {
+export function useTopics(partNumber?: number) {
   return useQuery({
-    queryKey: queryKeys.topics.list(),
-    queryFn: topicService.getAll,
+    queryKey: partNumber ? ['topics', { partNumber }] : queryKeys.topics.list(),
+    queryFn: () => topicService.getAll(partNumber),
   })
 }
 
@@ -21,9 +21,11 @@ export function useTopics() {
 export function useCreateTopic() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: { name: string; description?: string }) => topicService.create(payload),
+    mutationFn: (payload: { name: string; partNumber: number; description?: string }) =>
+      topicService.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.topics.list() })
+      queryClient.invalidateQueries({ queryKey: ['topics'] })
       message.success('Tạo chủ đề thành công!')
     },
     onError: (err: Error) => {
@@ -43,6 +45,7 @@ export function useUpdateTopic(id: string) {
       topicService.update(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.topics.list() })
+      queryClient.invalidateQueries({ queryKey: ['topics'] })
       message.success('Đã cập nhật chủ đề')
     },
     onError: (err: Error) => {
@@ -61,6 +64,7 @@ export function useDeleteTopic() {
     mutationFn: topicService.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.topics.list() })
+      queryClient.invalidateQueries({ queryKey: ['topics'] })
       message.success('Đã xóa chủ đề')
     },
     onError: (err: Error) => {

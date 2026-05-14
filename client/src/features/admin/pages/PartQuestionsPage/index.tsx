@@ -90,7 +90,7 @@ export default function PartQuestionsPage() {
 
   // Fetch data
   const { data: questions = [], isLoading } = useQuestions(filters)
-  const { data: topics = [] } = useTopics()
+  const { data: topics = [] } = useTopics(partNumber)
   const { mutate: deleteQuestion, isPending: deleting } = useDeleteQuestion(partNumber)
   const updateQuestion = useUpdateQuestion(partNumber)
   const { mutate: updateStatus } = useUpdateQuestionStatus()

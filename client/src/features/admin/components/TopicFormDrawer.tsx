@@ -1,17 +1,20 @@
-import { Drawer, Form, Input, Button, App } from 'antd'
+import { Drawer, Form, Input, Button, App, Select, Tag } from 'antd'
 import { useEffect } from 'react'
 import { DRAWER_WIDTHS } from '@/config'
 import { useCreateTopic, useUpdateTopic } from '../hooks/useTopic'
-import type { Topic } from '../types'
+import type { Topic, PartNumber } from '../types'
+import { PART_META } from '../types'
 
 interface Props {
   open: boolean
   onClose: () => void
   topic?: Topic | null
+  defaultPartNumber?: PartNumber
 }
 
 interface FormValues {
   name: string
+  partNumber: PartNumber
   description?: string
 }
 
@@ -19,7 +22,7 @@ interface FormValues {
  * Drawer for creating and editing topics
  * Validates: Requirements 8.1, 8.3, 8.6
  */
-export function TopicFormDrawer({ open, onClose, topic }: Props) {
+export function TopicFormDrawer({ open, onClose, topic, defaultPartNumber = 1 }: Props) {
   const [form] = Form.useForm<FormValues>()
   const { message } = App.useApp()
   const createMutation = useCreateTopic()
@@ -33,12 +36,16 @@ export function TopicFormDrawer({ open, onClose, topic }: Props) {
     if (open && topic) {
       form.setFieldsValue({
         name: topic.name,
+        partNumber: topic.partNumber as PartNumber,
         description: topic.description,
       })
     } else if (open && !topic) {
       form.resetFields()
+      form.setFieldsValue({
+        partNumber: defaultPartNumber,
+      })
     }
-  }, [open, topic, form])
+  }, [open, topic, form, defaultPartNumber])
 
   function handleSubmit(values: FormValues) {
     // Validate: Requirements 8.6 - Topic name cannot be empty or whitespace-only
@@ -50,12 +57,15 @@ export function TopicFormDrawer({ open, onClose, topic }: Props) {
 
     const payload = {
       name: trimmedName,
+      partNumber: values.partNumber,
       description: values.description?.trim() || undefined,
     }
 
     if (isEditMode) {
       // Validates: Requirements 8.3
-      updateMutation.mutate(payload, {
+      // Note: partNumber cannot be changed when editing
+      const { partNumber: _partNumber, ...updatePayload } = payload
+      updateMutation.mutate(updatePayload, {
         onSuccess: () => {
           void message.success('Đã cập nhật chủ đề')
           form.resetFields()
@@ -84,6 +94,25 @@ export function TopicFormDrawer({ open, onClose, topic }: Props) {
     form.resetFields()
     onClose()
   }
+
+  const partOptions = ([1, 2, 3, 4, 5] as PartNumber[]).map((partNumber) => {
+    const meta = PART_META[partNumber]
+    return {
+      value: partNumber,
+      label: (
+        <Tag
+          color={meta.color}
+          style={{
+            fontWeight: 600,
+            borderColor: meta.color,
+            backgroundColor: `${meta.color}18`,
+          }}
+        >
+          {meta.label}
+        </Tag>
+      ),
+    }
+  })
 
   return (
     <Drawer
@@ -122,6 +151,19 @@ export function TopicFormDrawer({ open, onClose, topic }: Props) {
         }}
       >
         <Form.Item
+          label="Part"
+          name="partNumber"
+          rules={[{ required: true, message: 'Vui lòng chọn part' }]}
+        >
+          <Select
+            options={partOptions}
+            placeholder="Chọn part"
+            disabled={isEditMode}
+            style={{ width: '100%' }}
+          />
+        </Form.Item>
+
+        <Form.Item
           label="Tên chủ đề"
           name="name"
           rules={[
@@ -130,7 +172,7 @@ export function TopicFormDrawer({ open, onClose, topic }: Props) {
             { max: 100, message: 'Tên chủ đề không được vượt quá 100 ký tự' },
           ]}
         >
-          <Input placeholder="Ví dụ: Grammar, Forecast May 2026" maxLength={100} />
+          <Input placeholder="Ví dụ: Tả người, Tả vật, Tả địa điểm" maxLength={100} />
         </Form.Item>
 
         <Form.Item

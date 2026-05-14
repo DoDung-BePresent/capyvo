@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { Button, Popconfirm, Space, Tag, Typography } from 'antd'
+import { useState, useMemo } from 'react'
+import { Button, Popconfirm, Space, Tag, Typography, Tabs } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 
 import { PageHeader, DataTable } from '@/shared/components'
-import type { TopicWithCount } from '../types'
+import type { TopicWithCount, PartNumber } from '../types'
+import { PART_META } from '../types'
 import { useTopics, useDeleteTopic } from '../hooks/useTopic'
 import { TopicFormDrawer } from '../components/TopicFormDrawer'
 
@@ -15,6 +16,7 @@ const { Text } = Typography
  *
  * Features:
  * - Display list of all topics with question counts
+ * - Filter topics by part number
  * - Create new topics
  * - Edit existing topics
  * - Delete topics with confirmation
@@ -22,11 +24,30 @@ const { Text } = Typography
  * Validates: Requirements 8.1, 8.2, 8.3, 8.4, 8.5, 8.7
  */
 export default function TopicManagementPage() {
-  const { data: topics = [], isLoading } = useTopics()
+  const [selectedPart, setSelectedPart] = useState<PartNumber | 'ALL'>('ALL')
+  const { data: topics = [], isLoading } = useTopics(
+    selectedPart === 'ALL' ? undefined : selectedPart,
+  )
   const { mutate: deleteTopic, isPending: deleting } = useDeleteTopic()
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingTopic, setEditingTopic] = useState<TopicWithCount | null>(null)
+
+  // Count topics by part
+  const topicCounts = useMemo(() => {
+    const counts: Record<PartNumber | 'ALL', number> = {
+      ALL: topics.length,
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
+    }
+    topics.forEach((topic) => {
+      counts[topic.partNumber as PartNumber]++
+    })
+    return counts
+  }, [topics])
 
   const openCreate = () => {
     setEditingTopic(null)
@@ -63,15 +84,35 @@ export default function TopicManagementPage() {
       ),
     },
     {
+      title: 'Part',
+      dataIndex: 'partNumber',
+      width: 100,
+      render: (partNumber: number) => {
+        const meta = PART_META[partNumber as PartNumber]
+        return (
+          <Tag
+            color={meta?.color}
+            style={{
+              fontWeight: 600,
+              borderColor: meta?.color,
+              backgroundColor: `${meta?.color}18`,
+            }}
+          >
+            {meta?.label}
+          </Tag>
+        )
+      },
+    },
+    {
       title: 'Số câu hỏi',
       dataIndex: 'questionCount',
       width: 120,
       render: (count: number) => <Tag color={count > 0 ? 'blue' : 'default'}>{count} câu hỏi</Tag>,
     },
     {
-      title: '',
+      title: 'Thao tác',
       key: 'actions',
-      width: 100,
+      width: 120,
       render: (_, record) => (
         <Space>
           <Button type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
@@ -94,11 +135,25 @@ export default function TopicManagementPage() {
     },
   ]
 
+  const tabItems = [
+    {
+      key: 'ALL',
+      label: `Tất cả (${topicCounts.ALL})`,
+    },
+    ...([1, 2, 3, 4, 5] as PartNumber[]).map((partNumber) => {
+      const meta = PART_META[partNumber]
+      return {
+        key: String(partNumber),
+        label: `${meta.label} (${topicCounts[partNumber]})`,
+      }
+    }),
+  ]
+
   return (
     <Space direction="vertical" size={0} style={{ width: '100%' }}>
       <PageHeader
         title="Quản lý chủ đề"
-        description="Tạo và quản lý các chủ đề để phân loại câu hỏi"
+        description="Tạo và quản lý các chủ đề để phân loại câu hỏi theo từng part"
         breadcrumbs={[{ label: 'Chủ đề' }]}
         extra={
           <Button type="primary" icon={<PlusOutlined />} size="large" onClick={openCreate}>
@@ -107,7 +162,17 @@ export default function TopicManagementPage() {
         }
       />
 
+      <div style={{ padding: '0 24px', background: '#fff' }}>
+        <Tabs
+          activeKey={String(selectedPart)}
+          onChange={(key) => setSelectedPart(key === 'ALL' ? 'ALL' : (Number(key) as PartNumber))}
+          items={tabItems}
+          size="large"
+        />
+      </div>
+
       <DataTable
+        noCard
         dataSource={topics}
         columns={columns}
         rowKey="id"
@@ -115,7 +180,12 @@ export default function TopicManagementPage() {
         loading={isLoading}
       />
 
-      <TopicFormDrawer open={modalOpen} topic={editingTopic} onClose={handleCloseModal} />
+      <TopicFormDrawer
+        open={modalOpen}
+        topic={editingTopic}
+        defaultPartNumber={selectedPart === 'ALL' ? 1 : selectedPart}
+        onClose={handleCloseModal}
+      />
     </Space>
   )
 }

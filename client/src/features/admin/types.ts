@@ -28,6 +28,7 @@ export type QuestionStatus = (typeof QuestionStatus)[keyof typeof QuestionStatus
 export interface Topic {
   id: string
   name: string
+  partNumber: number
   description?: string
   createdAt: string
   updatedAt: string
@@ -93,35 +94,6 @@ export interface UpdateExamSetPayload {
   description?: string
   type?: ExamSetType
   isPublished?: boolean
-}
-
-// ─── SystemAudio model ─────────────────────────────────────────────────────────
-
-export type SystemAudioKey = 'START_SPEAKING' | 'START_RESPONSE'
-
-export const SYSTEM_AUDIO_META: Record<SystemAudioKey, { label: string; description: string }> = {
-  START_SPEAKING: {
-    label: 'Tín hiệu bắt đầu nói',
-    description: 'Phát trước khi thí sinh bắt đầu đọc / trả lời',
-  },
-  START_RESPONSE: {
-    label: 'Tín hiệu bắt đầu phản hồi',
-    description: 'Phát khi hệ thống bắt đầu ghi âm câu trả lời',
-  },
-}
-
-export interface SystemAudio {
-  key: SystemAudioKey
-  audioUrl: string | null
-  updatedAt: string
-}
-
-// ─── PartInstruction model ─────────────────────────────────────────────────────
-
-export interface PartInstruction {
-  partNumber: number
-  audioUrl: string | null
-  updatedAt: string
 }
 
 // ─── Form values (per part, sent to the UI form) ───────────────────────────────
