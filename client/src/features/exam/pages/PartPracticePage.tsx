@@ -46,7 +46,7 @@ const Sidebar = styled('div', 'w-64 shrink-0 overflow-y-auto')
 const MainContent = styled('div', 'flex-1 overflow-y-auto')
 const FilterCard = styled(Card, 'mb-4 rounded-lg! cursor-pointer')
 const QuestionCard = styled(Card, 'h-full rounded-lg! hover:shadow-lg transition-all')
-const QuestionGrid = styled('div', 'grid grid-cols-1 gap-4')
+const QuestionGrid = styled('div', 'grid gap-4')
 
 interface FilterItemProps {
   id: string
@@ -82,15 +82,28 @@ function FilterItem({ title, questionCount, isActive, onClick }: FilterItemProps
 interface QuestionItemProps {
   question: QuestionWithTopics
   onPractice: () => void
+  partNumber: number
 }
 
-function QuestionItem({ question, onPractice }: QuestionItemProps) {
+function QuestionItem({ question, onPractice, partNumber }: QuestionItemProps) {
   const getQuestionPreview = () => {
+    // Part 4: Show questionText (not contextText) below image
+    if (partNumber === 4 && question.questionText) {
+      return question.questionText
+    }
+    // Part 2: Show imageContext or contentText
+    if (partNumber === 2) {
+      return
+    }
+    // Other parts: Show contentText, questionText, or contextText
     if (question.contentText) return question.contentText
     if (question.questionText) return question.questionText
     if (question.contextText) return question.contextText
-    return 'Câu hỏi thực hành'
   }
+
+  const imageUrl =
+    question.imageUrls && question.imageUrls.length > 0 ? question.imageUrls[0] : null
+  const hasImages = partNumber === 2 || partNumber === 4
 
   return (
     <QuestionCard styles={{ body: { padding: '20px' } }}>
@@ -102,12 +115,35 @@ function QuestionItem({ question, onPractice }: QuestionItemProps) {
           </Text>
         </Flex>
 
+        {/* Display image if available and part has images */}
+        {hasImages && imageUrl && (
+          <div
+            style={{
+              width: '100%',
+              height: 250,
+              borderRadius: 8,
+              overflow: 'hidden',
+              backgroundColor: '#f0f0f0',
+            }}
+          >
+            <img
+              src={imageUrl}
+              alt="Question"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+              }}
+            />
+          </div>
+        )}
+
         <div style={{ flex: 1 }}>
           <Text
             style={{
               fontSize: 14,
               display: '-webkit-box',
-              WebkitLineClamp: 3,
+              WebkitLineClamp: hasImages ? 2 : 3,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
             }}
@@ -115,12 +151,6 @@ function QuestionItem({ question, onPractice }: QuestionItemProps) {
             {getQuestionPreview()}
           </Text>
         </div>
-
-        {question.imageUrls && question.imageUrls.length > 0 && (
-          <Tag color="purple" style={{ width: 'fit-content' }}>
-            Có hình ảnh
-          </Tag>
-        )}
 
         {/* Display topic tags */}
         {question.topics && question.topics.length > 0 && (
@@ -191,6 +221,10 @@ export default function PartPracticePage() {
 
   const selectedSet = examSets.find((s) => s.id === selectedSetId)
   const selectedTopic = topics.find((t) => t.id === selectedTopicId)
+
+  // Determine if current part has images (Part 2 and Part 4)
+  const hasImages = part === 2 || part === 4
+  const gridCols = hasImages ? 'grid-cols-2' : 'grid-cols-1'
 
   const handlePracticeQuestion = (question: QuestionWithTopics) => {
     navigate(`/practice/part/${part}/question/${question.id}`)
@@ -311,12 +345,13 @@ export default function PartPracticePage() {
           {filteredQuestions.length === 0 ? (
             <Empty description="Không có câu hỏi nào phù hợp với bộ lọc" />
           ) : (
-            <QuestionGrid>
+            <QuestionGrid className={gridCols}>
               {filteredQuestions.map((question) => (
                 <QuestionItem
                   key={question.id}
                   question={question}
                   onPractice={() => handlePracticeQuestion(question)}
+                  partNumber={part}
                 />
               ))}
             </QuestionGrid>
