@@ -71,7 +71,7 @@ export default function Part5Form({ form, onSubmit }: Props) {
       </Flex>
 
       <Form.Item label="Chủ đề" name="topicIds">
-        <TopicMultiSelect />
+        <TopicMultiSelect partNumber={5} />
       </Form.Item>
     </Form>
   )

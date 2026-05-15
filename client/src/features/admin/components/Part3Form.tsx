@@ -8,9 +8,13 @@ import { TopicMultiSelect } from './TopicMultiSelect'
 interface Props {
   form?: FormInstance
   onSubmit: (values: Part3FormValues) => void
+  editingQuestionNumber?: 5 | 6 | 7 // When editing, only show this question
 }
 
-export default function Part3Form({ form, onSubmit }: Props) {
+export default function Part3Form({ form, onSubmit, editingQuestionNumber }: Props) {
+  const isEditing = editingQuestionNumber !== undefined
+  const questionsToShow = isEditing ? [editingQuestionNumber] : ([5, 6, 7] as const)
+
   return (
     <Form
       layout="vertical"
@@ -20,12 +24,14 @@ export default function Part3Form({ form, onSubmit }: Props) {
       form={form}
       styles={{ label: { height: 22 } }}
     >
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message="Form này tạo cùng lúc 3 câu (5, 6, 7). Mỗi trường có thể tự upload audio hoặc để AI tạo."
-      />
+      {!isEditing && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          description="Form này tạo cùng lúc 3 câu (5, 6, 7). Mỗi trường có thể tự upload audio hoặc để AI tạo."
+        />
+      )}
 
       <Form.Item
         label="Bối cảnh (context)"
@@ -41,7 +47,7 @@ export default function Part3Form({ form, onSubmit }: Props) {
         <AudioUploadField />
       </Form.Item>
 
-      {([5, 6, 7] as const).map((num, idx) => (
+      {questionsToShow.map((num, idx) => (
         <div key={num}>
           <Form.Item
             label={`Câu ${num} — ${idx < 2 ? 'response 15s' : 'response 30s'}`}
@@ -93,7 +99,7 @@ export default function Part3Form({ form, onSubmit }: Props) {
       </Flex>
 
       <Form.Item label="Chủ đề" name="topicIds">
-        <TopicMultiSelect />
+        <TopicMultiSelect partNumber={3} />
       </Form.Item>
     </Form>
   )

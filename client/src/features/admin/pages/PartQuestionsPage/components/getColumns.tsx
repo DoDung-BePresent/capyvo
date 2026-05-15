@@ -19,6 +19,31 @@ import { TopicTags } from './TopicTags'
 
 const { Text } = Typography
 
+// eslint-disable-next-line react-refresh/only-export-components
+function AudioPlayer({ url }: { url: string }) {
+  const showAudioModal = () => {
+    Modal.info({
+      title: 'Nghe audio',
+      icon: null,
+      width: 500,
+      content: (
+        <div style={{ width: '100%', marginTop: 16 }}>
+          <audio controls style={{ width: '100%' }} autoPlay>
+            <source src={url} type="audio/mpeg" />
+          </audio>
+        </div>
+      ),
+      okText: 'Đóng',
+    })
+  }
+
+  return (
+    <Button type="link" icon={<SoundOutlined />} onClick={showAudioModal}>
+      Nghe
+    </Button>
+  )
+}
+
 export function getColumns(
   partNumber: PartNumber,
   onEdit: (record: QuestionWithTopics) => void,
@@ -172,13 +197,7 @@ export function getColumns(
       {
         title: 'Audio',
         render: (_: unknown, r: QuestionWithTopics) =>
-          r.questionAudioUrl ? (
-            <a href={r.questionAudioUrl} target="_blank" rel="noreferrer">
-              <SoundOutlined /> Nghe
-            </a>
-          ) : (
-            '—'
-          ),
+          r.questionAudioUrl ? <AudioPlayer url={r.questionAudioUrl} /> : '—',
         width: 90,
       },
       typeColumn,
@@ -202,13 +221,7 @@ export function getColumns(
       {
         title: 'Audio',
         render: (_: unknown, r: QuestionWithTopics) =>
-          r.questionAudioUrl ? (
-            <a href={r.questionAudioUrl} target="_blank" rel="noreferrer">
-              <SoundOutlined /> Nghe
-            </a>
-          ) : (
-            '—'
-          ),
+          r.questionAudioUrl ? <AudioPlayer url={r.questionAudioUrl} /> : '—',
         width: 90,
       },
       typeColumn,
@@ -224,13 +237,7 @@ export function getColumns(
     {
       title: 'Audio',
       render: (_: unknown, r: QuestionWithTopics) =>
-        r.questionAudioUrl ? (
-          <a href={r.questionAudioUrl} target="_blank" rel="noreferrer">
-            <SoundOutlined /> Nghe
-          </a>
-        ) : (
-          '—'
-        ),
+        r.questionAudioUrl ? <AudioPlayer url={r.questionAudioUrl} /> : '—',
       width: 90,
     },
     typeColumn,

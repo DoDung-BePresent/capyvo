@@ -14,10 +14,13 @@ const { Text } = Typography
 interface Props {
   form?: FormInstance
   onSubmit: (values: Part4FormValues) => void
+  editingQuestionNumber?: 8 | 9 | 10 // When editing, only show this question
 }
 
-export default function Part4Form({ form, onSubmit }: Props) {
+export default function Part4Form({ form, onSubmit, editingQuestionNumber }: Props) {
   const [analyzing, setAnalyzing] = useState(false)
+  const isEditing = editingQuestionNumber !== undefined
+  const questionsToShow = isEditing ? [editingQuestionNumber] : ([8, 9, 10] as const)
 
   async function handleImageChange(url: string | undefined) {
     form?.setFieldValue('imageUrl', url)
@@ -45,12 +48,14 @@ export default function Part4Form({ form, onSubmit }: Props) {
       form={form}
       styles={{ label: { height: 22 } }}
     >
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message="Form này tạo cùng lúc 3 câu (8, 9, 10) dùng chung 1 ảnh và 1 bối cảnh. Mỗi trường có thể tự upload audio hoặc để AI tạo."
-      />
+      {!isEditing && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          description="Form này tạo cùng lúc 3 câu (8, 9, 10) dùng chung 1 ảnh và 1 bối cảnh. Mỗi trường có thể tự upload audio hoặc để AI tạo."
+        />
+      )}
 
       <Form.Item
         label="Hình ảnh / bảng dữ liệu (dùng chung cho cả 3 câu)"
@@ -92,7 +97,7 @@ export default function Part4Form({ form, onSubmit }: Props) {
         <AudioUploadField />
       </Form.Item>
 
-      {([8, 9, 10] as const).map((num, idx) => (
+      {questionsToShow.map((num, idx) => (
         <div key={num}>
           <Form.Item
             label={`Câu ${num} — ${idx < 2 ? 'response 15s' : 'response 30s'}`}
@@ -144,7 +149,7 @@ export default function Part4Form({ form, onSubmit }: Props) {
       </Flex>
 
       <Form.Item label="Chủ đề" name="topicIds">
-        <TopicMultiSelect />
+        <TopicMultiSelect partNumber={4} />
       </Form.Item>
     </Form>
   )

@@ -3,20 +3,22 @@ import { Select, Button, Space, Typography } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { useTopics } from '../hooks/useTopic'
 import { TopicFormDrawer } from './TopicFormDrawer'
+import type { PartNumber } from '../types'
 
 const { Text } = Typography
 
 interface Props {
   value?: string[]
   onChange?: (value: string[]) => void
+  partNumber: PartNumber
 }
 
 /**
  * Multi-select component for topics with inline creation
  * Validates: Requirements 15.1, 15.2, 15.3, 15.6, 15.7
  */
-export function TopicMultiSelect({ value, onChange }: Props) {
-  const { data: topics = [], isLoading } = useTopics()
+export function TopicMultiSelect({ value, onChange, partNumber }: Props) {
+  const { data: topics = [], isLoading } = useTopics(partNumber)
   const [modalOpen, setModalOpen] = useState(false)
 
   const options = topics.map((topic) => ({
@@ -61,7 +63,11 @@ export function TopicMultiSelect({ value, onChange }: Props) {
         )}
       </Space>
 
-      <TopicFormDrawer open={modalOpen} onClose={() => setModalOpen(false)} />
+      <TopicFormDrawer
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        defaultPartNumber={partNumber}
+      />
     </>
   )
 }

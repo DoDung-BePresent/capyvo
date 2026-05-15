@@ -179,27 +179,43 @@ export default function PartQuestionsPage() {
           topicIds: question.topics?.map((t) => t.id) ?? [],
         })
       } else if (partNumber === 3) {
-        // For Part 3, map single question to the appropriate q5/q6/q7 field
-        const qNum = question.questionNumber
+        // For Part 3, we need to populate all 3 questions (q5, q6, q7)
+        // But we only have data for the current question being edited
+        // So we populate what we have and leave others empty
         editForm.setFieldsValue({
           contextText: question.contextText ?? '',
           contextAudioUrl: question.contextAudioUrl ?? undefined,
-          [`q${qNum}`]: question.questionText ?? '',
-          [`q${qNum}AudioUrl`]: question.questionAudioUrl ?? undefined,
+          q5: question.questionNumber === 5 ? (question.questionText ?? '') : '',
+          q5AudioUrl:
+            question.questionNumber === 5 ? (question.questionAudioUrl ?? undefined) : undefined,
+          q6: question.questionNumber === 6 ? (question.questionText ?? '') : '',
+          q6AudioUrl:
+            question.questionNumber === 6 ? (question.questionAudioUrl ?? undefined) : undefined,
+          q7: question.questionNumber === 7 ? (question.questionText ?? '') : '',
+          q7AudioUrl:
+            question.questionNumber === 7 ? (question.questionAudioUrl ?? undefined) : undefined,
           type: question.type,
           status: question.status,
           topicIds: question.topics?.map((t) => t.id) ?? [],
         })
       } else if (partNumber === 4) {
-        // For Part 4, map single question to the appropriate q8/q9/q10 field
-        const qNum = question.questionNumber
+        // For Part 4, we need to populate all 3 questions (q8, q9, q10)
+        // But we only have data for the current question being edited
+        // So we populate what we have and leave others empty
         editForm.setFieldsValue({
           imageUrl: question.imageUrls[0] ?? '',
           imageContext: question.imageContext ?? '',
           contextText: question.contextText ?? '',
           contextAudioUrl: question.contextAudioUrl ?? undefined,
-          [`q${qNum}`]: question.questionText ?? '',
-          [`q${qNum}AudioUrl`]: question.questionAudioUrl ?? undefined,
+          q8: question.questionNumber === 8 ? (question.questionText ?? '') : '',
+          q8AudioUrl:
+            question.questionNumber === 8 ? (question.questionAudioUrl ?? undefined) : undefined,
+          q9: question.questionNumber === 9 ? (question.questionText ?? '') : '',
+          q9AudioUrl:
+            question.questionNumber === 9 ? (question.questionAudioUrl ?? undefined) : undefined,
+          q10: question.questionNumber === 10 ? (question.questionText ?? '') : '',
+          q10AudioUrl:
+            question.questionNumber === 10 ? (question.questionAudioUrl ?? undefined) : undefined,
           type: question.type,
           status: question.status,
           topicIds: question.topics?.map((t) => t.id) ?? [],
@@ -463,7 +479,12 @@ export default function PartQuestionsPage() {
           </div>
         }
       >
-        <PartFormContent partNumber={partNumber} form={editForm} onSubmit={handleEditFormFinish} />
+        <PartFormContent
+          partNumber={partNumber}
+          form={editForm}
+          onSubmit={handleEditFormFinish}
+          editingQuestionNumber={editingQuestion?.questionNumber}
+        />
       </Drawer>
     </Space>
   )

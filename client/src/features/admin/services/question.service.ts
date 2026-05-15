@@ -122,6 +122,9 @@ export const questionService = {
         { questionNumber: 6, questionText: payload.q6, questionAudioUrl: payload.q6AudioUrl },
         { questionNumber: 7, questionText: payload.q7, questionAudioUrl: payload.q7AudioUrl },
       ],
+      type: payload.type,
+      status: payload.status,
+      topicIds: payload.topicIds,
     }
     const { data } = await axiosInstance.post<ApiResponse<Question[]>>('/questions/part/3', body)
     return data.data
@@ -138,6 +141,9 @@ export const questionService = {
         { questionNumber: 9, questionText: payload.q9, questionAudioUrl: payload.q9AudioUrl },
         { questionNumber: 10, questionText: payload.q10, questionAudioUrl: payload.q10AudioUrl },
       ],
+      type: payload.type,
+      status: payload.status,
+      topicIds: payload.topicIds,
     }
     const { data } = await axiosInstance.post<ApiResponse<Question[]>>('/questions/part/4', body)
     return data.data
