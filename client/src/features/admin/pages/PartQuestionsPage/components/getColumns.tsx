@@ -1,4 +1,4 @@
-import { Button, Dropdown, Image, Typography } from 'antd'
+import { Button, Dropdown, Image, Typography, Modal } from 'antd'
 import type { MenuProps } from 'antd'
 import {
   DeleteOutlined,
@@ -8,6 +8,7 @@ import {
   CheckCircleOutlined,
   MinusCircleOutlined,
   InboxOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import type { PartNumber, QuestionWithTopics } from '@/features/admin/types'
@@ -79,9 +80,15 @@ export function getColumns(
           icon: <DeleteOutlined style={{ fontSize: 14 }} />,
           danger: true,
           onClick: () => {
-            if (window.confirm('Bạn có chắc chắn muốn xóa câu hỏi này?')) {
-              onDelete(record.id)
-            }
+            Modal.confirm({
+              title: 'Xóa câu hỏi này?',
+              icon: <ExclamationCircleOutlined />,
+              content: 'Bạn có chắc chắn muốn xóa câu hỏi này? Hành động này không thể hoàn tác.',
+              okText: 'Xóa',
+              okType: 'danger',
+              cancelText: 'Hủy',
+              onOk: () => onDelete(record.id),
+            })
           },
         },
       ]

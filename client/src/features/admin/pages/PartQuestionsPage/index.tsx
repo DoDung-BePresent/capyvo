@@ -331,7 +331,16 @@ export default function PartQuestionsPage() {
             type="primary"
             icon={<PlusOutlined />}
             size="large"
-            onClick={() => setDrawerOpen(true)}
+            onClick={() => {
+              drawerForm.resetFields()
+              // Set default values for create form
+              if (partNumber === 1) {
+                drawerForm.setFieldsValue({ questionNumber: 1 })
+              } else if (partNumber === 2) {
+                drawerForm.setFieldsValue({ questionNumber: 3 })
+              }
+              setDrawerOpen(true)
+            }}
           >
             Thêm câu hỏi
           </Button>

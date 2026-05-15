@@ -23,7 +23,7 @@ export default function Part1Form({ form, onSubmit }: Props) {
         },
       }}
     >
-      <Form.Item label="Số câu" name="questionNumber" rules={[{ required: true }]} initialValue={1}>
+      <Form.Item label="Số câu" name="questionNumber" rules={[{ required: true }]}>
         <Segmented
           block
           options={[

@@ -44,7 +44,7 @@ export default function Part2Form({ form, onSubmit }: Props) {
       form={form}
       styles={{ label: { height: 22 } }}
     >
-      <Form.Item label="Số câu" name="questionNumber" rules={[{ required: true }]} initialValue={3}>
+      <Form.Item label="Số câu" name="questionNumber" rules={[{ required: true }]}>
         <Segmented
           block
           options={[
