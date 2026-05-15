@@ -1,4 +1,4 @@
-import { Form, Input, Alert, Select, Divider, Flex } from 'antd'
+import { Form, Input, Select, Divider, Flex } from 'antd'
 import type { FormInstance } from 'antd'
 import AudioUploadField from './AudioUploadField'
 import type { Part3FormValues } from '../types'
@@ -8,13 +8,9 @@ import { TopicMultiSelect } from './TopicMultiSelect'
 interface Props {
   form?: FormInstance
   onSubmit: (values: Part3FormValues) => void
-  editingQuestionNumber?: 5 | 6 | 7 // When editing, only show this question
 }
 
-export default function Part3Form({ form, onSubmit, editingQuestionNumber }: Props) {
-  const isEditing = editingQuestionNumber !== undefined
-  const questionsToShow = isEditing ? [editingQuestionNumber] : ([5, 6, 7] as const)
-
+export default function Part3Form({ form, onSubmit }: Props) {
   return (
     <Form
       layout="vertical"
@@ -24,15 +20,6 @@ export default function Part3Form({ form, onSubmit, editingQuestionNumber }: Pro
       form={form}
       styles={{ label: { height: 22 } }}
     >
-      {!isEditing && (
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-          description="Form này tạo cùng lúc 3 câu (5, 6, 7). Mỗi trường có thể tự upload audio hoặc để AI tạo."
-        />
-      )}
-
       <Form.Item
         label="Bối cảnh (context)"
         name="contextText"
@@ -47,7 +34,7 @@ export default function Part3Form({ form, onSubmit, editingQuestionNumber }: Pro
         <AudioUploadField />
       </Form.Item>
 
-      {questionsToShow.map((num, idx) => (
+      {([5, 6, 7] as const).map((num, idx) => (
         <div key={num}>
           <Form.Item
             label={`Câu ${num} — ${idx < 2 ? 'response 15s' : 'response 30s'}`}

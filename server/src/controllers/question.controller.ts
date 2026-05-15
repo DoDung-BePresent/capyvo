@@ -246,4 +246,70 @@ export class QuestionController {
     )
     res.json({ success: true, data: result })
   }
+
+  /**
+   * Get questions grouped by setId (for Part 3 & 4) or individual (Part 1, 2, 5)
+   */
+  async getQuestionsGrouped(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const partNumber = Number(req.query['partNumber'])
+    const type = req.query['type'] as 'PRACTICE' | 'FORECAST' | 'CUSTOM' | undefined
+    const status = req.query['status'] as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | undefined
+    const topicId = req.query['topicId'] as string | undefined
+    const search = req.query['search'] as string | undefined
+    const assignmentStatus = req.query['assignmentStatus'] as
+      | 'all'
+      | 'assigned'
+      | 'unassigned'
+      | undefined
+
+    if (!partNumber || partNumber < 1 || partNumber > 5) {
+      res.status(400).json({ success: false, message: 'partNumber must be 1–5' })
+      return
+    }
+
+    const data = await this.service.getQuestionsGrouped({
+      partNumber,
+      type,
+      status,
+      topicId,
+      search,
+      assignmentStatus,
+    })
+
+    res.json({ success: true, data })
+  }
+
+  /**
+   * Update entire question set (Part 3 or 4)
+   */
+  async updateQuestionSet(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const setId = req.params['setId'] as string
+      const questions = await this.service.updateQuestionSet(setId, req.body)
+      res.json({ success: true, data: questions })
+    } catch (err) {
+      if ((err as { code?: string }).code === 'P2025') {
+        next(new NotFoundError('Question set'))
+      } else {
+        throw err
+      }
+    }
+  }
+
+  /**
+   * Delete entire question set (Part 3 or 4)
+   */
+  async deleteQuestionSet(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const setId = req.params['setId'] as string
+      const result = await this.service.deleteQuestionSet(setId)
+      res.json({ success: true, data: result })
+    } catch (err) {
+      if ((err as { code?: string }).code === 'P2025') {
+        next(new NotFoundError('Question set'))
+      } else {
+        throw err
+      }
+    }
+  }
 }

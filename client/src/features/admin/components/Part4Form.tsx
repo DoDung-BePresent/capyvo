@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Form, Input, Alert, Spin, Typography, Select, Divider, Flex } from 'antd'
+import { Form, Input, Spin, Typography, Select, Divider, Flex } from 'antd'
 import type { FormInstance } from 'antd'
 import { RobotOutlined } from '@ant-design/icons'
 import ImageUpload from './ImageUpload'
@@ -14,13 +14,10 @@ const { Text } = Typography
 interface Props {
   form?: FormInstance
   onSubmit: (values: Part4FormValues) => void
-  editingQuestionNumber?: 8 | 9 | 10 // When editing, only show this question
 }
 
-export default function Part4Form({ form, onSubmit, editingQuestionNumber }: Props) {
+export default function Part4Form({ form, onSubmit }: Props) {
   const [analyzing, setAnalyzing] = useState(false)
-  const isEditing = editingQuestionNumber !== undefined
-  const questionsToShow = isEditing ? [editingQuestionNumber] : ([8, 9, 10] as const)
 
   async function handleImageChange(url: string | undefined) {
     form?.setFieldValue('imageUrl', url)
@@ -48,15 +45,6 @@ export default function Part4Form({ form, onSubmit, editingQuestionNumber }: Pro
       form={form}
       styles={{ label: { height: 22 } }}
     >
-      {!isEditing && (
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-          description="Form này tạo cùng lúc 3 câu (8, 9, 10) dùng chung 1 ảnh và 1 bối cảnh. Mỗi trường có thể tự upload audio hoặc để AI tạo."
-        />
-      )}
-
       <Form.Item
         label="Hình ảnh / bảng dữ liệu (dùng chung cho cả 3 câu)"
         name="imageUrl"
@@ -97,7 +85,7 @@ export default function Part4Form({ form, onSubmit, editingQuestionNumber }: Pro
         <AudioUploadField />
       </Form.Item>
 
-      {questionsToShow.map((num, idx) => (
+      {([8, 9, 10] as const).map((num, idx) => (
         <div key={num}>
           <Form.Item
             label={`Câu ${num} — ${idx < 2 ? 'response 15s' : 'response 30s'}`}

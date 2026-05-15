@@ -63,6 +63,7 @@ export function getColumns(
   const actionsColumn: ColumnsType<QuestionWithTopics>[number] = {
     title: 'Thao tác',
     key: 'actions',
+    fixed: 'right',
     width: 100,
     render: (_: unknown, record: QuestionWithTopics) => {
       const menuItems: MenuProps['items'] = [

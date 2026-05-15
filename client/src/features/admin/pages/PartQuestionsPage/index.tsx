@@ -1,9 +1,14 @@
 import { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import { Button, Space, Empty, Form, Drawer, Tabs } from 'antd'
+import { Button, Space, Empty, Form, Drawer, Tabs, Descriptions, Typography, Divider } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 
-import type { PartNumber, QuestionWithTopics, UpdateQuestionPayload } from '@/features/admin/types'
+import type {
+  PartNumber,
+  QuestionWithTopics,
+  QuestionSet,
+  UpdateQuestionPayload,
+} from '@/features/admin/types'
 import type {
   Part1FormValues,
   Part2FormValues,
@@ -17,14 +22,16 @@ import { PageHeader, DataTable } from '@/shared/components'
 import QuestionFilters from '@/features/admin/components/QuestionFilters'
 
 import {
-  useQuestions,
+  useQuestionsGrouped,
   useCreatePart1,
   useCreatePart2,
   useCreatePart3,
   useCreatePart4,
   useCreatePart5,
   useDeleteQuestion,
+  useDeleteQuestionSet,
   useUpdateQuestion,
+  useUpdateQuestionSet,
   useUpdateQuestionStatus,
 } from '@/features/admin/hooks/useQuestion'
 import { useTopics } from '@/features/admin/hooks/useTopic'
@@ -32,8 +39,11 @@ import { useTopics } from '@/features/admin/hooks/useTopic'
 import { DRAWER_WIDTHS } from '@/config'
 
 import { getColumns } from './components/getColumns'
+import { getColumnsForSet } from './components/getColumnsForSet'
 import { PartFormContent } from './components/PartFormContent'
 import { SUBMIT_LABEL } from './constants'
+
+const { Text } = Typography
 
 export default function PartQuestionsPage() {
   const { partNumber: partParam } = useParams<{ partNumber: string }>()
@@ -42,7 +52,10 @@ export default function PartQuestionsPage() {
   // Drawer states
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
+  const [viewDrawerOpen, setViewDrawerOpen] = useState(false)
   const [editingQuestion, setEditingQuestion] = useState<QuestionWithTopics | null>(null)
+  const [editingSet, setEditingSet] = useState<QuestionSet | null>(null)
+  const [viewingSet, setViewingSet] = useState<QuestionSet | null>(null)
 
   // Filter states
   const [type, setType] = useState<QuestionType | 'ALL'>('ALL')
@@ -50,14 +63,15 @@ export default function PartQuestionsPage() {
   const [topicId, setTopicId] = useState<string | undefined>(undefined)
   const [search, setSearch] = useState('')
 
+  // Active question number for tabs (Part 1 & 2 only)
+  const [activeQNum, setActiveQNum] = useState<number>(
+    () => PART_META[partNumber]?.questionNumbers[0] ?? 1,
+  )
+
   // Forms
   const [drawerForm] = Form.useForm()
   const [editForm] = Form.useForm()
 
-  // Active question number for tabs
-  const [activeQNum, setActiveQNum] = useState<number>(
-    () => PART_META[partNumber]?.questionNumbers[0] ?? 1,
-  )
   const [prevPartNumber, setPrevPartNumber] = useState(partNumber)
 
   // Reset filters when part changes
@@ -70,7 +84,7 @@ export default function PartQuestionsPage() {
     setTopicId(undefined)
   }
 
-  // Build filter object for useQuestions hook
+  // Build filter object for useQuestionsGrouped hook
   const filters = useMemo(() => {
     const f: {
       partNumber: number
@@ -88,11 +102,13 @@ export default function PartQuestionsPage() {
     return f
   }, [partNumber, type, status, topicId, search])
 
-  // Fetch data
-  const { data: questions = [], isLoading } = useQuestions(filters)
+  // Fetch data using new grouped API
+  const { data: questionsData = [], isLoading } = useQuestionsGrouped(filters)
   const { data: topics = [] } = useTopics(partNumber)
-  const { mutate: deleteQuestion, isPending: deleting } = useDeleteQuestion(partNumber)
+  const deleteQuestion = useDeleteQuestion(partNumber)
+  const deleteQuestionSet = useDeleteQuestionSet(partNumber)
   const updateQuestion = useUpdateQuestion(partNumber)
+  const updateQuestionSet = useUpdateQuestionSet(partNumber)
   const { mutate: updateStatus } = useUpdateQuestionStatus()
 
   const createPart1 = useCreatePart1()
@@ -109,29 +125,61 @@ export default function PartQuestionsPage() {
     5: createPart5.isPending,
   }
 
+  // Determine if we're working with sets (Part 3 & 4) or individual questions
+  const isSetMode = partNumber === 3 || partNumber === 4
+
+  const questions = useMemo(
+    () => (isSetMode ? [] : (questionsData as QuestionWithTopics[])),
+    [isSetMode, questionsData],
+  )
+
+  const questionSets = useMemo(
+    () => (isSetMode ? (questionsData as QuestionSet[]) : []),
+    [isSetMode, questionsData],
+  )
+
   // Calculate filter counts
   const filterCounts = useMemo(() => {
-    const allQuestions = questions as QuestionWithTopics[]
-    const total = allQuestions.length
-
-    const byType: Record<QuestionType | 'ALL', number> = {
-      ALL: total,
-      [QuestionType.PRACTICE]: allQuestions.filter((q) => q.type === QuestionType.PRACTICE).length,
-      [QuestionType.FORECAST]: allQuestions.filter((q) => q.type === QuestionType.FORECAST).length,
-      [QuestionType.CUSTOM]: allQuestions.filter((q) => q.type === QuestionType.CUSTOM).length,
+    if (isSetMode) {
+      const total = questionSets.length
+      const byType: Record<QuestionType | 'ALL', number> = {
+        ALL: total,
+        [QuestionType.PRACTICE]: questionSets.filter((s) => s.type === QuestionType.PRACTICE)
+          .length,
+        [QuestionType.FORECAST]: questionSets.filter((s) => s.type === QuestionType.FORECAST)
+          .length,
+        [QuestionType.CUSTOM]: questionSets.filter((s) => s.type === QuestionType.CUSTOM).length,
+      }
+      const byStatus: Record<QuestionStatus | 'ALL', number> = {
+        ALL: total,
+        [QuestionStatus.DRAFT]: questionSets.filter((s) => s.status === QuestionStatus.DRAFT)
+          .length,
+        [QuestionStatus.PUBLISHED]: questionSets.filter(
+          (s) => s.status === QuestionStatus.PUBLISHED,
+        ).length,
+        [QuestionStatus.ARCHIVED]: questionSets.filter((s) => s.status === QuestionStatus.ARCHIVED)
+          .length,
+      }
+      return { total, byType, byStatus }
+    } else {
+      const total = questions.length
+      const byType: Record<QuestionType | 'ALL', number> = {
+        ALL: total,
+        [QuestionType.PRACTICE]: questions.filter((q) => q.type === QuestionType.PRACTICE).length,
+        [QuestionType.FORECAST]: questions.filter((q) => q.type === QuestionType.FORECAST).length,
+        [QuestionType.CUSTOM]: questions.filter((q) => q.type === QuestionType.CUSTOM).length,
+      }
+      const byStatus: Record<QuestionStatus | 'ALL', number> = {
+        ALL: total,
+        [QuestionStatus.DRAFT]: questions.filter((q) => q.status === QuestionStatus.DRAFT).length,
+        [QuestionStatus.PUBLISHED]: questions.filter((q) => q.status === QuestionStatus.PUBLISHED)
+          .length,
+        [QuestionStatus.ARCHIVED]: questions.filter((q) => q.status === QuestionStatus.ARCHIVED)
+          .length,
+      }
+      return { total, byType, byStatus }
     }
-
-    const byStatus: Record<QuestionStatus | 'ALL', number> = {
-      ALL: total,
-      [QuestionStatus.DRAFT]: allQuestions.filter((q) => q.status === QuestionStatus.DRAFT).length,
-      [QuestionStatus.PUBLISHED]: allQuestions.filter((q) => q.status === QuestionStatus.PUBLISHED)
-        .length,
-      [QuestionStatus.ARCHIVED]: allQuestions.filter((q) => q.status === QuestionStatus.ARCHIVED)
-        .length,
-    }
-
-    return { total, byType, byStatus }
-  }, [questions])
+  }, [isSetMode, questions, questionSets])
 
   const handleFormFinish = (values: unknown) => {
     const onSuccess = () => {
@@ -157,6 +205,7 @@ export default function PartQuestionsPage() {
     }
   }
 
+  // Edit handlers for individual questions (Part 1, 2, 5)
   function openEditDrawer(question: QuestionWithTopics) {
     setEditingQuestion(question)
     setEditDrawerOpen(true)
@@ -178,48 +227,6 @@ export default function PartQuestionsPage() {
           status: question.status,
           topicIds: question.topics?.map((t) => t.id) ?? [],
         })
-      } else if (partNumber === 3) {
-        // For Part 3, we need to populate all 3 questions (q5, q6, q7)
-        // But we only have data for the current question being edited
-        // So we populate what we have and leave others empty
-        editForm.setFieldsValue({
-          contextText: question.contextText ?? '',
-          contextAudioUrl: question.contextAudioUrl ?? undefined,
-          q5: question.questionNumber === 5 ? (question.questionText ?? '') : '',
-          q5AudioUrl:
-            question.questionNumber === 5 ? (question.questionAudioUrl ?? undefined) : undefined,
-          q6: question.questionNumber === 6 ? (question.questionText ?? '') : '',
-          q6AudioUrl:
-            question.questionNumber === 6 ? (question.questionAudioUrl ?? undefined) : undefined,
-          q7: question.questionNumber === 7 ? (question.questionText ?? '') : '',
-          q7AudioUrl:
-            question.questionNumber === 7 ? (question.questionAudioUrl ?? undefined) : undefined,
-          type: question.type,
-          status: question.status,
-          topicIds: question.topics?.map((t) => t.id) ?? [],
-        })
-      } else if (partNumber === 4) {
-        // For Part 4, we need to populate all 3 questions (q8, q9, q10)
-        // But we only have data for the current question being edited
-        // So we populate what we have and leave others empty
-        editForm.setFieldsValue({
-          imageUrl: question.imageUrls[0] ?? '',
-          imageContext: question.imageContext ?? '',
-          contextText: question.contextText ?? '',
-          contextAudioUrl: question.contextAudioUrl ?? undefined,
-          q8: question.questionNumber === 8 ? (question.questionText ?? '') : '',
-          q8AudioUrl:
-            question.questionNumber === 8 ? (question.questionAudioUrl ?? undefined) : undefined,
-          q9: question.questionNumber === 9 ? (question.questionText ?? '') : '',
-          q9AudioUrl:
-            question.questionNumber === 9 ? (question.questionAudioUrl ?? undefined) : undefined,
-          q10: question.questionNumber === 10 ? (question.questionText ?? '') : '',
-          q10AudioUrl:
-            question.questionNumber === 10 ? (question.questionAudioUrl ?? undefined) : undefined,
-          type: question.type,
-          status: question.status,
-          topicIds: question.topics?.map((t) => t.id) ?? [],
-        })
       } else {
         editForm.setFieldsValue({
           questionText: question.questionText ?? '',
@@ -232,53 +239,99 @@ export default function PartQuestionsPage() {
     }, 0)
   }
 
+  // Edit handlers for question sets (Part 3, 4)
+  function openEditSetDrawer(set: QuestionSet) {
+    setEditingSet(set)
+    setEditDrawerOpen(true)
+    setTimeout(() => {
+      if (partNumber === 3) {
+        const q5 = set.questions.find((q) => q.questionNumber === 5)
+        const q6 = set.questions.find((q) => q.questionNumber === 6)
+        const q7 = set.questions.find((q) => q.questionNumber === 7)
+        editForm.setFieldsValue({
+          contextText: set.contextText ?? '',
+          contextAudioUrl: set.contextAudioUrl ?? undefined,
+          q5: q5?.questionText ?? '',
+          q5AudioUrl: q5?.questionAudioUrl ?? undefined,
+          q6: q6?.questionText ?? '',
+          q6AudioUrl: q6?.questionAudioUrl ?? undefined,
+          q7: q7?.questionText ?? '',
+          q7AudioUrl: q7?.questionAudioUrl ?? undefined,
+          type: set.type,
+          status: set.status,
+          topicIds: set.topics?.map((t) => t.id) ?? [],
+        })
+      } else if (partNumber === 4) {
+        const q8 = set.questions.find((q) => q.questionNumber === 8)
+        const q9 = set.questions.find((q) => q.questionNumber === 9)
+        const q10 = set.questions.find((q) => q.questionNumber === 10)
+        editForm.setFieldsValue({
+          imageUrl: set.imageUrls?.[0] ?? '',
+          imageContext: set.imageContext ?? '',
+          contextText: set.contextText ?? '',
+          contextAudioUrl: set.contextAudioUrl ?? undefined,
+          q8: q8?.questionText ?? '',
+          q8AudioUrl: q8?.questionAudioUrl ?? undefined,
+          q9: q9?.questionText ?? '',
+          q9AudioUrl: q9?.questionAudioUrl ?? undefined,
+          q10: q10?.questionText ?? '',
+          q10AudioUrl: q10?.questionAudioUrl ?? undefined,
+          type: set.type,
+          status: set.status,
+          topicIds: set.topics?.map((t) => t.id) ?? [],
+        })
+      }
+    }, 0)
+  }
+
+  // View handler for question sets (Part 3, 4)
+  function openViewSetDrawer(set: QuestionSet) {
+    setViewingSet(set)
+    setViewDrawerOpen(true)
+  }
+
+  function closeViewDrawer() {
+    setViewDrawerOpen(false)
+    setViewingSet(null)
+  }
+
   function closeEditDrawer() {
     editForm.resetFields()
     setEditDrawerOpen(false)
     setEditingQuestion(null)
+    setEditingSet(null)
   }
 
   const handleEditFormFinish = (values: unknown) => {
-    if (!editingQuestion) return
-
     const onSuccess = () => {
       editForm.resetFields()
       setEditDrawerOpen(false)
       setEditingQuestion(null)
+      setEditingSet(null)
     }
 
-    // For Part 3 and Part 4, we need to extract only the relevant question data
+    // For Part 3 & 4 sets
+    if (editingSet) {
+      if (partNumber === 3) {
+        updateQuestionSet.mutate(
+          { setId: editingSet.setId, payload: values as Part3FormValues },
+          { onSuccess },
+        )
+      } else if (partNumber === 4) {
+        updateQuestionSet.mutate(
+          { setId: editingSet.setId, payload: values as Part4FormValues },
+          { onSuccess },
+        )
+      }
+      return
+    }
+
+    // For individual questions (Part 1, 2, 5)
+    if (!editingQuestion) return
+
     let payload: UpdateQuestionPayload
 
-    if (partNumber === 3) {
-      const formValues = values as Part3FormValues
-      const qNum = editingQuestion.questionNumber
-      payload = {
-        contextText: formValues.contextText,
-        contextAudioUrl: formValues.contextAudioUrl ?? null,
-        questionText: formValues[`q${qNum}` as keyof Part3FormValues] as string,
-        questionAudioUrl:
-          (formValues[`q${qNum}AudioUrl` as keyof Part3FormValues] as string) ?? null,
-        type: formValues.type,
-        status: formValues.status,
-        topicIds: formValues.topicIds,
-      }
-    } else if (partNumber === 4) {
-      const formValues = values as Part4FormValues
-      const qNum = editingQuestion.questionNumber
-      payload = {
-        contextText: formValues.contextText,
-        contextAudioUrl: formValues.contextAudioUrl ?? null,
-        imageUrls: [formValues.imageUrl],
-        imageContext: formValues.imageContext ?? null,
-        questionText: formValues[`q${qNum}` as keyof Part4FormValues] as string,
-        questionAudioUrl:
-          (formValues[`q${qNum}AudioUrl` as keyof Part4FormValues] as string) ?? null,
-        type: formValues.type,
-        status: formValues.status,
-        topicIds: formValues.topicIds,
-      }
-    } else if (partNumber === 1) {
+    if (partNumber === 1) {
       const formValues = values as Part1FormValues
       payload = {
         contentText: formValues.contentText,
@@ -309,35 +362,44 @@ export default function PartQuestionsPage() {
     updateQuestion.mutate({ id: editingQuestion.id, payload }, { onSuccess })
   }
 
+  const handleUpdateStatus = (id: string, status: QuestionStatus) => {
+    updateStatus({ id, status })
+  }
+
+  const handleUpdateSetStatus = (setId: string, status: QuestionStatus) => {
+    // Update all questions in the set
+    const set = questionSets.find((s) => s.setId === setId)
+    if (!set) return
+
+    set.questions.forEach((q) => {
+      updateStatus({ id: q.id, status })
+    })
+  }
+
+  const handleDeleteSet = (setId: string) => {
+    deleteQuestionSet.mutate(setId)
+  }
+
   const meta = PART_META[partNumber]
 
   if (!meta) {
     return <Empty description="Part không hợp lệ" />
   }
 
-  const questionNumbers = [...meta.questionNumbers]
-  const handleUpdateStatus = (id: string, status: QuestionStatus) => {
-    updateStatus({ id, status })
-  }
-
-  const columns = getColumns(
-    partNumber,
-    openEditDrawer,
-    deleteQuestion,
-    deleting,
-    handleUpdateStatus,
-  )
-
   const responseTimeText =
     'responseTimeOverride' in meta
       ? `${meta.responseTime}s (câu cuối ${Object.values(meta.responseTimeOverride as Record<number, number>)[0]}s)`
       : `${meta.responseTime}s`
 
+  // For Part 1 & 2: Filter by active question number
+  const shouldShowTabs = partNumber === 1 || partNumber === 2
+  const questionNumbers = [...meta.questionNumbers]
+
   const getFilteredData = (qNum: number): QuestionWithTopics[] =>
     (questions as QuestionWithTopics[]).filter((q) => q.questionNumber === qNum)
 
   return (
-    <Space vertical size={0} style={{ width: '100%' }}>
+    <Space direction="vertical" size={0} style={{ width: '100%' }}>
       <PageHeader
         title={`${meta.label} — ${meta.description}`}
         description={`Prep: ${meta.prepTime}s | Response: ${responseTimeText}`}
@@ -364,7 +426,7 @@ export default function PartQuestionsPage() {
       />
 
       {/* Question Filters */}
-      <div style={{ padding: 24, marginBottom: 24, background: '#fff' }}>
+      <div style={{ padding: 24, background: '#fff' }}>
         <QuestionFilters
           type={type}
           status={status}
@@ -379,8 +441,32 @@ export default function PartQuestionsPage() {
         />
       </div>
 
-      {/* Question Table with Tabs */}
-      {questionNumbers.length > 1 ? (
+      {/* Question Table - Conditional rendering based on mode */}
+      {isSetMode ? (
+        <DataTable
+          dataSource={questionSets}
+          columns={getColumnsForSet(
+            partNumber as 3 | 4,
+            openViewSetDrawer,
+            openEditSetDrawer,
+            handleDeleteSet,
+            deleteQuestionSet.isPending,
+            handleUpdateSetStatus,
+          )}
+          rowKey="setId"
+          size="large"
+          loading={isLoading}
+          locale={{ emptyText: <Empty description="Chưa có câu hỏi nào" /> }}
+          pagination={{
+            pageSize: 50,
+            showSizeChanger: true,
+            showTotal: (total) => `Tổng ${total} bộ câu hỏi`,
+            pageSizeOptions: ['20', '50', '100'],
+          }}
+          scroll={{ x: 1400 }}
+        />
+      ) : shouldShowTabs ? (
+        // Part 1 & 2: Show tabs for different question numbers
         <Tabs
           type="card"
           size="large"
@@ -394,7 +480,13 @@ export default function PartQuestionsPage() {
               <DataTable
                 noCard
                 dataSource={getFilteredData(n)}
-                columns={columns}
+                columns={getColumns(
+                  partNumber,
+                  openEditDrawer,
+                  (id: string) => deleteQuestion.mutate(id),
+                  deleteQuestion.isPending,
+                  handleUpdateStatus,
+                )}
                 rowKey="id"
                 size="large"
                 loading={isLoading}
@@ -410,32 +502,38 @@ export default function PartQuestionsPage() {
           }))}
         />
       ) : (
-        <div>
-          <DataTable
-            dataSource={getFilteredData(questionNumbers[0])}
-            columns={columns}
-            rowKey="id"
-            size="large"
-            loading={isLoading}
-            locale={{ emptyText: <Empty description="Chưa có câu hỏi nào" /> }}
-            pagination={{
-              pageSize: 50,
-              showSizeChanger: true,
-              showTotal: (total) => `Tổng ${total} câu hỏi`,
-              pageSizeOptions: ['20', '50', '100'],
-            }}
-          />
-        </div>
+        // Part 5: No tabs, single table
+        <DataTable
+          dataSource={questions}
+          columns={getColumns(
+            partNumber,
+            openEditDrawer,
+            (id: string) => deleteQuestion.mutate(id),
+            deleteQuestion.isPending,
+            handleUpdateStatus,
+          )}
+          rowKey="id"
+          size="large"
+          loading={isLoading}
+          locale={{ emptyText: <Empty description="Chưa có câu hỏi nào" /> }}
+          pagination={{
+            pageSize: 50,
+            showSizeChanger: true,
+            showTotal: (total) => `Tổng ${total} câu hỏi`,
+            pageSizeOptions: ['20', '50', '100'],
+          }}
+          scroll={{ x: 1400 }}
+        />
       )}
 
       <Drawer
+        closeIcon={null}
         title="Thêm câu hỏi mới"
         placement="right"
         width={DRAWER_WIDTHS.medium}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         destroyOnHidden
-        closeIcon={null}
         footer={
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             <Button size="large" onClick={() => drawerForm.resetFields()}>
@@ -456,13 +554,12 @@ export default function PartQuestionsPage() {
       </Drawer>
 
       <Drawer
-        title="Chỉnh sửa câu hỏi"
+        title={isSetMode ? 'Chỉnh sửa bộ câu hỏi' : 'Chỉnh sửa câu hỏi'}
         placement="right"
         width={DRAWER_WIDTHS.medium}
         open={editDrawerOpen}
         onClose={closeEditDrawer}
         destroyOnHidden
-        closeIcon={null}
         footer={
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             <Button size="large" onClick={closeEditDrawer}>
@@ -471,7 +568,7 @@ export default function PartQuestionsPage() {
             <Button
               type="primary"
               size="large"
-              loading={updateQuestion.isPending}
+              loading={isSetMode ? updateQuestionSet.isPending : updateQuestion.isPending}
               onClick={() => editForm.submit()}
             >
               Lưu thay đổi
@@ -479,13 +576,75 @@ export default function PartQuestionsPage() {
           </div>
         }
       >
-        <PartFormContent
-          partNumber={partNumber}
-          form={editForm}
-          onSubmit={handleEditFormFinish}
-          editingQuestionNumber={editingQuestion?.questionNumber}
-        />
+        <PartFormContent partNumber={partNumber} form={editForm} onSubmit={handleEditFormFinish} />
       </Drawer>
+
+      {/* View Drawer for Question Sets (Part 3 & 4) */}
+      {viewingSet && (
+        <Drawer
+          closeIcon={null}
+          title="Chi tiết bộ câu hỏi"
+          placement="right"
+          width={DRAWER_WIDTHS.medium}
+          open={viewDrawerOpen}
+          onClose={closeViewDrawer}
+          destroyOnHidden
+        >
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            {/* Context Information */}
+            <div>
+              <Descriptions column={1} bordered size="small">
+                <Descriptions.Item label="Bối cảnh">
+                  {viewingSet.contextText || '—'}
+                </Descriptions.Item>
+                {viewingSet.imageUrls && viewingSet.imageUrls[0] && (
+                  <Descriptions.Item label="Hình ảnh">
+                    <img
+                      src={viewingSet.imageUrls[0]}
+                      alt="Context"
+                      style={{ maxWidth: '100%', height: 'auto' }}
+                    />
+                  </Descriptions.Item>
+                )}
+                {viewingSet.imageContext && (
+                  <Descriptions.Item label="Mô tả ảnh">{viewingSet.imageContext}</Descriptions.Item>
+                )}
+                {viewingSet.contextAudioUrl && (
+                  <Descriptions.Item label="Audio bối cảnh">
+                    <audio controls style={{ width: '100%' }}>
+                      <source src={viewingSet.contextAudioUrl} type="audio/mpeg" />
+                    </audio>
+                  </Descriptions.Item>
+                )}
+              </Descriptions>
+            </div>
+
+            <Divider>Câu hỏi</Divider>
+
+            {/* Questions */}
+            {viewingSet.questions.map((q) => (
+              <div key={q.id}>
+                <Text strong style={{ fontSize: 16 }}>
+                  Câu {q.questionNumber}
+                </Text>
+                <Descriptions column={1} bordered size="small" style={{ marginTop: 8 }}>
+                  <Descriptions.Item label="Nội dung">{q.questionText}</Descriptions.Item>
+                  {q.questionAudioUrl && (
+                    <Descriptions.Item label="Audio">
+                      <audio controls style={{ width: '100%' }}>
+                        <source src={q.questionAudioUrl} type="audio/mpeg" />
+                      </audio>
+                    </Descriptions.Item>
+                  )}
+                  <Descriptions.Item label="Thời gian">
+                    Prep: {q.prepTimeSeconds}s | Response: {q.responseTimeSeconds}s
+                  </Descriptions.Item>
+                </Descriptions>
+              </div>
+            ))}
+          </Space>
+        </Drawer>
+      )}
     </Space>
   )
 }

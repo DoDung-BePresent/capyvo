@@ -289,6 +289,9 @@ export class QuestionService {
     const contextAudioUrl =
       dto.contextAudioUrl ?? (await generateAndUploadTTS(dto.contextText, 'context'))
 
+    // Generate setId for grouping the 3 questions
+    const setId = `set-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+
     const questions = await Promise.all(
       dto.questions.map(async (q) => {
         const questionAudioUrl =
@@ -298,6 +301,7 @@ export class QuestionService {
           data: {
             partNumber: 3,
             questionNumber: q.questionNumber,
+            setId, // Group questions together
             contextText: dto.contextText,
             contextAudioUrl,
             questionText: q.questionText,
@@ -343,6 +347,9 @@ export class QuestionService {
     const contextAudioUrl =
       dto.contextAudioUrl ?? (await generateAndUploadTTS(dto.contextText, 'context-p4'))
 
+    // Generate setId for grouping the 3 questions
+    const setId = `set-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+
     const questions = await Promise.all(
       dto.questions.map(async (q) => {
         const questionAudioUrl =
@@ -352,6 +359,7 @@ export class QuestionService {
           data: {
             partNumber: 4,
             questionNumber: q.questionNumber,
+            setId, // Group questions together
             contextText: dto.contextText,
             contextAudioUrl,
             imageUrls: [dto.imageUrl],
@@ -705,58 +713,42 @@ export class QuestionService {
   }
 
   /**
-   * Get all questions for a part (flat list with examSetId and topics)
-   * Optimized for UI grid questions
+   * Get all questions for a part (flat list with topics)
    * Returns only PUBLISHED questions with their topics
+   * For practice page - does NOT require questions to be assigned to exam sets
    * Validates: Requirements 1.6, 3.1, 3.2, 5.4
    */
   async getByPart(partNumber: number, topicId?: string) {
-    const where: Prisma.QuestionAssignmentWhereInput = {
-      question: topicId
-        ? {
-            partNumber,
-            status: 'PUBLISHED',
-            topicAssignments: {
-              some: {
-                topicId,
-              },
+    const where: Prisma.QuestionWhereInput = topicId
+      ? {
+          partNumber,
+          status: 'PUBLISHED',
+          topicAssignments: {
+            some: {
+              topicId,
             },
-          }
-        : {
-            partNumber,
-            status: 'PUBLISHED',
           },
-      examSet: { isPublished: true },
-    }
+        }
+      : {
+          partNumber,
+          status: 'PUBLISHED',
+        }
 
-    const assignments = await prisma.questionAssignment.findMany({
+    const questions = await prisma.question.findMany({
       where,
       include: {
-        question: {
+        topicAssignments: {
           include: {
-            topicAssignments: {
-              include: {
-                topic: true,
-              },
-            },
-          },
-        },
-        examSet: {
-          select: {
-            id: true,
-            title: true,
+            topic: true,
           },
         },
       },
-      orderBy: [{ examSetId: 'asc' }, { questionNumber: 'asc' }],
+      orderBy: [{ questionNumber: 'asc' }, { createdAt: 'desc' }],
     })
 
-    return assignments.map((a) => ({
-      ...a.question,
-      questionNumber: a.questionNumber,
-      examSetId: a.examSet.id,
-      examSetTitle: a.examSet.title,
-      topics: a.question.topicAssignments.map((ta) => ta.topic),
+    return questions.map((q) => ({
+      ...q,
+      topics: q.topicAssignments.map((ta) => ta.topic),
     }))
   }
 
@@ -865,17 +857,20 @@ export class QuestionService {
 
   /**
    * Get topics with published question counts for a specific part
+   * Returns topics that have at least one PUBLISHED question (not requiring exam set assignment)
    * Validates: Requirements 3.4, 11.4, 11.5
    */
   async getTopicsByPart(partNumber: number) {
     const topics = await prisma.topic.findMany({
+      where: {
+        partNumber, // Filter by part number
+      },
       include: {
         _count: {
           select: {
             questionAssignments: {
               where: {
                 question: {
-                  partNumber,
                   status: 'PUBLISHED',
                 },
               },
@@ -888,16 +883,334 @@ export class QuestionService {
       },
     })
 
-    // Filter out topics with zero questions and map to response format
+    // Filter out topics with zero published questions and map to response format
     return topics
       .filter((t) => t._count.questionAssignments > 0)
       .map((t) => ({
         id: t.id,
         name: t.name,
         description: t.description,
+        partNumber: t.partNumber,
         createdAt: t.createdAt,
         updatedAt: t.updatedAt,
         questionCount: t._count.questionAssignments,
       }))
+  }
+
+  /**
+   * Search questions by text content (case-insensitive)
+   * Searches in: contentText, contextText, questionText, imageContext
+   */
+  async searchQuestions(filters: {
+    partNumber: number
+    search: string
+    type?: 'PRACTICE' | 'FORECAST' | 'CUSTOM'
+    status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
+    topicId?: string
+  }) {
+    const { partNumber, search, type, status, topicId } = filters
+
+    const where: Prisma.QuestionWhereInput = {
+      partNumber,
+      OR: [
+        { contentText: { contains: search, mode: 'insensitive' } },
+        { contextText: { contains: search, mode: 'insensitive' } },
+        { questionText: { contains: search, mode: 'insensitive' } },
+        { imageContext: { contains: search, mode: 'insensitive' } },
+      ],
+    }
+
+    if (type) where.type = type
+    if (status) where.status = status
+    if (topicId) {
+      where.topicAssignments = {
+        some: { topicId },
+      }
+    }
+
+    const questions = await prisma.question.findMany({
+      where,
+      include: {
+        topicAssignments: {
+          include: {
+            topic: true,
+          },
+        },
+      },
+      orderBy: [{ questionNumber: 'asc' }, { createdAt: 'desc' }],
+    })
+
+    return questions.map((q) => ({
+      ...q,
+      topics: q.topicAssignments.map((ta) => ta.topic),
+    }))
+  }
+
+  /**
+   * Get questions grouped by setId for Part 3 and Part 4
+   * For Part 1, 2, 5: returns individual questions
+   */
+  async getQuestionsGrouped(filters: {
+    partNumber: number
+    type?: 'PRACTICE' | 'FORECAST' | 'CUSTOM'
+    status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
+    topicId?: string
+    search?: string
+    assignmentStatus?: 'all' | 'assigned' | 'unassigned'
+  }) {
+    const { partNumber, type, status, topicId, search, assignmentStatus } = filters
+
+    // Build where clause
+    const where: Prisma.QuestionWhereInput = {
+      partNumber,
+    }
+
+    if (type) where.type = type
+    if (status) where.status = status
+    if (topicId) {
+      where.topicAssignments = {
+        some: { topicId },
+      }
+    }
+
+    // Search filter
+    if (search && search.trim()) {
+      where.OR = [
+        { contentText: { contains: search, mode: 'insensitive' } },
+        { contextText: { contains: search, mode: 'insensitive' } },
+        { questionText: { contains: search, mode: 'insensitive' } },
+        { imageContext: { contains: search, mode: 'insensitive' } },
+      ]
+    }
+
+    // Assignment status filter (for future use with examSetId)
+    if (assignmentStatus === 'assigned') {
+      where.examSetAssignments = {
+        some: {},
+      }
+    } else if (assignmentStatus === 'unassigned') {
+      where.examSetAssignments = {
+        none: {},
+      }
+    }
+
+    const questions = await prisma.question.findMany({
+      where,
+      include: {
+        topicAssignments: {
+          include: {
+            topic: true,
+          },
+        },
+        examSetAssignments: {
+          include: {
+            examSet: {
+              select: {
+                id: true,
+                title: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ setId: 'asc' }, { questionNumber: 'asc' }, { createdAt: 'desc' }],
+    })
+
+    const questionsWithTopics = questions.map((q) => ({
+      ...q,
+      topics: q.topicAssignments.map((ta) => ta.topic),
+      examSets: q.examSetAssignments.map((ea) => ea.examSet),
+    }))
+
+    // For Part 3 and 4, group by setId
+    if (partNumber === 3 || partNumber === 4) {
+      const grouped = new Map<string, typeof questionsWithTopics>()
+
+      questionsWithTopics.forEach((q) => {
+        const key = q.setId || q.id // Use setId if exists, otherwise use id (for old data)
+        if (!grouped.has(key)) {
+          grouped.set(key, [])
+        }
+        grouped.get(key)!.push(q)
+      })
+
+      // Convert to array of sets
+      return Array.from(grouped.values()).map((questions) => {
+        const first = questions[0]
+        return {
+          setId: first.setId,
+          contextText: first.contextText,
+          contextAudioUrl: first.contextAudioUrl,
+          imageUrls: first.imageUrls,
+          imageContext: first.imageContext,
+          type: first.type,
+          status: first.status,
+          topics: first.topics,
+          examSets: first.examSets,
+          createdAt: first.createdAt,
+          updatedAt: first.updatedAt,
+          questions: questions.map((q) => ({
+            id: q.id,
+            questionNumber: q.questionNumber,
+            questionText: q.questionText,
+            questionAudioUrl: q.questionAudioUrl,
+            prepTimeSeconds: q.prepTimeSeconds,
+            responseTimeSeconds: q.responseTimeSeconds,
+          })),
+        }
+      })
+    }
+
+    // For Part 1, 2, 5: return individual questions
+    return questionsWithTopics
+  }
+
+  /**
+   * Update entire question set (Part 3 or 4)
+   */
+  async updateQuestionSet(setId: string, body: unknown) {
+    // Get all questions in the set
+    const questions = await prisma.question.findMany({
+      where: { setId },
+      orderBy: { questionNumber: 'asc' },
+    })
+
+    if (questions.length === 0) {
+      throw new ValidationError(`Question set not found: ${setId}`)
+    }
+
+    const partNumber = questions[0].partNumber
+
+    if (partNumber === 3) {
+      const dto = CreatePart3Schema.parse(body)
+
+      // Update context audio if changed
+      const contextAudioUrl =
+        dto.contextAudioUrl ??
+        (dto.contextText !== questions[0].contextText
+          ? await generateAndUploadTTS(dto.contextText, 'context')
+          : questions[0].contextAudioUrl)
+
+      // Update each question
+      const updated = await Promise.all(
+        dto.questions.map(async (q, idx) => {
+          const current = questions[idx]
+          const questionAudioUrl =
+            q.questionAudioUrl ??
+            (q.questionText !== current.questionText
+              ? await generateAndUploadTTS(q.questionText, `q${q.questionNumber}`)
+              : current.questionAudioUrl)
+
+          const question = await prisma.question.update({
+            where: { id: current.id },
+            data: {
+              contextText: dto.contextText,
+              contextAudioUrl,
+              questionText: q.questionText,
+              questionAudioUrl,
+              type: dto.type ?? current.type,
+              status: dto.status ?? current.status,
+            },
+          })
+
+          // Update topic assignments
+          if (dto.topicIds !== undefined) {
+            await prisma.questionTopicAssignment.deleteMany({
+              where: { questionId: current.id },
+            })
+
+            if (dto.topicIds.length > 0) {
+              await prisma.questionTopicAssignment.createMany({
+                data: dto.topicIds.map((topicId) => ({
+                  questionId: current.id,
+                  topicId,
+                })),
+              })
+            }
+          }
+
+          return question
+        }),
+      )
+
+      return updated
+    } else if (partNumber === 4) {
+      const dto = CreatePart4Schema.parse(body)
+
+      // Update context audio if changed
+      const contextAudioUrl =
+        dto.contextAudioUrl ??
+        (dto.contextText !== questions[0].contextText
+          ? await generateAndUploadTTS(dto.contextText, 'context-p4')
+          : questions[0].contextAudioUrl)
+
+      // Update each question
+      const updated = await Promise.all(
+        dto.questions.map(async (q, idx) => {
+          const current = questions[idx]
+          const questionAudioUrl =
+            q.questionAudioUrl ??
+            (q.questionText !== current.questionText
+              ? await generateAndUploadTTS(q.questionText, `q${q.questionNumber}`)
+              : current.questionAudioUrl)
+
+          const question = await prisma.question.update({
+            where: { id: current.id },
+            data: {
+              contextText: dto.contextText,
+              contextAudioUrl,
+              imageUrls: [dto.imageUrl],
+              imageContext: dto.imageContext,
+              questionText: q.questionText,
+              questionAudioUrl,
+              type: dto.type ?? current.type,
+              status: dto.status ?? current.status,
+            },
+          })
+
+          // Update topic assignments
+          if (dto.topicIds !== undefined) {
+            await prisma.questionTopicAssignment.deleteMany({
+              where: { questionId: current.id },
+            })
+
+            if (dto.topicIds.length > 0) {
+              await prisma.questionTopicAssignment.createMany({
+                data: dto.topicIds.map((topicId) => ({
+                  questionId: current.id,
+                  topicId,
+                })),
+              })
+            }
+          }
+
+          return question
+        }),
+      )
+
+      return updated
+    }
+
+    throw new ValidationError(`Invalid part number for set update: ${partNumber}`)
+  }
+
+  /**
+   * Delete entire question set (Part 3 or 4)
+   */
+  async deleteQuestionSet(setId: string) {
+    const questions = await prisma.question.findMany({
+      where: { setId },
+    })
+
+    if (questions.length === 0) {
+      throw new ValidationError(`Question set not found: ${setId}`)
+    }
+
+    // Delete all questions in the set
+    await prisma.question.deleteMany({
+      where: { setId },
+    })
+
+    return { deleted: questions.length }
   }
 }

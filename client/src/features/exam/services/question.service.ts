@@ -8,6 +8,7 @@ import type { Question } from '@/shared/types/domain'
 export interface Topic {
   id: string
   name: string
+  partNumber: number
   description?: string
   createdAt: string
   updatedAt: string

@@ -150,3 +150,61 @@ export function useBulkUpdateStatus() {
     },
   })
 }
+
+/**
+ * Hook to fetch questions grouped by setId (Part 3 & 4) or individual (Part 1, 2, 5)
+ */
+export function useQuestionsGrouped(filters: {
+  partNumber: number
+  type?: QuestionType
+  status?: QuestionStatus
+  topicId?: string
+  search?: string
+}) {
+  return useQuery({
+    queryKey: ['questions', 'grouped', filters],
+    queryFn: () => questionService.getQuestionsGrouped(filters),
+  })
+}
+
+/**
+ * Hook to update entire question set (Part 3 or 4)
+ */
+export function useUpdateQuestionSet(partNumber: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      setId,
+      payload,
+    }: {
+      setId: string
+      payload: Part3FormValues | Part4FormValues
+    }) => questionService.updateQuestionSet(setId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['questions'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.questions.byPart(partNumber) })
+      message.success('Cập nhật bộ câu hỏi thành công!')
+    },
+    onError: (err: Error) => {
+      message.error(err.message || 'Có lỗi xảy ra, vui lòng thử lại')
+    },
+  })
+}
+
+/**
+ * Hook to delete entire question set (Part 3 or 4)
+ */
+export function useDeleteQuestionSet(partNumber: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: questionService.deleteQuestionSet,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['questions'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.questions.byPart(partNumber) })
+      message.success(`Đã xóa ${result.deleted} câu hỏi`)
+    },
+    onError: () => {
+      message.error('Xóa thất bại')
+    },
+  })
+}

@@ -114,6 +114,9 @@ model Question {
   partNumber     Int // 1-5
   questionNumber Int // Question number within the part (not globally unique)
   
+  // Question grouping (Part 3, 4 only)
+  setId          String? // Groups 3 questions together (Part 3: Q5-7, Part 4: Q8-10)
+  
   // Question type and status
   type           QuestionType   @default(PRACTICE)
   status         QuestionStatus @default(DRAFT)
@@ -144,6 +147,7 @@ model Question {
   @@index([type])
   @@index([status])
   @@index([partNumber, status])
+  @@index([setId])
   @@map("questions")
 }
 

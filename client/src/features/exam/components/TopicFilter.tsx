@@ -76,7 +76,7 @@ export function TopicFilter({ topics, selectedTopicId, onSelectTopic }: TopicFil
   const totalQuestions = topicsWithQuestions.reduce((sum, topic) => sum + topic.questionCount, 0)
 
   return (
-    <>
+    <div className="flex flex-col gap-2">
       {/* All Questions option (Requirement 11.3, 11.6) */}
       <FilterItem
         id={null}
@@ -97,6 +97,6 @@ export function TopicFilter({ topics, selectedTopicId, onSelectTopic }: TopicFil
           onClick={() => onSelectTopic(topic.id)}
         />
       ))}
-    </>
+    </div>
   )
 }

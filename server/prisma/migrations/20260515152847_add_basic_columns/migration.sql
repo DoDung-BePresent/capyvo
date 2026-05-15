@@ -66,6 +66,7 @@ CREATE TABLE "questions" (
     "id" TEXT NOT NULL,
     "partNumber" INTEGER NOT NULL,
     "questionNumber" INTEGER NOT NULL,
+    "setId" TEXT,
     "type" "QuestionType" NOT NULL DEFAULT 'PRACTICE',
     "status" "QuestionStatus" NOT NULL DEFAULT 'DRAFT',
     "contentText" TEXT,
@@ -98,6 +99,7 @@ CREATE TABLE "question_assignments" (
 CREATE TABLE "topics" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "partNumber" INTEGER NOT NULL,
     "description" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -248,6 +250,9 @@ CREATE INDEX "questions_status_idx" ON "questions"("status");
 CREATE INDEX "questions_partNumber_status_idx" ON "questions"("partNumber", "status");
 
 -- CreateIndex
+CREATE INDEX "questions_setId_idx" ON "questions"("setId");
+
+-- CreateIndex
 CREATE INDEX "question_assignments_examSetId_idx" ON "question_assignments"("examSetId");
 
 -- CreateIndex
@@ -257,7 +262,7 @@ CREATE INDEX "question_assignments_questionId_idx" ON "question_assignments"("qu
 CREATE UNIQUE INDEX "question_assignments_examSetId_questionNumber_key" ON "question_assignments"("examSetId", "questionNumber");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "topics_name_key" ON "topics"("name");
+CREATE UNIQUE INDEX "topics_name_partNumber_key" ON "topics"("name", "partNumber");
 
 -- CreateIndex
 CREATE INDEX "question_topic_assignments_questionId_idx" ON "question_topic_assignments"("questionId");

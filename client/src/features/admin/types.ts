@@ -42,6 +42,7 @@ export interface TopicWithCount extends Topic {
 
 export interface QuestionWithTopics {
   id: string
+  setId?: string | null // For grouping Part 3 & 4 questions
   examSets?: Array<{ id: string; title: string }>
   examSetId?: string | null
   examSet?: { id: string; title: string } | null
@@ -60,6 +61,30 @@ export interface QuestionWithTopics {
   responseTimeSeconds: number
   createdAt: string
   topics: Topic[]
+}
+
+// ─── Question Set (for Part 3 & 4) ────────────────────────────────────────────
+
+export interface QuestionSet {
+  setId: string
+  contextText: string | null
+  contextAudioUrl: string | null
+  imageUrls?: string[]
+  imageContext?: string | null
+  type: QuestionType
+  status: QuestionStatus
+  topics: Topic[]
+  examSets?: Array<{ id: string; title: string }>
+  createdAt: string
+  updatedAt: string
+  questions: Array<{
+    id: string
+    questionNumber: number
+    questionText: string | null
+    questionAudioUrl: string | null
+    prepTimeSeconds: number
+    responseTimeSeconds: number
+  }>
 }
 
 // ─── ExamSet model ─────────────────────────────────────────────────────────────

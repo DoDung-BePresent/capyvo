@@ -65,7 +65,7 @@ export function MaintenanceScheduleModal({ open, onClose }: Props) {
       onCancel={onClose}
       footer={null}
       width={MODAL_WIDTHS.medium}
-      destroyOnClose
+      destroyOnHidden
     >
       {schedule && (
         <Descriptions
