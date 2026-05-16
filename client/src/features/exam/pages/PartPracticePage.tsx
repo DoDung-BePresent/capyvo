@@ -3,7 +3,6 @@
  */
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { usePartExamSets } from '@/features/exam/hooks/usePartQuestions'
 import { useQuery } from '@tanstack/react-query'
 
 /**
@@ -44,40 +43,8 @@ const { Text, Title } = Typography
 const Container = styled('div', 'flex gap-6 h-[calc(100vh-200px)]')
 const Sidebar = styled('div', 'w-64 shrink-0 overflow-y-auto')
 const MainContent = styled('div', 'flex-1 overflow-y-auto')
-const FilterCard = styled(Card, 'mb-4 rounded-lg! cursor-pointer')
 const QuestionCard = styled(Card, 'h-full rounded-lg! hover:shadow-lg transition-all')
 const QuestionGrid = styled('div', 'grid gap-4')
-
-interface FilterItemProps {
-  id: string
-  title: string
-  questionCount: number
-  isActive: boolean
-  onClick: () => void
-}
-
-function FilterItem({ title, questionCount, isActive, onClick }: FilterItemProps) {
-  return (
-    <FilterCard
-      onClick={onClick}
-      style={{
-        backgroundColor: isActive ? hexToRgba(COLORS.primary, 0.1) : 'white',
-        borderWidth: isActive ? 2 : 0,
-        borderColor: isActive ? COLORS.primary : undefined,
-      }}
-      styles={{ body: { padding: '12px 16px' } }}
-    >
-      <Flex vertical gap={8}>
-        <Text strong style={{ fontSize: 14 }}>
-          {title}
-        </Text>
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          {questionCount} câu hỏi
-        </Text>
-      </Flex>
-    </FilterCard>
-  )
-}
 
 interface QuestionItemProps {
   question: QuestionWithTopics
@@ -188,7 +155,6 @@ export default function PartPracticePage() {
   const part = Number(partNumber) as PartNumber
   const meta = PART_META[part]
 
-  const [selectedSetId, setSelectedSetId] = useState<string | null>(null)
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null)
 
   // Fetch all questions with topic filtering support
@@ -202,9 +168,6 @@ export default function PartPracticePage() {
     enabled: !!part && part >= 1 && part <= 5,
   })
 
-  // Fetch exam sets for filter
-  const { data: examSets = [], isLoading: setsLoading } = usePartExamSets(part)
-
   // Fetch topics for filter
   const { data: topics = [], isLoading: topicsLoading } = useQuery({
     queryKey: ['questions', 'part', part, 'topics'],
@@ -212,14 +175,9 @@ export default function PartPracticePage() {
     enabled: !!part && part >= 1 && part <= 5,
   })
 
-  const isLoading = questionsLoading || setsLoading || topicsLoading
+  const isLoading = questionsLoading || topicsLoading
+  const isInitialLoading = isLoading && !topics.length
 
-  // Filter questions by selected exam set (if any)
-  const filteredQuestions = selectedSetId
-    ? allQuestions.filter((q) => q.examSetId === selectedSetId)
-    : allQuestions
-
-  const selectedSet = examSets.find((s) => s.id === selectedSetId)
   const selectedTopic = topics.find((t) => t.id === selectedTopicId)
 
   // Determine if current part has images (Part 2 and Part 4)
@@ -232,15 +190,9 @@ export default function PartPracticePage() {
 
   const handleTopicSelect = (topicId: string | null) => {
     setSelectedTopicId(topicId)
-    setSelectedSetId(null) // Clear exam set filter when topic is selected
   }
 
-  const handleExamSetSelect = (setId: string) => {
-    setSelectedSetId(setId)
-    setSelectedTopicId(null) // Clear topic filter when exam set is selected
-  }
-
-  if (isLoading) {
+  if (isInitialLoading) {
     return (
       <>
         <PageHeader
@@ -258,8 +210,8 @@ export default function PartPracticePage() {
     )
   }
 
-  // Show empty state if no exam sets and no topics
-  if (examSets.length === 0 && topics.length === 0) {
+  // Show empty state if no topics
+  if (topics.length === 0) {
     return (
       <>
         <PageHeader
@@ -290,7 +242,7 @@ export default function PartPracticePage() {
       />
 
       <Container>
-        {/* Sidebar - Filter by topic and exam set */}
+        {/* Sidebar - Filter by topic */}
         <Sidebar>
           {/* Topic Filter Section */}
           {topics.length > 0 && (
@@ -305,48 +257,25 @@ export default function PartPracticePage() {
               />
             </>
           )}
-
-          {/* Exam Set Filter Section */}
-          {examSets.length > 0 && (
-            <>
-              <Title level={5} style={{ marginBottom: 16, marginTop: topics.length > 0 ? 24 : 0 }}>
-                Bộ đề
-              </Title>
-              {examSets.map((set) => (
-                <FilterItem
-                  key={set.id}
-                  id={set.id}
-                  title={set.title}
-                  questionCount={set.questionCount}
-                  isActive={selectedSetId === set.id}
-                  onClick={() => handleExamSetSelect(set.id)}
-                />
-              ))}
-            </>
-          )}
         </Sidebar>
 
         {/* Main content - Questions grid */}
         <MainContent>
           <Flex align="center" justify="space-between" style={{ marginBottom: 16 }}>
             <Title level={5} style={{ margin: 0 }}>
-              {selectedTopic
-                ? selectedTopic.name
-                : selectedSet
-                  ? selectedSet.title
-                  : 'Tất cả câu hỏi'}
+              {selectedTopic ? selectedTopic.name : 'Tất cả câu hỏi'}
             </Title>
             <Flex align="center" gap={8}>
               {questionsFetching && <Spin size="small" />}
-              <Text type="secondary">{filteredQuestions.length} câu hỏi</Text>
+              <Text type="secondary">{allQuestions.length} câu hỏi</Text>
             </Flex>
           </Flex>
 
-          {filteredQuestions.length === 0 ? (
+          {allQuestions.length === 0 ? (
             <Empty description="Không có câu hỏi nào phù hợp với bộ lọc" />
           ) : (
             <QuestionGrid className={gridCols}>
-              {filteredQuestions.map((question) => (
+              {allQuestions.map((question) => (
                 <QuestionItem
                   key={question.id}
                   question={question}
