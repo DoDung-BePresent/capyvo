@@ -54,6 +54,8 @@ export class SubscriptionService {
 
   /**
    * Tạo subscription mới hoặc gia hạn subscription hiện tại
+   * RULE: Chỉ stack khi mua cùng plan (PREMIUM + PREMIUM)
+   * Nếu upgrade từ TRIAL → PREMIUM: Bắt đầu từ hôm nay (không stack)
    */
   static async createSubscription(userId: string, planId: SubscriptionPlanId, paymentId?: string) {
     const plan = await this.getPlanById(planId)
@@ -61,27 +63,39 @@ export class SubscriptionService {
       throw new Error('Plan not found')
     }
 
-    // Check if user has existing active subscription
-    const existingSubscription = await this.getCurrentSubscription(userId)
+    // Get current active subscription (latest endDate)
+    const existingSubscription = await prisma.subscription.findFirst({
+      where: {
+        userId,
+        status: SubscriptionStatus.ACTIVE,
+        endDate: { gte: new Date() },
+      },
+      orderBy: { endDate: 'desc' },
+      include: { plan: true },
+    })
 
     let startDate: Date
     let endDate: Date
+    const now = new Date()
 
-    if (existingSubscription && existingSubscription.endDate > new Date()) {
-      // User has active subscription - extend from current end date
+    // RULE: Only stack if buying the SAME plan
+    if (
+      existingSubscription &&
+      existingSubscription.endDate > now &&
+      existingSubscription.planId === planId
+    ) {
+      // Same plan - extend from current end date (STACKING)
       startDate = existingSubscription.endDate
       endDate = addDays(startDate, plan.durationDays)
       console.log(
-        `Extending subscription for user ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`,
+        `Stacking ${planId} subscription for user ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`,
       )
     } else {
-      // No active subscription - start from now
-      const now = new Date()
-      // Normalize to start of day (00:00:00)
-      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      // Different plan or no active subscription - start from today (NO STACKING)
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()) // Normalize to 00:00:00
       endDate = addDays(startDate, plan.durationDays)
       console.log(
-        `Creating new subscription for user ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`,
+        `Creating new ${planId} subscription for user ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`,
       )
     }
 

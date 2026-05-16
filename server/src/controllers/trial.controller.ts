@@ -14,12 +14,12 @@ export class TrialController {
    * Get current trial days setting
    */
   async getTrialSettings(req: Request, res: Response, _next: NextFunction): Promise<void> {
-    const days = await TrialService.getTrialDays()
+    const settings = await TrialService.getTrialSettings()
 
     res.json({
       success: true,
       data: {
-        trialDays: days,
+        trialDays: settings.trialDays,
       },
     })
   }
@@ -31,7 +31,7 @@ export class TrialController {
   async updateTrialSettings(req: Request, res: Response, _next: NextFunction): Promise<void> {
     const { days } = UpdateTrialDaysSchema.parse(req.body)
 
-    await TrialService.updateTrialDays(days)
+    await TrialService.updateTrialSettings(days)
 
     res.json({
       success: true,
@@ -66,13 +66,13 @@ export class TrialController {
    * Manually trigger check expired trials (admin only)
    */
   async checkExpiredTrials(req: Request, res: Response, _next: NextFunction): Promise<void> {
-    const revokedCount = await TrialService.checkExpiredTrials()
+    const result = await TrialService.checkExpiredTrials()
 
     res.json({
       success: true,
-      message: `Đã thu hồi premium cho ${revokedCount} người dùng hết hạn dùng thử`,
+      message: `Đã thu hồi premium cho ${result.revokedCount} người dùng hết hạn dùng thử`,
       data: {
-        revokedCount,
+        revokedCount: result.revokedCount,
       },
     })
   }

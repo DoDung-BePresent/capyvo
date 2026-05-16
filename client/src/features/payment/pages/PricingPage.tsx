@@ -1,4 +1,4 @@
-import { Row, Col, message, Tag } from 'antd'
+import { Row, Col, message } from 'antd'
 import { PageHeader } from '@/shared/components'
 import PricingCard, { type PricingPlan } from '@/features/payment/components/PricingCard'
 import { useCreateSubscriptionOrder } from '@/features/payment/hooks/usePayment'
@@ -89,16 +89,7 @@ export default function PricingPage() {
     <>
       <PageHeader
         title="Chọn gói phù hợp với bạn"
-        description={
-          <div className="space-y-2">
-            <p>Mở khóa toàn bộ tính năng và luyện tập không giới hạn với các gói subscription.</p>
-            {!isOnTrial && !subscription?.isPremium && (
-              <Tag color="gold" style={{ fontSize: 14, padding: '4px 12px' }}>
-                🎁 Người dùng mới được dùng thử Premium 7 ngày!
-              </Tag>
-            )}
-          </div>
-        }
+        description="Mở khóa toàn bộ tính năng và luyện tập không giới hạn với các gói subscription"
       />
 
       <Row gutter={[24, 24]} justify="center">
@@ -116,8 +107,8 @@ export default function PricingPage() {
         </p>
         <p className="text-sm text-gray-500">
           Cần hỗ trợ? Liên hệ{' '}
-          <a href="mailto:support@capyvo.com" className="text-blue-600 hover:underline">
-            support@capyvo.com
+          <a href="https://zalo.me/0352195876" className="text-blue-600 hover:underline">
+            Zalo
           </a>
         </p>
         {!isOnTrial && !subscription?.isPremium && (

@@ -30,7 +30,7 @@ export class AdminDashboardService {
       sessionsThisMonth,
       totalQuestions,
       questionsByPart,
-      tokenPackageStats,
+      paymentDistribution,
       revenueByDay,
       sessionsByDay,
       recentPayments,
@@ -71,12 +71,14 @@ export class AdminDashboardService {
         orderBy: { partNumber: 'asc' },
       }),
 
-      // Token package sales distribution (paid only)
+      // Payment distribution by description (for historical data)
       prisma.payment.groupBy({
-        by: ['tokenAmount'],
-        where: { status: 'PAID', tokenAmount: { not: null } },
+        by: ['description'],
+        where: { status: 'PAID' },
         _count: { id: true },
         _sum: { amount: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 10,
       }),
 
       // Revenue per day (last 30 days, paid only)
@@ -154,11 +156,10 @@ export class AdminDashboardService {
         part: `Part ${q.partNumber}`,
         count: q._count.id,
       })),
-      tokenPackageStats: tokenPackageStats.map((t) => ({
-        tokens: t.tokenAmount ?? 0,
-        label: `${t.tokenAmount} token`,
-        count: t._count.id,
-        totalRevenue: t._sum.amount ?? 0,
+      paymentDistribution: paymentDistribution.map((p) => ({
+        label: p.description,
+        count: p._count.id,
+        totalRevenue: p._sum.amount ?? 0,
       })),
       revenueSeries,
       sessionSeries,

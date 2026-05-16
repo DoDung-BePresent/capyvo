@@ -26,7 +26,6 @@ export interface QuestionByPart {
 }
 
 export interface TokenPackageStat {
-  tokens: number
   label: string
   count: number
   totalRevenue: number
@@ -55,7 +54,7 @@ export interface AdminDashboardStats {
   overview: DashboardOverview
   openai: OpenAIStats
   questionsByPart: QuestionByPart[]
-  tokenPackageStats: TokenPackageStat[]
+  paymentDistribution: TokenPackageStat[]
   revenueSeries: DayStat[]
   sessionSeries: SessionDayStat[]
   recentPayments: RecentPayment[]

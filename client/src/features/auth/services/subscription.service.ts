@@ -3,7 +3,7 @@ import type { SubscriptionPlan, Subscription, TrialStatus } from '../types'
 
 interface CurrentSubscriptionResponse {
   subscription: Subscription | null
-  plan: 'FREE' | 'PREMIUM'
+  plan: 'FREE' | 'TRIAL' | 'PREMIUM' | 'CLASSROOM'
   isPremium: boolean
   trialStatus: TrialStatus | null
 }

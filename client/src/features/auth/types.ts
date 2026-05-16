@@ -22,10 +22,12 @@ export interface SubscriptionPlan {
 export interface Subscription {
   id: string
   planId: SubscriptionPlanId
+  planName?: string
   status: 'ACTIVE' | 'EXPIRED' | 'CANCELLED'
   startDate: string
   endDate: string
-  plan: SubscriptionPlan
+  daysRemaining?: number | null
+  plan?: SubscriptionPlan
 }
 
 export interface User {

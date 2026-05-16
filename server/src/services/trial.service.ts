@@ -1,200 +1,184 @@
-import { addDays } from 'date-fns'
 import prisma from '@/lib/prisma'
+import { addDays } from 'date-fns'
 import logger from '@/lib/logger'
+import { SubscriptionPlanId } from '@prisma/client'
 
 export class TrialService {
   /**
-   * Get premium trial days from app settings
-   */
-  static async getTrialDays(): Promise<number> {
-    const setting = await prisma.appSetting.findUnique({
-      where: { key: 'PREMIUM_TRIAL_DAYS' },
-    })
-
-    if (!setting) {
-      logger.warn('PREMIUM_TRIAL_DAYS setting not found, using default: 7')
-      return 7
-    }
-
-    const days = parseInt(setting.value, 10)
-    return isNaN(days) ? 7 : days
-  }
-
-  /**
-   * Update premium trial days setting (admin only)
-   */
-  static async updateTrialDays(days: number): Promise<void> {
-    if (days < 0 || days > 365) {
-      throw new Error('Trial days must be between 0 and 365')
-    }
-
-    await prisma.appSetting.upsert({
-      where: { key: 'PREMIUM_TRIAL_DAYS' },
-      update: { value: days.toString() },
-      create: { key: 'PREMIUM_TRIAL_DAYS', value: days.toString() },
-    })
-
-    logger.info(`Updated PREMIUM_TRIAL_DAYS to ${days}`)
-  }
-
-  /**
-   * Activate premium trial for new user
+   * Activate premium trial for new user by creating a TRIAL subscription
    */
   static async activateTrial(userId: string): Promise<void> {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { hasUsedTrial: true, isPremium: true },
-    })
+    try {
+      // Get trial settings
+      const settings = await this.getTrialSettings()
+      const trialDays = settings.trialDays
 
-    if (!user) {
-      throw new Error('User not found')
-    }
+      // Check if user already has any subscription (including trial)
+      const existingSubscription = await prisma.subscription.findFirst({
+        where: { userId },
+      })
 
-    // Check if user already used trial
-    if (user.hasUsedTrial) {
-      logger.info(`User ${userId} already used trial, skipping`)
-      return
-    }
-
-    // Check if user already has premium (from payment)
-    if (user.isPremium) {
-      logger.info(`User ${userId} already has premium, skipping trial`)
-      return
-    }
-
-    const trialDays = await this.getTrialDays()
-
-    // If trial days is 0, skip trial activation
-    if (trialDays === 0) {
-      logger.info('Trial is disabled (0 days), skipping')
-      return
-    }
-
-    const now = new Date()
-    const trialStartedAt = now
-    const trialEndsAt = addDays(now, trialDays)
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        hasUsedTrial: true,
-        trialStartedAt,
-        trialEndsAt,
-        isPremium: true,
-        premiumUntil: trialEndsAt,
-      },
-    })
-
-    logger.info(`Activated ${trialDays}-day premium trial for user ${userId}`)
-  }
-
-  /**
-   * Check if user is on trial
-   */
-  static async isOnTrial(userId: string): Promise<boolean> {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        hasUsedTrial: true,
-        trialEndsAt: true,
-        isPremium: true,
-      },
-    })
-
-    if (!user || !user.hasUsedTrial || !user.trialEndsAt) {
-      return false
-    }
-
-    // Check if trial is still active
-    const now = new Date()
-    return user.isPremium && user.trialEndsAt > now
-  }
-
-  /**
-   * Get trial status for user
-   */
-  static async getTrialStatus(userId: string) {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        hasUsedTrial: true,
-        trialStartedAt: true,
-        trialEndsAt: true,
-        isPremium: true,
-      },
-    })
-
-    if (!user) {
-      return null
-    }
-
-    const now = new Date()
-    const isOnTrial = user.hasUsedTrial && user.trialEndsAt && user.trialEndsAt > now
-
-    let daysRemaining = 0
-    if (isOnTrial && user.trialEndsAt) {
-      const diffTime = user.trialEndsAt.getTime() - now.getTime()
-      daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    }
-
-    return {
-      hasUsedTrial: user.hasUsedTrial,
-      isOnTrial,
-      trialStartedAt: user.trialStartedAt,
-      trialEndsAt: user.trialEndsAt,
-      daysRemaining: isOnTrial ? daysRemaining : 0,
-    }
-  }
-
-  /**
-   * Check and expire trials (run by cron job)
-   */
-  static async checkExpiredTrials(): Promise<number> {
-    const now = new Date()
-
-    // Find users with expired trials
-    const expiredTrialUsers = await prisma.user.findMany({
-      where: {
-        hasUsedTrial: true,
-        trialEndsAt: { lt: now },
-        isPremium: true,
-      },
-      select: {
-        id: true,
-        email: true,
-        subscriptions: {
-          where: {
-            status: 'ACTIVE',
-            endDate: { gte: now },
-          },
-        },
-      },
-    })
-
-    logger.info(`Found ${expiredTrialUsers.length} users with expired trials`)
-
-    let revokedCount = 0
-
-    for (const user of expiredTrialUsers) {
-      // Check if user has active paid subscription
-      if (user.subscriptions.length > 0) {
-        logger.info(`User ${user.id} has active subscription, keeping premium`)
-        continue
+      if (existingSubscription) {
+        logger.info(`User ${userId} already has a subscription, skipping trial activation`)
+        return
       }
 
-      // Revoke premium (trial expired, no paid subscription)
-      await prisma.user.update({
-        where: { id: user.id },
+      // Get TRIAL plan
+      const trialPlan = await prisma.subscriptionPlan.findUnique({
+        where: { id: SubscriptionPlanId.TRIAL },
+      })
+
+      if (!trialPlan) {
+        logger.error('TRIAL plan not found in database')
+        return
+      }
+
+      const now = new Date()
+      const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()) // Normalize to 00:00:00
+      const endDate = addDays(startDate, trialDays)
+
+      // Create TRIAL subscription
+      await prisma.subscription.create({
         data: {
-          isPremium: false,
-          premiumUntil: null,
+          userId,
+          planId: SubscriptionPlanId.TRIAL,
+          status: 'ACTIVE',
+          startDate,
+          endDate,
         },
       })
 
-      logger.info(`Revoked premium for user ${user.id} (trial expired)`)
-      revokedCount++
+      // Update user cache fields
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          isPremium: true,
+          premiumUntil: endDate,
+        },
+      })
+
+      logger.info(`Trial activated for user ${userId}: ${trialDays} days`)
+    } catch (error) {
+      logger.error(`Failed to activate trial for user ${userId}:`, error)
+      throw error
+    }
+  }
+
+  /**
+   * Get trial status for a user by checking their TRIAL subscription
+   */
+  static async getTrialStatus(userId: string) {
+    const now = new Date()
+
+    // Find TRIAL subscription
+    const trialSubscription = await prisma.subscription.findFirst({
+      where: {
+        userId,
+        planId: SubscriptionPlanId.TRIAL,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    if (!trialSubscription) {
+      return {
+        hasUsedTrial: false,
+        isOnTrial: false,
+        trialStartedAt: null,
+        trialEndsAt: null,
+        daysRemaining: 0,
+      }
     }
 
-    return revokedCount
+    const isOnTrial = trialSubscription.status === 'ACTIVE' && trialSubscription.endDate >= now
+
+    const daysRemaining = isOnTrial
+      ? Math.ceil((trialSubscription.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      : 0
+
+    return {
+      hasUsedTrial: true,
+      isOnTrial,
+      trialStartedAt: trialSubscription.startDate.toISOString(),
+      trialEndsAt: trialSubscription.endDate.toISOString(),
+      daysRemaining,
+    }
+  }
+
+  /**
+   * Get trial settings from app_settings table
+   */
+  static async getTrialSettings() {
+    const setting = await prisma.appSetting.findUnique({
+      where: { key: 'trial_days' },
+    })
+
+    return {
+      trialDays: setting ? parseInt(setting.value, 10) : 7, // Default 7 days
+    }
+  }
+
+  /**
+   * Update trial settings (admin only)
+   */
+  static async updateTrialSettings(trialDays: number) {
+    await prisma.appSetting.upsert({
+      where: { key: 'trial_days' },
+      update: { value: String(trialDays) },
+      create: { key: 'trial_days', value: String(trialDays) },
+    })
+
+    return { trialDays }
+  }
+
+  /**
+   * Check and expire trials (cron job)
+   * This will be handled by subscription expiry cron job
+   */
+  static async checkExpiredTrials() {
+    const now = new Date()
+
+    // Find expired TRIAL subscriptions
+    const expiredTrials = await prisma.subscription.findMany({
+      where: {
+        planId: SubscriptionPlanId.TRIAL,
+        status: 'ACTIVE',
+        endDate: { lt: now },
+      },
+      include: { user: true },
+    })
+
+    logger.info(`Found ${expiredTrials.length} expired trials`)
+
+    for (const trial of expiredTrials) {
+      // Update subscription status
+      await prisma.subscription.update({
+        where: { id: trial.id },
+        data: { status: 'EXPIRED' },
+      })
+
+      // Check if user has any other active subscription
+      const otherActiveSub = await prisma.subscription.findFirst({
+        where: {
+          userId: trial.userId,
+          status: 'ACTIVE',
+          endDate: { gte: now },
+          id: { not: trial.id },
+        },
+      })
+
+      if (!otherActiveSub) {
+        // No other active subscription, revoke premium
+        await prisma.user.update({
+          where: { id: trial.userId },
+          data: {
+            isPremium: false,
+            premiumUntil: null,
+          },
+        })
+        logger.info(`Revoked premium for user ${trial.userId} (trial expired)`)
+      }
+    }
+
+    return { revokedCount: expiredTrials.length }
   }
 }

@@ -186,13 +186,13 @@ export default function AdminDashboardPage() {
           <Card title="Phân bổ gói token" style={{ height: '100%' }}>
             {isLoading ? (
               <Skeleton active paragraph={{ rows: 5 }} />
-            ) : !stats?.tokenPackageStats.length ? (
+            ) : !stats?.paymentDistribution.length ? (
               <Flex justify="center" align="center" style={{ height: 200 }}>
                 <Text type="secondary">Chưa có dữ liệu</Text>
               </Flex>
             ) : (
               <Pie
-                data={stats.tokenPackageStats}
+                data={stats.paymentDistribution}
                 angleField="count"
                 colorField="label"
                 style={{ height: 220 }}

@@ -40,9 +40,6 @@ CREATE TABLE "users" (
     "role" "Role" NOT NULL DEFAULT 'USER',
     "isPremium" BOOLEAN NOT NULL DEFAULT false,
     "premiumUntil" DATE,
-    "hasUsedTrial" BOOLEAN NOT NULL DEFAULT false,
-    "trialStartedAt" TIMESTAMP(3),
-    "trialEndsAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -207,7 +204,7 @@ CREATE TABLE "subscriptions" (
     "userId" TEXT NOT NULL,
     "planId" "SubscriptionPlanId" NOT NULL,
     "status" "SubscriptionStatus" NOT NULL DEFAULT 'ACTIVE',
-    "startDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "startDate" TIMESTAMP(3) NOT NULL,
     "endDate" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -286,7 +283,13 @@ CREATE INDEX "subscriptions_userId_idx" ON "subscriptions"("userId");
 CREATE INDEX "subscriptions_status_idx" ON "subscriptions"("status");
 
 -- CreateIndex
+CREATE INDEX "subscriptions_planId_idx" ON "subscriptions"("planId");
+
+-- CreateIndex
 CREATE INDEX "subscriptions_endDate_idx" ON "subscriptions"("endDate");
+
+-- CreateIndex
+CREATE INDEX "subscriptions_userId_status_endDate_idx" ON "subscriptions"("userId", "status", "endDate");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "public_shares_responseId_key" ON "public_shares"("responseId");

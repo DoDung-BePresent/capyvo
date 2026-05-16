@@ -241,14 +241,6 @@ export class ResponseService {
       select: {
         isPremium: true,
         premiumUntil: true,
-        hasUsedTrial: true,
-        trialEndsAt: true,
-        subscriptions: {
-          where: { status: 'ACTIVE' },
-          orderBy: { endDate: 'desc' },
-          take: 1,
-          include: { plan: true },
-        },
       },
     })
 
@@ -266,16 +258,28 @@ export class ResponseService {
       daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     }
 
-    // Determine plan: Check subscription first, then trial, then FREE
+    // Get current active subscription (priority: latest endDate)
+    const subscription = await prisma.subscription.findFirst({
+      where: {
+        userId,
+        status: 'ACTIVE',
+        endDate: { gte: now },
+      },
+      orderBy: { endDate: 'desc' },
+      include: { plan: true },
+    })
+
+    // Determine plan (priority: PREMIUM/CLASSROOM > TRIAL > FREE)
     let plan: 'FREE' | 'TRIAL' | 'PREMIUM'
-    if (user.subscriptions.length > 0 && isPremium) {
-      // User has active paid subscription
-      plan = 'PREMIUM'
-    } else if (user.hasUsedTrial && user.trialEndsAt && user.trialEndsAt > now && isPremium) {
-      // User is on trial (no paid subscription but has premium from trial)
-      plan = 'TRIAL'
+    if (subscription) {
+      if (subscription.planId === 'PREMIUM' || subscription.planId === 'CLASSROOM') {
+        plan = 'PREMIUM'
+      } else if (subscription.planId === 'TRIAL') {
+        plan = 'TRIAL'
+      } else {
+        plan = 'FREE'
+      }
     } else {
-      // User is on FREE plan
       plan = 'FREE'
     }
 

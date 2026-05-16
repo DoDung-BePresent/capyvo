@@ -77,14 +77,9 @@ model User {
   avatarUrl            String?
   role                 Role      @default(USER)
   
-  // Subscription fields
+  // Cache fields (computed from subscriptions for fast queries)
   isPremium            Boolean   @default(false)
   premiumUntil         DateTime? @db.Date
-  
-  // Premium trial fields
-  hasUsedTrial         Boolean   @default(false)
-  trialStartedAt       DateTime?
-  trialEndsAt          DateTime?
   
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
@@ -298,7 +293,7 @@ model Subscription {
   planId    SubscriptionPlanId
   status    SubscriptionStatus @default(ACTIVE)
   
-  startDate DateTime           @default(now())
+  startDate DateTime
   endDate   DateTime
   
   createdAt DateTime           @default(now())
@@ -310,7 +305,9 @@ model Subscription {
 
   @@index([userId])
   @@index([status])
+  @@index([planId])
   @@index([endDate])
+  @@index([userId, status, endDate])
   @@map("subscriptions")
 }
 

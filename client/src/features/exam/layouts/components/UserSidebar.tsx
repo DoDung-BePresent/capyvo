@@ -19,8 +19,6 @@ import { styled } from '@/shared/utils/cn'
 /**
  * Hooks
  */
-import { useGetMe } from '@/features/auth/hooks/useAuth'
-import { useSession } from '@/features/auth/hooks/useSession'
 import { useCurrentSubscription } from '@/features/auth/hooks/useSubscription'
 
 /**
@@ -50,20 +48,20 @@ export interface UserSidebarProps {
 export function UserSidebar({ collapsed }: UserSidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { session } = useSession()
-  const { data: user } = useGetMe(session)
-  const { data: subscriptionData } = useCurrentSubscription()
+  const { data: subscriptionData, isLoading: isLoadingSubscription } = useCurrentSubscription()
 
   const selectedKey =
     location.pathname === '/'
       ? '/'
       : (MENU_ITEMS.slice(1).find((m) => location.pathname.startsWith(m.key))?.key ?? '/')
 
-  // Get subscription info
-  const isPremium = subscriptionData?.isPremium ?? user?.isPremium ?? false
-  const trialStatus = subscriptionData?.trialStatus ?? user?.trialStatus
+  // Get subscription info - ONLY use subscriptionData (don't fallback to user data)
+  // This prevents showing TRIAL from user cache before subscription API loads
+  const isPremium = subscriptionData?.isPremium ?? false
+  const trialStatus = subscriptionData?.trialStatus
   const isOnTrial = trialStatus?.isOnTrial ?? false
-  const daysRemaining = trialStatus?.daysRemaining ?? null
+  const daysRemaining =
+    subscriptionData?.subscription?.daysRemaining ?? trialStatus?.daysRemaining ?? null
   const planName = subscriptionData?.plan ?? 'FREE'
 
   return (
@@ -115,6 +113,7 @@ export function UserSidebar({ collapsed }: UserSidebarProps) {
           isOnTrial={isOnTrial}
           daysRemaining={daysRemaining}
           planName={planName}
+          isLoading={isLoadingSubscription}
         />
       </Bottom>
     </Sider>
