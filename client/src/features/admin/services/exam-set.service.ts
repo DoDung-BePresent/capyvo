@@ -41,6 +41,14 @@ export const examSetService = {
     return data.data
   },
 
+  assignQuestionSet: async (examSetId: string, setId: string): Promise<Question[]> => {
+    const { data } = await axiosInstance.post<ApiResponse<Question[]>>(
+      `/exam-sets/${examSetId}/assign-set`,
+      { setId },
+    )
+    return data.data
+  },
+
   unassignQuestion: async (examSetId: string, questionId: string): Promise<Question> => {
     const { data } = await axiosInstance.post<ApiResponse<Question>>(
       `/exam-sets/${examSetId}/unassign`,

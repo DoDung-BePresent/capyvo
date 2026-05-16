@@ -61,7 +61,22 @@ export class ExamSetController {
       return
     }
 
+    // For Part 3 & 4 (questions 5-10), return question sets instead of individual questions
+    if (questionNumber >= 5 && questionNumber <= 10) {
+      const sets = await this.service.getPoolQuestionSets(questionNumber, search, assignmentStatus)
+      res.json({ success: true, data: sets })
+      return
+    }
+
     const questions = await this.service.getPoolQuestions(questionNumber, search, assignmentStatus)
+    res.json({ success: true, data: questions })
+  }
+
+  async assignQuestionSet(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const questions = await this.service.assignQuestionSet(
+      req.params['id'] as string,
+      req.body.setId as string,
+    )
     res.json({ success: true, data: questions })
   }
 

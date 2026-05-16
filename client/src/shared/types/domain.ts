@@ -2,6 +2,7 @@
 
 export interface Question {
   id: string
+  setId?: string | null // For grouping Part 3 & 4 questions
   // Many-to-many: A question can belong to multiple exam sets
   examSets?: Array<{ id: string; title: string }>
   // Deprecated fields (for backward compatibility during migration)
