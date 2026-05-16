@@ -91,10 +91,15 @@ export function useUnassignQuestion(examSetId: string) {
   })
 }
 
-export function useGetPoolQuestions(questionNumber: number, enabled: boolean) {
+export function useGetPoolQuestions(
+  questionNumber: number,
+  enabled: boolean,
+  search?: string,
+  assignmentStatus?: 'all' | 'assigned' | 'unassigned',
+) {
   return useQuery({
-    queryKey: queryKeys.questions.pool(questionNumber),
-    queryFn: () => examSetService.getPoolQuestions(questionNumber),
+    queryKey: queryKeys.questions.pool(questionNumber, search, assignmentStatus),
+    queryFn: () => examSetService.getPoolQuestions(questionNumber, search, assignmentStatus),
     enabled,
   })
 }

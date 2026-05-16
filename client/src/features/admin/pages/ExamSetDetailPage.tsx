@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as React from 'react'
 import { useParams } from 'react-router-dom'
 import {
   Button,
@@ -7,15 +8,23 @@ import {
   Empty,
   Flex,
   Image,
+  Input,
   Popconfirm,
   Radio,
+  Segmented,
   Skeleton,
   Space,
   Switch,
   Tag,
   Typography,
 } from 'antd'
-import { CheckOutlined, LinkOutlined, SoundOutlined, SwapOutlined } from '@ant-design/icons'
+import {
+  CheckOutlined,
+  LinkOutlined,
+  SearchOutlined,
+  SoundOutlined,
+  SwapOutlined,
+} from '@ant-design/icons'
 
 import { PageHeader } from '@/shared/components'
 import { DRAWER_WIDTHS } from '@/config'
@@ -145,7 +154,24 @@ function AssignDrawer({
   onClose: () => void
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const { data: pool = [], isLoading } = useGetPoolQuestions(questionNumber, open)
+  const [searchText, setSearchText] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all')
+
+  // Debounce search input
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchText)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchText])
+
+  const { data: pool = [], isLoading } = useGetPoolQuestions(
+    questionNumber,
+    open,
+    debouncedSearch || undefined,
+    assignmentFilter,
+  )
   const { mutate: assign, isPending } = useAssignQuestion(currentExamSetId)
 
   const handleConfirm = () => {
@@ -185,10 +211,39 @@ function AssignDrawer({
         </Flex>
       }
     >
+      {/* Search and Filter Controls */}
+      <Space direction="vertical" size={12} style={{ width: '100%', marginBottom: 16 }}>
+        <Input
+          placeholder="Tìm kiếm nội dung câu hỏi..."
+          prefix={<SearchOutlined />}
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          allowClear
+          size="large"
+        />
+        <Segmented
+          value={assignmentFilter}
+          onChange={(value) => setAssignmentFilter(value as 'all' | 'assigned' | 'unassigned')}
+          options={[
+            { label: 'Tất cả', value: 'all' },
+            { label: 'Đã gán', value: 'assigned' },
+            { label: 'Chưa gán', value: 'unassigned' },
+          ]}
+          block
+          size="large"
+        />
+      </Space>
+
       {isLoading ? (
         <Skeleton active />
       ) : pool.length === 0 ? (
-        <Empty description="Chưa có câu hỏi nào cho slot này" />
+        <Empty
+          description={
+            searchText || assignmentFilter !== 'all'
+              ? 'Không tìm thấy câu hỏi phù hợp'
+              : 'Chưa có câu hỏi nào cho slot này'
+          }
+        />
       ) : (
         <Radio.Group
           value={selectedId}

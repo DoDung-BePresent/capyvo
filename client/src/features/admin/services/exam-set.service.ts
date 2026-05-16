@@ -49,9 +49,17 @@ export const examSetService = {
     return data.data
   },
 
-  getPoolQuestions: async (questionNumber: number): Promise<Question[]> => {
+  getPoolQuestions: async (
+    questionNumber: number,
+    search?: string,
+    assignmentStatus?: 'all' | 'assigned' | 'unassigned',
+  ): Promise<Question[]> => {
+    const params: Record<string, string | number> = { questionNumber }
+    if (search) params.search = search
+    if (assignmentStatus && assignmentStatus !== 'all') params.assignmentStatus = assignmentStatus
+
     const { data } = await axiosInstance.get<ApiResponse<Question[]>>('/exam-sets/pool', {
-      params: { questionNumber },
+      params,
     })
     return data.data
   },

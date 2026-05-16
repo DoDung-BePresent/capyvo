@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import prisma from '@/lib/prisma'
 import { NotFoundError, ValidationError } from '@/errors/app-error'
+import { Prisma } from '@prisma/client'
 
 export const CreateExamSetSchema = z.object({
   title: z.string().min(1),
@@ -194,9 +195,28 @@ export class ExamSetService {
     }
   }
 
-  async getPoolQuestions(questionNumber: number) {
+  async getPoolQuestions(
+    questionNumber: number,
+    search?: string,
+    assignmentStatus?: 'all' | 'assigned' | 'unassigned',
+  ) {
+    // Build where clause
+    const where: Prisma.QuestionWhereInput = {
+      questionNumber,
+      status: 'PUBLISHED', // Only show published questions
+    }
+
+    // Add search filter (case-insensitive)
+    if (search) {
+      where.OR = [
+        { contentText: { contains: search, mode: 'insensitive' } },
+        { questionText: { contains: search, mode: 'insensitive' } },
+        { contextText: { contains: search, mode: 'insensitive' } },
+      ]
+    }
+
     const questions = await prisma.question.findMany({
-      where: { questionNumber },
+      where,
       orderBy: { createdAt: 'desc' },
       include: {
         examSetAssignments: {
@@ -208,9 +228,18 @@ export class ExamSetService {
     })
 
     // Transform to show all exam sets this question belongs to
-    return questions.map((q) => ({
+    let result = questions.map((q) => ({
       ...q,
       examSets: q.examSetAssignments.map((qa) => qa.examSet),
     }))
+
+    // Filter by assignment status
+    if (assignmentStatus === 'assigned') {
+      result = result.filter((q) => q.examSets.length > 0)
+    } else if (assignmentStatus === 'unassigned') {
+      result = result.filter((q) => q.examSets.length === 0)
+    }
+
+    return result
   }
 }

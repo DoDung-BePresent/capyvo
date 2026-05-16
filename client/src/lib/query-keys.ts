@@ -23,7 +23,8 @@ export const queryKeys = {
     examSetsByPart: (partNumber: number) => ['questions', 'exam-sets', 'part', partNumber] as const,
     byExamSet: (examSetId: string) => ['questions', 'exam-set', examSetId] as const,
     detail: (id: string) => ['questions', 'detail', id] as const,
-    pool: (questionNumber: number) => ['questions', 'pool', questionNumber] as const,
+    pool: (questionNumber: number, search?: string, assignmentStatus?: string) =>
+      ['questions', 'pool', questionNumber, search, assignmentStatus] as const,
     practiceSets: (partNumber: number) => ['questions', 'practice-sets', partNumber] as const,
     byPartAndSet: (partNumber: number, examSetId: string) =>
       ['questions', 'part-set', partNumber, examSetId] as const,
