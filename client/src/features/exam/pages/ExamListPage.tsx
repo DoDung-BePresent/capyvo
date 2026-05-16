@@ -7,19 +7,24 @@ import { useQuery } from '@tanstack/react-query'
 /**
  * Components
  */
-import { PageHeader } from '@/shared/components'
+import { PageHeader, PremiumGuard } from '@/shared/components'
 import { Row, Col, Card, Badge, Tag, Typography, Flex, Empty, Spin } from 'antd'
 
 /**
  * Icons
  */
-import { CheckCircleFilled } from '@ant-design/icons'
+import { CheckCircleFilled, LockOutlined } from '@ant-design/icons'
 
 /**
  * Services
  */
 import { examSetService } from '@/features/admin/services/exam-set.service'
 import { sessionService } from '@/features/exam/services/session.service'
+
+/**
+ * Subscription hooks
+ */
+import { useIsPremium } from '@/features/auth/hooks/useSubscription'
 
 /**
  * QUERY_KEYS
@@ -36,6 +41,7 @@ const TYPE_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function ExamListPage() {
   const navigate = useNavigate()
+  const isPremium = useIsPremium()
 
   const { data: examSets = [], isLoading } = useQuery({
     queryKey: queryKeys.examSets.published(),
@@ -75,12 +81,21 @@ export default function ExamListPage() {
 
             const card = (
               <Card
-                hoverable
-                style={{ height: '100%' }}
+                hoverable={isPremium}
+                style={{
+                  height: '100%',
+                  opacity: isPremium ? 1 : 0.7,
+                  position: 'relative',
+                }}
                 styles={{ body: { padding: '20px 24px' } }}
-                onClick={() => navigate(`/exam/${set.id}/test`)}
+                onClick={() => isPremium && navigate(`/exam/${set.id}/test`)}
                 className="rounded-lg!"
               >
+                {!isPremium && (
+                  <div className="absolute right-2 top-2 z-10">
+                    <LockOutlined className="text-gray-400 text-lg" />
+                  </div>
+                )}
                 <Flex vertical gap={10}>
                   <Flex align="center" justify="space-between">
                     <Tag color={type.color}>{type.label}</Tag>
@@ -102,14 +117,20 @@ export default function ExamListPage() {
               </Card>
             )
 
+            const wrappedCard = isPremium ? (
+              card
+            ) : (
+              <PremiumGuard feature="Luyện full đề">{card}</PremiumGuard>
+            )
+
             return (
               <Col key={set.id} xs={24} sm={12} lg={8}>
-                {isDone ? (
+                {isDone && isPremium ? (
                   <Badge.Ribbon text={<CheckCircleFilled />} color="green">
-                    {card}
+                    {wrappedCard}
                   </Badge.Ribbon>
                 ) : (
-                  card
+                  wrappedCard
                 )}
               </Col>
             )

@@ -27,16 +27,22 @@
 - Apply middlewares
 - Delegate to controllers
 - No business logic
+- **Always use `asyncHandler` wrapper** for async controller methods
 
 ```typescript
 // routes/user.routes.ts
 import { Router } from 'express'
 import { UserController } from '@/controllers/user.controller'
-import { authenticate } from '@/middlewares/auth.middleware'
+import { authenticate } from '@/middlewares/authenticate'
+import { asyncHandler } from '@/utils/async-handler'
 
 const router = Router()
 const controller = new UserController()
 
+// ✅ Good - Using asyncHandler
+router.get('/users/:id', authenticate, asyncHandler(controller.getUser.bind(controller)))
+
+// ❌ Bad - Manual next() passing (old style)
 router.get('/users/:id', authenticate, (req, res, next) => controller.getUser(req, res, next))
 
 export default router
@@ -48,7 +54,7 @@ export default router
 - Validate request data
 - Call service methods
 - Format responses
-- Handle errors with try-catch or pass to next()
+- **No need for try-catch** when using `asyncHandler` (errors auto-forwarded to error middleware)
 
 ```typescript
 // controllers/user.controller.ts
@@ -59,22 +65,21 @@ import { NotFoundError } from '@/errors/app-error'
 export class UserController {
   private service = new UserService()
 
+  // ✅ Good - No try-catch needed (asyncHandler handles it)
   async getUser(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const id = req.params['id'] as string
-      const user = await this.service.findById(id)
+    const id = req.params['id'] as string
+    const user = await this.service.findById(id)
 
-      if (!user) {
-        throw new NotFoundError('User')
-      }
-
-      res.json({ success: true, data: user })
-    } catch (err) {
-      next(err)
+    if (!user) {
+      throw new NotFoundError('User')
     }
+
+    res.json({ success: true, data: user })
   }
 }
 ```
+
+**Note**: The `asyncHandler` wrapper in routes automatically catches errors and forwards them to the error middleware.
 
 ### 3. Services Layer
 

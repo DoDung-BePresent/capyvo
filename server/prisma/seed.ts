@@ -10,6 +10,7 @@ async function runAllSeeds() {
   console.log('🌱 Starting database seeding...\n')
 
   const seedFiles = [
+    'seeds/seed-app-settings.ts',
     'seeds/seed-subscriptions.ts',
     'seeds/seed-topics.ts',
     // Add more seed files here as needed

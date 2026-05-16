@@ -54,7 +54,8 @@ enum SubscriptionStatus {
 }
 
 enum SubscriptionPlanId {
-  BASIC
+  FREE
+  TRIAL
   PREMIUM
   CLASSROOM
 }
@@ -79,6 +80,11 @@ model User {
   // Subscription fields
   isPremium            Boolean   @default(false)
   premiumUntil         DateTime? @db.Date
+  
+  // Premium trial fields
+  hasUsedTrial         Boolean   @default(false)
+  trialStartedAt       DateTime?
+  trialEndsAt          DateTime?
   
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt

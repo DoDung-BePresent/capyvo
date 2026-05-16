@@ -10,11 +10,19 @@ async function seedSubscriptionPlans() {
 
   const plans = [
     {
-      id: SubscriptionPlanId.BASIC,
-      name: 'Cơ bản',
-      durationDays: 30,
-      price: 49000,
-      pricePerMonth: 49000,
+      id: SubscriptionPlanId.FREE,
+      name: 'Miễn phí',
+      durationDays: 0, // Permanent
+      price: 0,
+      pricePerMonth: 0,
+      isActive: true,
+    },
+    {
+      id: SubscriptionPlanId.TRIAL,
+      name: 'Dùng thử',
+      durationDays: 7,
+      price: 0,
+      pricePerMonth: 0,
       isActive: true,
     },
     {

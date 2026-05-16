@@ -20,7 +20,7 @@ CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'PAID', 'CANCELLED', 'EXPIRED');
 CREATE TYPE "SubscriptionStatus" AS ENUM ('ACTIVE', 'EXPIRED', 'CANCELLED');
 
 -- CreateEnum
-CREATE TYPE "SubscriptionPlanId" AS ENUM ('BASIC', 'PREMIUM', 'CLASSROOM');
+CREATE TYPE "SubscriptionPlanId" AS ENUM ('FREE', 'TRIAL', 'PREMIUM', 'CLASSROOM');
 
 -- CreateTable
 CREATE TABLE "app_settings" (
@@ -40,6 +40,9 @@ CREATE TABLE "users" (
     "role" "Role" NOT NULL DEFAULT 'USER',
     "isPremium" BOOLEAN NOT NULL DEFAULT false,
     "premiumUntil" DATE,
+    "hasUsedTrial" BOOLEAN NOT NULL DEFAULT false,
+    "trialStartedAt" TIMESTAMP(3),
+    "trialEndsAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 

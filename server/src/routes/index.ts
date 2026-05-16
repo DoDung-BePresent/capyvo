@@ -15,6 +15,7 @@ import abuseDetectionRouter from './abuse-detection.routes'
 import subscriptionRouter from './subscription.routes'
 import activityRouter from './activity.routes'
 import shareRouter from './share.routes'
+import trialRouter from './trial.routes'
 
 const router = Router()
 
@@ -34,5 +35,6 @@ router.use('/admin/abuse-detection', abuseDetectionRouter)
 router.use('/subscription', subscriptionRouter)
 router.use('/activity', activityRouter)
 router.use('/shares', shareRouter)
+router.use('/trial', trialRouter)
 
 export default router

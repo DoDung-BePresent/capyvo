@@ -30,14 +30,10 @@ import { StyledButton } from '@/shared/components'
 import { useMicPermission } from '@/features/exam/hooks/useMicPermission'
 import { useTranscribeAndAnalyze } from '@/features/exam/hooks/useTranscribeAndAnalyze'
 import { useTranscribe } from '@/features/exam/hooks/useTranscribe'
+import { useIsPremium } from '@/features/auth/hooks/useSubscription'
 import { MicWaveform } from '@/features/exam/components/MicWaveform'
 import { BasicResultView } from './BasicResultView'
 import { PremiumResultView } from './PremiumResultView'
-
-/**
- * Services
- */
-import { responseService } from '@/features/exam/services/response.service'
 
 /**
  * Types
@@ -82,6 +78,8 @@ export function QuestionPracticeView({
   isSubmitting = false,
 }: QuestionPracticeViewProps) {
   const { hasPermission, requestPermission } = useMicPermission()
+  const isPremium = useIsPremium()
+
   const [recordingState, setRecordingState] = useState<RecordingState>('idle')
   const [prepTimeLeft, setPrepTimeLeft] = useState(question.prepTimeSeconds)
   const [recordTimeLeft, setRecordTimeLeft] = useState(question.responseTimeSeconds)
@@ -94,26 +92,10 @@ export function QuestionPracticeView({
     responseId?: string
   } | null>(null)
   const [isCancelled, setIsCancelled] = useState(false)
-  const [userPlan, setUserPlan] = useState<'BASIC' | 'PREMIUM' | null>(null)
 
   const contextAudioRef = useRef<HTMLAudioElement>(null!)
   const questionAudioRef = useRef<HTMLAudioElement>(null!)
   const startSoundRef = useRef<HTMLAudioElement>(null!)
-
-  // Check subscription on mount
-  useEffect(() => {
-    const checkSubscription = async () => {
-      try {
-        const result = await responseService.checkSubscription()
-        setUserPlan(result.plan)
-      } catch (error) {
-        console.error('Failed to check subscription:', error)
-        // Assume BASIC if check fails
-        setUserPlan('BASIC')
-      }
-    }
-    checkSubscription()
-  }, [])
 
   const { mutate: transcribeAndAnalyze, isPending: isAnalyzing } = useTranscribeAndAnalyze({
     onSuccess: (data) => {
@@ -237,13 +219,13 @@ export function QuestionPracticeView({
           })
 
           // Check user plan and call appropriate API
-          if (userPlan === 'PREMIUM') {
+          if (isPremium) {
             // PREMIUM: Full analysis
             console.log('🔄 Starting transcribe & analyze (PREMIUM)...')
             transcribeAndAnalyze({ responseId: result.responseId, partNumber: question.partNumber })
           } else {
-            // BASIC: Transcribe only
-            console.log('🔄 Starting transcribe only (BASIC)...')
+            // FREE: Transcribe only
+            console.log('🔄 Starting transcribe only (FREE)...')
             transcribeOnly(result.responseId)
           }
         } catch (error) {
@@ -265,7 +247,7 @@ export function QuestionPracticeView({
     transcribeOnly,
     question.partNumber,
     isCancelled,
-    userPlan,
+    isPremium,
   ])
 
   // Cleanup on unmount
@@ -377,7 +359,7 @@ export function QuestionPracticeView({
         recordingState === 'result' ||
         recordingState === 'completed') && (
         <>
-          {userPlan === 'PREMIUM' ? (
+          {isPremium ? (
             <PremiumResultView
               partNumber={question.partNumber as PartNumber}
               transcript={analysisResult?.transcript}

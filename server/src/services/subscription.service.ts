@@ -237,7 +237,7 @@ export class SubscriptionService {
   }
 
   /**
-   * Check if user has active premium
+   * Check if user has active premium (including trial)
    */
   static async isPremiumUser(userId: string): Promise<boolean> {
     const user = await prisma.user.findUnique({
@@ -245,11 +245,25 @@ export class SubscriptionService {
       select: { isPremium: true, premiumUntil: true },
     })
 
-    if (!user || !user.isPremium || !user.premiumUntil) {
+    if (!user || !user.isPremium) {
       return false
     }
 
-    return user.premiumUntil > new Date()
+    // If no premiumUntil date, user is not premium
+    if (!user.premiumUntil) {
+      return false
+    }
+
+    // Check if premium is still valid
+    return user.premiumUntil >= new Date()
+  }
+
+  /**
+   * Check if user is on FREE plan
+   */
+  static async isFreeUser(userId: string): Promise<boolean> {
+    const isPremium = await this.isPremiumUser(userId)
+    return !isPremium
   }
 
   /**

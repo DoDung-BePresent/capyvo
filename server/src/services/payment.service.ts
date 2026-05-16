@@ -128,9 +128,10 @@ export class PaymentService {
 
   /** Extract plan ID from payment description */
   private extractPlanIdFromDescription(description: string): SubscriptionPlanId | null {
-    if (description.includes('Cơ bản')) return SubscriptionPlanId.BASIC
     if (description.includes('Premium')) return SubscriptionPlanId.PREMIUM
     if (description.includes('Lớp học')) return SubscriptionPlanId.CLASSROOM
+    // BASIC is deprecated, treat as FREE
+    if (description.includes('Cơ bản')) return SubscriptionPlanId.FREE
     return null
   }
 

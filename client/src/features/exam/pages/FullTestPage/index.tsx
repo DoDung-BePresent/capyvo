@@ -2,7 +2,7 @@
  * Hooks
  */
 import { useState, useEffect, useCallback } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 
 /**
@@ -23,10 +23,16 @@ import { sessionService, type AnalysisResult } from '@/features/exam/services/se
 import { queryKeys } from '@/lib/query-keys'
 
 /**
+ * Subscription hooks
+ */
+import { useIsPremium } from '@/features/auth/hooks/useSubscription'
+
+/**
  * Components
  */
 import { PageHeader } from '@/shared/components'
-import { Flex, message, Spin, Card, Typography, Tag, Progress } from 'antd'
+import { Flex, message, Spin, Card, Typography, Tag, Progress, Modal } from 'antd'
+import { CrownOutlined } from '@ant-design/icons'
 import { MicPermissionGate } from '@/features/exam/components/MicPermissionGate'
 import { TestIntroView } from './components/TestIntroView'
 import { PartInstructionView } from './components/PartInstructionView'
@@ -59,6 +65,8 @@ const PART_NAMES: Record<number, string> = {
 
 export default function FullTestPage() {
   const { examSetId } = useParams<{ examSetId: string }>()
+  const navigate = useNavigate()
+  const isPremium = useIsPremium()
 
   const [testState, setTestState] = useState<TestState>({
     phase: 'intro',
@@ -70,26 +78,42 @@ export default function FullTestPage() {
   })
 
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [userPlan, setUserPlan] = useState<'BASIC' | 'PREMIUM' | null>(null)
   const [allResults, setAllResults] = useState<
     Array<{ transcript: string; analysis: AnalysisResult | null; questionId: string }>
   >([])
   const [contextPlayedForPart, setContextPlayedForPart] = useState<Record<number, boolean>>({})
   const [selectedHistorySessionId, setSelectedHistorySessionId] = useState<string | null>(null)
 
-  // Check subscription on mount
+  // Check if user is premium - block FREE users
   useEffect(() => {
-    const checkSubscription = async () => {
-      try {
-        const result = await responseService.checkSubscription()
-        setUserPlan(result.plan)
-      } catch (error) {
-        console.error('Failed to check subscription:', error)
-        setUserPlan('BASIC')
-      }
+    if (isPremium === false) {
+      Modal.warning({
+        title: (
+          <div className="flex items-center space-x-2">
+            <CrownOutlined className="text-yellow-500" />
+            <span>Tính năng Premium</span>
+          </div>
+        ),
+        content: (
+          <div className="space-y-2">
+            <p>Luyện full đề chỉ dành cho người dùng Premium.</p>
+            <p className="text-sm text-gray-600">Nâng cấp ngay để trải nghiệm đầy đủ tính năng:</p>
+            <ul className="list-inside list-disc space-y-1 text-sm text-gray-600">
+              <li>Luyện full đề không giới hạn</li>
+              <li>AI chấm điểm phát âm và nội dung</li>
+              <li>Phân tích chi tiết từng câu trả lời</li>
+              <li>Lưu lịch sử luyện tập</li>
+            </ul>
+          </div>
+        ),
+        okText: 'Nâng cấp ngay',
+        onOk: () => navigate('/pricing'),
+        centered: true,
+      })
+      // Redirect after showing modal
+      setTimeout(() => navigate('/exam'), 500)
     }
-    checkSubscription()
-  }, [])
+  }, [isPremium, navigate])
 
   // Load selected session detail when clicking history
   const { data: selectedSession, isLoading: isLoadingSession } = useQuery({
@@ -156,10 +180,10 @@ export default function FullTestPage() {
   // Transcribe and analyze mutation (PREMIUM only)
   const analyzeMutation = useMutation({
     mutationFn: async ({ responseId, partNumber }: { responseId: string; partNumber: number }) => {
-      if (userPlan === 'PREMIUM') {
+      if (isPremium) {
         return responseService.transcribeAndAnalyze(responseId, partNumber)
       } else {
-        // BASIC: transcribe only
+        // FREE: transcribe only
         const transcript = await responseService.transcribe(responseId)
         return { transcript, analysis: null }
       }
@@ -404,7 +428,7 @@ export default function FullTestPage() {
                         referenceText={question.contentText || undefined}
                         audioUrl={response.audioUrl || undefined}
                         isLoading={false}
-                        isPremium={userPlan === 'PREMIUM'}
+                        isPremium={isPremium}
                         onReset={() => setSelectedHistorySessionId(null)}
                       />
                     </div>
@@ -558,7 +582,7 @@ export default function FullTestPage() {
                           referenceText={question.contentText || undefined}
                           audioUrl={undefined}
                           isLoading={false}
-                          isPremium={userPlan === 'PREMIUM'}
+                          isPremium={isPremium}
                           onReset={() => {
                             // No action needed - user is viewing completed test results
                             // Could navigate back to exam list if needed

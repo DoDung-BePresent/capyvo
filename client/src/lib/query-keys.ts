@@ -8,6 +8,19 @@ export const queryKeys = {
     me: () => ['auth', 'me'] as const,
   },
 
+  // Trial
+  trial: {
+    status: () => ['trial', 'status'] as const,
+    settings: () => ['trial', 'admin', 'settings'] as const,
+  },
+
+  // Subscription
+  subscription: {
+    plans: () => ['subscription', 'plans'] as const,
+    current: () => ['subscription', 'current'] as const,
+    history: () => ['subscription', 'history'] as const,
+  },
+
   // Exam sets
   examSets: {
     all: () => ['exam-sets'] as const,

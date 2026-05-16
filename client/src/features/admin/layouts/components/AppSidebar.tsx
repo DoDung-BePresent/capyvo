@@ -12,6 +12,7 @@ import {
   RobotOutlined,
   CalculatorOutlined,
   SafetyOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons'
 
 /**
@@ -58,6 +59,11 @@ const MENU_ITEMS = [
     key: '/admin/topics',
     icon: <TagsOutlined />,
     label: 'Chủ đề',
+  },
+  {
+    key: '/admin/trial-settings',
+    icon: <ClockCircleOutlined />,
+    label: 'Premium Trial',
   },
   {
     key: '/admin/openai-usage',

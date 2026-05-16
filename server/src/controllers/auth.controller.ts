@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
 import { AuthService } from '@/services/auth.service'
+import { TrialService } from '@/services/trial.service'
 import { NotFoundError } from '@/errors/app-error'
 import type { AuthRequest } from '@/middlewares/authenticate'
 
@@ -15,6 +16,16 @@ export class AuthController {
       authReq.userMetadata?.avatar_url,
     )
     if (!user) throw new NotFoundError('User')
-    res.json({ success: true, data: user })
+
+    // Get trial status
+    const trialStatus = await TrialService.getTrialStatus(authReq.userId)
+
+    res.json({
+      success: true,
+      data: {
+        ...user,
+        trialStatus,
+      },
+    })
   }
 }

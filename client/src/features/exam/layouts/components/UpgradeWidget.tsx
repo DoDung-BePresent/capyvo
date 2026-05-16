@@ -25,9 +25,10 @@ interface UpgradeWidgetProps {
   collapsed: boolean
   onUpgrade: () => void
   isPremium?: boolean
+  isOnTrial?: boolean
   daysRemaining?: number | null
   totalDays?: number
-  planName?: string // "BASIC" or "PREMIUM"
+  planName?: string // "FREE", "PREMIUM", "CLASSROOM"
 }
 
 const Container = styled('div', 'p-4 pb-10')
@@ -47,23 +48,52 @@ export function UpgradeWidget({
   collapsed,
   onUpgrade,
   isPremium = false,
+  isOnTrial = false,
   daysRemaining = null,
-  totalDays = 30,
+  totalDays,
   planName,
 }: UpgradeWidgetProps) {
+  // Auto-calculate totalDays based on trial status if not provided
+  const calculatedTotalDays = totalDays ?? (isOnTrial ? 7 : 30)
+
   // Calculate percentage for progress circle
   const percentage =
     isPremium && daysRemaining !== null && daysRemaining > 0
-      ? Math.round((daysRemaining / totalDays) * 100)
+      ? Math.round((daysRemaining / calculatedTotalDays) * 100)
       : 0
 
-  // Determine color based on days remaining
+  // Determine color based on days remaining and total days
   const getProgressColor = () => {
     if (!isPremium || daysRemaining === null || daysRemaining <= 0) return COLORS.primary
+
+    // For trial (7 days), use different thresholds
+    if (isOnTrial) {
+      if (daysRemaining <= 2) return '#ff4d4f' // Red for <= 2 days
+      if (daysRemaining <= 4) return '#faad14' // Orange for <= 4 days
+      return '#52c41a' // Green for > 4 days
+    }
+
+    // For premium subscription (30 days)
     if (daysRemaining <= 7) return '#ff4d4f' // Red for <= 7 days
     if (daysRemaining <= 15) return '#faad14' // Orange for <= 15 days
     return '#52c41a' // Green for > 15 days
   }
+
+  // Determine tag color and text
+  const getTagProps = () => {
+    if (planName === 'FREE') {
+      return { color: 'default', text: 'FREE' }
+    }
+    if (isOnTrial) {
+      return { color: 'blue', text: 'TRIAL' }
+    }
+    if (planName === 'PREMIUM') {
+      return { color: 'gold', text: 'PREMIUM' }
+    }
+    return { color: 'default', text: planName || 'FREE' }
+  }
+
+  const tagProps = getTagProps()
 
   if (collapsed) {
     return (
@@ -102,14 +132,9 @@ export function UpgradeWidget({
       <ExpandedView>
         {isPremium && daysRemaining !== null && daysRemaining > 0 ? (
           <div className="flex flex-col items-center gap-2">
-            {planName && (
-              <Tag
-                color={planName === 'PREMIUM' ? 'gold' : 'blue'}
-                style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}
-              >
-                {planName}
-              </Tag>
-            )}
+            <Tag color={tagProps.color} style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
+              {tagProps.text}
+            </Tag>
             <Progress
               type="circle"
               percent={percentage}
@@ -127,7 +152,25 @@ export function UpgradeWidget({
             />
           </div>
         ) : (
-          <img src={CapybaraBilling} className="size-25 mx-auto" />
+          <>
+            {planName === 'FREE' && (
+              <Tag
+                color="default"
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  marginBottom: 8,
+                  marginLeft: 'auto',
+                  marginRight: 'auto',
+                  display: 'block',
+                  width: 'fit-content',
+                }}
+              >
+                FREE
+              </Tag>
+            )}
+            <img src={CapybaraBilling} className="size-25 mx-auto" />
+          </>
         )}
 
         <StyledButton
@@ -144,7 +187,9 @@ export function UpgradeWidget({
         >
           <WorkspacePremium style={{ fontSize: 18 }} />
           {isPremium && daysRemaining !== null && daysRemaining > 0
-            ? 'Gia hạn ngay'
+            ? isOnTrial
+              ? 'Nâng cấp ngay'
+              : 'Gia hạn ngay'
             : 'Nâng cấp ngay'}
         </StyledButton>
       </ExpandedView>

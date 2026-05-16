@@ -117,6 +117,10 @@ const router = createBrowserRouter([
                 path: '/admin/abuse-detection',
                 lazy: lazy(() => import('@/features/admin/pages/AbuseDetectionPage')),
               },
+              {
+                path: '/admin/trial-settings',
+                lazy: lazy(() => import('@/features/admin/pages/TrialSettingsPage')),
+              },
             ],
           },
         ],
