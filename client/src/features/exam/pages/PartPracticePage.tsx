@@ -12,6 +12,8 @@ import { PageHeader } from '@/shared/components'
 import { StyledButton } from '@/shared/components'
 import { Card, Empty, Flex, Spin, Typography, Tag } from 'antd'
 import { TopicFilter } from '@/features/exam/components/TopicFilter'
+import SimpleBar from 'simplebar-react'
+import 'simplebar-react/dist/simplebar.min.css'
 
 /**
  * Icons
@@ -41,8 +43,8 @@ const { Text, Title } = Typography
 
 // Styled components
 const Container = styled('div', 'flex gap-6 h-[calc(100vh-200px)]')
-const Sidebar = styled('div', 'w-64 shrink-0 overflow-y-auto')
-const MainContent = styled('div', 'flex-1 overflow-y-auto')
+const Sidebar = styled('div', 'w-64 shrink-0')
+const MainContent = styled('div', 'flex-1')
 const QuestionCard = styled(Card, 'h-full rounded-lg! hover:shadow-lg transition-all')
 const QuestionGrid = styled('div', 'grid gap-4')
 
@@ -244,47 +246,51 @@ export default function PartPracticePage() {
       <Container>
         {/* Sidebar - Filter by topic */}
         <Sidebar>
-          {/* Topic Filter Section */}
-          {topics.length > 0 && (
-            <>
-              <Title level={5} style={{ marginBottom: 16 }}>
-                Chủ đề
-              </Title>
-              <TopicFilter
-                topics={topics}
-                selectedTopicId={selectedTopicId}
-                onSelectTopic={handleTopicSelect}
-              />
-            </>
-          )}
+          <SimpleBar style={{ maxHeight: 'calc(100vh - 200px)' }}>
+            {/* Topic Filter Section */}
+            {topics.length > 0 && (
+              <>
+                <Title level={5} style={{ marginBottom: 16 }}>
+                  Chủ đề
+                </Title>
+                <TopicFilter
+                  topics={topics}
+                  selectedTopicId={selectedTopicId}
+                  onSelectTopic={handleTopicSelect}
+                />
+              </>
+            )}
+          </SimpleBar>
         </Sidebar>
 
         {/* Main content - Questions grid */}
         <MainContent>
-          <Flex align="center" justify="space-between" style={{ marginBottom: 16 }}>
-            <Title level={5} style={{ margin: 0 }}>
-              {selectedTopic ? selectedTopic.name : 'Tất cả câu hỏi'}
-            </Title>
-            <Flex align="center" gap={8}>
-              {questionsFetching && <Spin size="small" />}
-              <Text type="secondary">{allQuestions.length} câu hỏi</Text>
+          <SimpleBar style={{ maxHeight: 'calc(100vh - 200px)' }}>
+            <Flex align="center" justify="space-between" style={{ marginBottom: 16 }}>
+              <Title level={5} style={{ margin: 0 }}>
+                {selectedTopic ? selectedTopic.name : 'Tất cả câu hỏi'}
+              </Title>
+              <Flex align="center" gap={8}>
+                {questionsFetching && <Spin size="small" />}
+                <Text type="secondary">{allQuestions.length} câu hỏi</Text>
+              </Flex>
             </Flex>
-          </Flex>
 
-          {allQuestions.length === 0 ? (
-            <Empty description="Không có câu hỏi nào phù hợp với bộ lọc" />
-          ) : (
-            <QuestionGrid className={gridCols}>
-              {allQuestions.map((question) => (
-                <QuestionItem
-                  key={question.id}
-                  question={question}
-                  onPractice={() => handlePracticeQuestion(question)}
-                  partNumber={part}
-                />
-              ))}
-            </QuestionGrid>
-          )}
+            {allQuestions.length === 0 ? (
+              <Empty description="Không có câu hỏi nào phù hợp với bộ lọc" />
+            ) : (
+              <QuestionGrid className={gridCols}>
+                {allQuestions.map((question) => (
+                  <QuestionItem
+                    key={question.id}
+                    question={question}
+                    onPractice={() => handlePracticeQuestion(question)}
+                    partNumber={part}
+                  />
+                ))}
+              </QuestionGrid>
+            )}
+          </SimpleBar>
         </MainContent>
       </Container>
     </>
