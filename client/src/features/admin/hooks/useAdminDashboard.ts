@@ -13,6 +13,13 @@ export interface DashboardOverview {
   totalQuestions: number
 }
 
+export interface OpenAIStats {
+  totalTokens: number
+  totalRequests: number
+  estimatedCostUsd: number
+  configured: boolean
+}
+
 export interface QuestionByPart {
   part: string
   count: number
@@ -46,6 +53,7 @@ export interface RecentPayment {
 
 export interface AdminDashboardStats {
   overview: DashboardOverview
+  openai: OpenAIStats
   questionsByPart: QuestionByPart[]
   tokenPackageStats: TokenPackageStat[]
   revenueSeries: DayStat[]

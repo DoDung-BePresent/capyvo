@@ -61,6 +61,17 @@ export const queryKeys = {
     stats: () => ['admin', 'dashboard', 'stats'] as const,
   },
 
+  // OpenAI Usage
+  openaiUsage: {
+    detailed: (startDate?: string, endDate?: string) =>
+      ['admin', 'openai-usage', 'detailed', startDate, endDate] as const,
+  },
+
+  // Abuse Detection
+  abuseDetection: {
+    detect: () => ['admin', 'abuse-detection', 'detect'] as const,
+  },
+
   // Payments
   payments: {
     my: () => ['payments', 'my'] as const,

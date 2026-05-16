@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma'
+import { OpenAIUsageService } from './openai-usage.service'
 
 function subDays(date: Date, days: number): Date {
   const d = new Date(date)
@@ -13,6 +14,8 @@ function formatDay(date: Date): string {
 }
 
 export class AdminDashboardService {
+  private openaiUsageService = new OpenAIUsageService()
+
   async getStats() {
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -31,6 +34,7 @@ export class AdminDashboardService {
       revenueByDay,
       sessionsByDay,
       recentPayments,
+      openaiUsage,
     ] = await Promise.all([
       // Total users
       prisma.user.count(),
@@ -102,6 +106,9 @@ export class AdminDashboardService {
           user: { select: { email: true, fullName: true } },
         },
       }),
+
+      // OpenAI usage stats
+      this.openaiUsageService.getCurrentMonthUsage(),
     ])
 
     // Build day-by-day map for last 30 days
@@ -136,6 +143,12 @@ export class AdminDashboardService {
         totalSessions,
         sessionsThisMonth,
         totalQuestions,
+      },
+      openai: {
+        totalTokens: openaiUsage.totalTokens,
+        totalRequests: openaiUsage.totalRequests,
+        estimatedCostUsd: openaiUsage.estimatedCostUsd,
+        configured: openaiUsage.configured,
       },
       questionsByPart: questionsByPart.map((q) => ({
         part: `Part ${q.partNumber}`,

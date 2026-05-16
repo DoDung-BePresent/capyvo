@@ -9,6 +9,9 @@ import maintenanceRouter from './maintenance.routes'
 import systemStatsRouter from './system-stats.routes'
 import paymentRouter from './payment.routes'
 import adminDashboardRouter from './admin-dashboard.routes'
+import openaiUsageRouter from './openai-usage.routes'
+import pricingCalculatorRouter from './pricing-calculator.routes'
+import abuseDetectionRouter from './abuse-detection.routes'
 import subscriptionRouter from './subscription.routes'
 import activityRouter from './activity.routes'
 import shareRouter from './share.routes'
@@ -25,6 +28,9 @@ router.use('/sessions', sessionRouter)
 router.use('/system-stats', systemStatsRouter)
 router.use('/payments', paymentRouter)
 router.use('/admin/dashboard', adminDashboardRouter)
+router.use('/admin/openai-usage', openaiUsageRouter)
+router.use('/admin/pricing-calculator', pricingCalculatorRouter)
+router.use('/admin/abuse-detection', abuseDetectionRouter)
 router.use('/subscription', subscriptionRouter)
 router.use('/activity', activityRouter)
 router.use('/shares', shareRouter)

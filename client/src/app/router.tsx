@@ -105,6 +105,18 @@ const router = createBrowserRouter([
                 path: '/admin/topics',
                 lazy: lazy(() => import('@/features/admin/pages/TopicManagementPage')),
               },
+              {
+                path: '/admin/openai-usage',
+                lazy: lazy(() => import('@/features/admin/pages/OpenAIUsagePage')),
+              },
+              {
+                path: '/admin/pricing-calculator',
+                lazy: lazy(() => import('@/features/admin/pages/PricingCalculatorPage')),
+              },
+              {
+                path: '/admin/abuse-detection',
+                lazy: lazy(() => import('@/features/admin/pages/AbuseDetectionPage')),
+              },
             ],
           },
         ],

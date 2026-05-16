@@ -1,21 +1,17 @@
 import { useNavigate } from 'react-router-dom'
-import { Card, Row, Col, Typography, Table, Tag, Space, Flex, Tooltip, Skeleton, Alert } from 'antd'
+import { Card, Row, Col, Typography, Table, Tag, Space, Flex, Tooltip, Skeleton } from 'antd'
 import {
   EditOutlined,
-  DatabaseOutlined,
   RobotOutlined,
   ReloadOutlined,
-  UserOutlined,
   ThunderboltOutlined,
   DollarOutlined,
-  BookOutlined,
-  RiseOutlined,
   TeamOutlined,
+  ApiOutlined,
 } from '@ant-design/icons'
 import { Area, Column, Pie } from '@ant-design/charts'
 import { PageHeader } from '@/shared/components'
 import { useAdminDashboard } from '../hooks/useAdminDashboard'
-import { useSystemStats } from '../hooks/useSystemStats'
 import dayjs from 'dayjs'
 import type { RecentPayment } from '../hooks/useAdminDashboard'
 
@@ -25,11 +21,10 @@ function formatVND(amount: number) {
   return amount.toLocaleString('vi-VN') + ' ₫'
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
+function formatNumber(num: number): string {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
+  return num.toString()
 }
 
 const recentPaymentColumns = [
@@ -77,14 +72,9 @@ const recentPaymentColumns = [
 export default function AdminDashboardPage() {
   const navigate = useNavigate()
   const { data: stats, isLoading, refetch } = useAdminDashboard()
-  const {
-    data: sysStats,
-    isLoading: isSysLoading,
-    isError: isSysError,
-    refetch: refetchSys,
-  } = useSystemStats()
 
   const ov = stats?.overview
+  const openai = stats?.openai
 
   return (
     <Space direction="vertical" size={24} style={{ width: '100%' }}>
@@ -119,27 +109,31 @@ export default function AdminDashboardPage() {
             color: '#52c41a',
           },
           {
-            title: 'Số đơn đã thanh toán',
-            value: ov?.totalPayments,
-            icon: <RiseOutlined style={{ fontSize: 22, color: '#faad14' }} />,
+            title: 'OpenAI Tokens',
+            value: openai?.configured ? formatNumber(openai.totalTokens) : '—',
+            suffix: openai?.configured
+              ? `${openai.totalRequests.toLocaleString()} requests`
+              : 'Chưa cấu hình',
+            icon: <ApiOutlined style={{ fontSize: 22, color: '#10a37f' }} />,
+            color: '#10a37f',
+            onClick: () => navigate('/admin/openai-usage'),
+          },
+          {
+            title: 'Chi phí OpenAI',
+            value: openai?.configured ? `$${openai.estimatedCostUsd.toFixed(2)}` : '—',
+            suffix: 'Tháng này',
+            icon: <RobotOutlined style={{ fontSize: 22, color: '#faad14' }} />,
             color: '#faad14',
-          },
-          {
-            title: 'Phiên luyện tập',
-            value: ov?.totalSessions,
-            suffix: `+${ov?.sessionsThisMonth ?? 0} tháng này`,
-            icon: <UserOutlined style={{ fontSize: 22, color: '#1677ff' }} />,
-            color: '#1677ff',
-          },
-          {
-            title: 'Câu hỏi trong hệ thống',
-            value: ov?.totalQuestions,
-            icon: <BookOutlined style={{ fontSize: 22, color: '#722ed1' }} />,
-            color: '#722ed1',
+            onClick: () => navigate('/admin/openai-usage'),
           },
         ].map((item) => (
-          <Col key={item.title} xs={24} sm={12} lg={8} xl={4}>
-            <Card styles={{ body: { padding: '16px 20px' } }}>
+          <Col key={item.title} xs={24} sm={12} lg={6}>
+            <Card
+              hoverable={!!item.onClick}
+              onClick={item.onClick}
+              styles={{ body: { padding: '16px 20px' } }}
+              style={{ cursor: item.onClick ? 'pointer' : 'default' }}
+            >
               <Flex justify="space-between" align="flex-start">
                 <div>
                   <Text type="secondary" style={{ fontSize: 12 }}>
@@ -222,7 +216,7 @@ export default function AdminDashboardPage() {
 
       {/* ── Session chart + Questions by part ── */}
       <Row gutter={[16, 16]}>
-        <Col xs={24} lg={16}>
+        <Col xs={24} lg={12}>
           <Card title="Phiên luyện tập 30 ngày gần nhất">
             {isLoading ? (
               <Skeleton active paragraph={{ rows: 5 }} />
@@ -238,7 +232,7 @@ export default function AdminDashboardPage() {
             )}
           </Card>
         </Col>
-        <Col xs={24} lg={8}>
+        <Col xs={24} lg={12}>
           <Card title="Câu hỏi theo Part" style={{ height: '100%' }}>
             {isLoading ? (
               <Skeleton active paragraph={{ rows: 5 }} />
@@ -258,7 +252,7 @@ export default function AdminDashboardPage() {
 
       {/* ── Recent payments + Quick nav ── */}
       <Row gutter={[16, 16]}>
-        <Col xs={24} lg={16}>
+        <Col xs={24} lg={18}>
           <Card title="Thanh toán gần đây">
             <Table
               dataSource={stats?.recentPayments ?? []}
@@ -270,84 +264,19 @@ export default function AdminDashboardPage() {
             />
           </Card>
         </Col>
-        <Col xs={24} lg={8}>
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
-            <Card hoverable onClick={() => navigate('/admin/questions')}>
-              <Flex align="center" gap={12}>
-                <EditOutlined style={{ fontSize: 24, color: '#4F46E5' }} />
-                <div>
-                  <Text strong>Quản lý câu hỏi</Text>
-                  <br />
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    Thêm, sửa câu hỏi cho 5 part
-                  </Text>
-                </div>
-              </Flex>
-            </Card>
-
-            {/* System resources */}
-            <Card
-              size="small"
-              title={
-                <Flex justify="space-between" align="center">
-                  <span>Tài nguyên hệ thống</span>
-                  <ReloadOutlined
-                    style={{ fontSize: 12, cursor: 'pointer', color: '#888' }}
-                    onClick={() => refetchSys()}
-                  />
-                </Flex>
-              }
-            >
-              {isSysError && (
-                <Alert
-                  type="warning"
-                  message="Không lấy được dữ liệu hệ thống"
-                  showIcon
-                  style={{ marginBottom: 8 }}
-                />
-              )}
-              <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                <Flex justify="space-between" align="center">
-                  <Space size={6}>
-                    <DatabaseOutlined style={{ color: '#3ECF8E' }} />
-                    <Text style={{ fontSize: 13 }}>Supabase Storage</Text>
-                  </Space>
-                  {isSysLoading ? (
-                    <Skeleton.Input active size="small" style={{ width: 70 }} />
-                  ) : !sysStats?.supabase.configured ? (
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      Chưa cấu hình
-                    </Text>
-                  ) : (
-                    <Text strong style={{ fontSize: 13 }}>
-                      {sysStats.supabase.storageSizeBytes !== null
-                        ? formatBytes(sysStats.supabase.storageSizeBytes)
-                        : '—'}
-                    </Text>
-                  )}
-                </Flex>
-                <Flex justify="space-between" align="center">
-                  <Space size={6}>
-                    <RobotOutlined style={{ color: '#10a37f' }} />
-                    <Text style={{ fontSize: 13 }}>OpenAI tháng này</Text>
-                  </Space>
-                  {isSysLoading ? (
-                    <Skeleton.Input active size="small" style={{ width: 70 }} />
-                  ) : !sysStats?.openai.configured ? (
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      Chưa cấu hình
-                    </Text>
-                  ) : (
-                    <Text strong style={{ fontSize: 13 }}>
-                      {sysStats.openai.currentMonthCostUsd !== null
-                        ? `$${sysStats.openai.currentMonthCostUsd.toFixed(2)}`
-                        : '—'}
-                    </Text>
-                  )}
-                </Flex>
-              </Space>
-            </Card>
-          </Space>
+        <Col xs={24} lg={6}>
+          <Card hoverable onClick={() => navigate('/admin/questions')}>
+            <Flex align="center" gap={12}>
+              <EditOutlined style={{ fontSize: 24, color: '#4F46E5' }} />
+              <div>
+                <Text strong>Quản lý câu hỏi</Text>
+                <br />
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Thêm, sửa câu hỏi cho 5 part
+                </Text>
+              </div>
+            </Flex>
+          </Card>
         </Col>
       </Row>
     </Space>

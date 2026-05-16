@@ -4,7 +4,15 @@ import { useNavigate, useLocation } from 'react-router-dom'
 /**
  * Icons
  */
-import { DashboardOutlined, FileDoneOutlined, ReadOutlined, TagsOutlined } from '@ant-design/icons'
+import {
+  DashboardOutlined,
+  FileDoneOutlined,
+  ReadOutlined,
+  TagsOutlined,
+  RobotOutlined,
+  CalculatorOutlined,
+  SafetyOutlined,
+} from '@ant-design/icons'
 
 /**
  * Types
@@ -50,6 +58,21 @@ const MENU_ITEMS = [
     key: '/admin/topics',
     icon: <TagsOutlined />,
     label: 'Chủ đề',
+  },
+  {
+    key: '/admin/openai-usage',
+    icon: <RobotOutlined />,
+    label: 'OpenAI Usage',
+  },
+  {
+    key: '/admin/pricing-calculator',
+    icon: <CalculatorOutlined />,
+    label: 'Pricing Calculator',
+  },
+  {
+    key: '/admin/abuse-detection',
+    icon: <SafetyOutlined />,
+    label: 'Abuse Detection',
   },
 ]
 
