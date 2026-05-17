@@ -799,10 +799,14 @@ export class ResponseService {
       }
     }
 
-    // Calculate part averages for display
+    // Calculate part averages for display (convert to 0-100 scale)
     const partAverages: Record<number, number> = {}
     for (const [part, scores] of Object.entries(scoresByPart)) {
-      partAverages[Number(part)] = scores.reduce((a, b) => a + b, 0) / scores.length
+      const partNum = Number(part)
+      const maxScore = partNum === 5 ? 5 : 3
+      const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length
+      // Convert to 0-100 scale and round to 1 decimal
+      partAverages[partNum] = Math.round((avgScore / maxScore) * 1000) / 10
     }
 
     // Calculate TOEIC score using weighted formula
@@ -811,12 +815,12 @@ export class ResponseService {
     // Use AI to generate assessment text only (not score)
     const prompt = `You are a TOEIC Speaking test evaluator. The student received a TOEIC Speaking score of ${estimatedScore}/200.
 
-Performance by part:
-- Part 1 (Read Aloud): ${partAverages[1]?.toFixed(1) || 'N/A'}/3 (${scoresByPart[1]?.length || 0} questions)
-- Part 2 (Describe Picture): ${partAverages[2]?.toFixed(1) || 'N/A'}/3 (${scoresByPart[2]?.length || 0} questions)
-- Part 3 (Respond to Questions): ${partAverages[3]?.toFixed(1) || 'N/A'}/3 (${scoresByPart[3]?.length || 0} questions)
-- Part 4 (Respond Using Information): ${partAverages[4]?.toFixed(1) || 'N/A'}/3 (${scoresByPart[4]?.length || 0} questions)
-- Part 5 (Express Opinion): ${partAverages[5]?.toFixed(1) || 'N/A'}/5 (${scoresByPart[5]?.length || 0} questions)
+Performance by part (0-100 scale):
+- Part 1 (Read Aloud): ${partAverages[1]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[1]?.length || 0} questions)
+- Part 2 (Describe Picture): ${partAverages[2]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[2]?.length || 0} questions)
+- Part 3 (Respond to Questions): ${partAverages[3]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[3]?.length || 0} questions)
+- Part 4 (Respond Using Information): ${partAverages[4]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[4]?.length || 0} questions)
+- Part 5 (Express Opinion): ${partAverages[5]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[5]?.length || 0} questions)
 
 Provide 2-3 sentences in Vietnamese summarizing:
 1. Overall performance level
