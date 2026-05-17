@@ -36,13 +36,15 @@ if (redis) {
     })
     .catch((err) => {
       console.error('❌ Redis connection failed:', err.message)
-      console.warn('⚠️  Continuing without Redis - features will be limited')
+      console.warn(
+        '⚠️  Continuing without Redis - Queue features will fallback to synchronous processing',
+      )
       // Don't crash the server, just disable Redis
     })
 
   redis.on('error', (err) => {
-    // Only log critical errors, not connection spam
-    if (err.message && !err.message.includes('ECONNRESET')) {
+    // Suppress ECONNRESET spam - these are expected when connection is unstable
+    if (err.message && !err.message.includes('ECONNRESET') && !err.message.includes('ENOTFOUND')) {
       console.error('❌ Redis error:', err.message)
     }
   })
@@ -52,5 +54,9 @@ if (redis) {
     if (redis.status === 'ready') {
       console.log('⚠️  Redis connection closed')
     }
+  })
+
+  redis.on('reconnecting', () => {
+    console.log('🔄 Redis reconnecting...')
   })
 }

@@ -2,6 +2,7 @@ import OpenAI from 'openai'
 import supabaseAdmin from '@/lib/supabase'
 import prisma from '@/lib/prisma'
 import { ForbiddenError } from '@/errors/app-error'
+import { transcriptionAndAnalysisQueue } from '@/queues/transcription.queue'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -567,6 +568,87 @@ export class ResponseService {
     })
 
     return { transcript, analysis }
+  }
+
+  /**
+   * Queue version: Add job to queue and return immediately
+   * Used for Full Test mode to avoid blocking
+   * Falls back to synchronous processing if queue is unavailable
+   */
+  async transcribeAndAnalyzeAsync(
+    responseId: string,
+    userId: string,
+    partNumber: number,
+  ): Promise<
+    { jobId: string; status: 'queued' } | { transcript: string; analysis: AnalysisResult }
+  > {
+    // 1. Verify response exists and user has access
+    const response = await prisma.userResponse.findFirst({
+      where: { id: responseId, session: { userId } },
+      select: { id: true, audioUrl: true },
+    })
+    if (!response?.audioUrl) throw new ForbiddenError('Response not found or has no audio')
+
+    // 2. Check PREMIUM access
+    await this.checkSubscriptionAccess(userId, true)
+
+    // 3. Try to add job to queue, fallback to sync if queue unavailable
+    if (!transcriptionAndAnalysisQueue) {
+      console.warn('⚠️  Queue not available, processing synchronously')
+      const result = await this.transcribeAndAnalyze(responseId, userId, partNumber)
+      return result
+    }
+
+    try {
+      const job = await transcriptionAndAnalysisQueue.add('process', {
+        responseId,
+        userId,
+        partNumber,
+      })
+
+      console.log(`✅ Job ${job.id} queued for response ${responseId}`)
+      return { jobId: job.id!, status: 'queued' }
+    } catch (error) {
+      console.warn('⚠️  Failed to queue job, falling back to synchronous processing:', error)
+      // Fallback: Process synchronously
+      const result = await this.transcribeAndAnalyze(responseId, userId, partNumber)
+      return result
+    }
+  }
+
+  /**
+   * Get result of queued job
+   */
+  async getQueuedResult(
+    responseId: string,
+    userId: string,
+  ): Promise<
+    | { status: 'completed'; transcript: string; analysis: AnalysisResult }
+    | { status: 'processing' | 'failed'; error?: string }
+  > {
+    // Verify access
+    const response = await prisma.userResponse.findFirst({
+      where: { id: responseId, session: { userId } },
+      select: {
+        id: true,
+        transcript: true,
+        pronunciationScore: true,
+      },
+    })
+
+    if (!response) throw new ForbiddenError('Response not found')
+
+    // Check if result is ready
+    if (response.transcript && response.pronunciationScore) {
+      return {
+        status: 'completed',
+        transcript: response.transcript,
+        analysis: response.pronunciationScore as unknown as AnalysisResult,
+      }
+    }
+
+    // Still processing
+    return { status: 'processing' }
   }
 
   async getQuestionHistory(questionId: string, userId: string) {

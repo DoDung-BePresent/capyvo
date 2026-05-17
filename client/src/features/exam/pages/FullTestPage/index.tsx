@@ -84,6 +84,7 @@ export default function FullTestPage() {
   >([])
   const [contextPlayedForPart, setContextPlayedForPart] = useState<Record<number, boolean>>({})
   const [selectedHistorySessionId, setSelectedHistorySessionId] = useState<string | null>(null)
+  const [pendingResponses, setPendingResponses] = useState<Set<string>>(new Set())
 
   // Check if user is premium - block FREE users (only after subscription data is loaded)
   useEffect(() => {
@@ -136,6 +137,53 @@ export default function FullTestPage() {
     setSelectedHistorySessionId(historySessionId)
   }
 
+  // Poll for queued results when test is completed
+  useEffect(() => {
+    if (testState.phase !== 'completed' || pendingResponses.size === 0) return
+
+    const pollInterval = setInterval(async () => {
+      const responseIds = Array.from(pendingResponses)
+
+      for (const responseId of responseIds) {
+        try {
+          const result = await responseService.getQueuedResult(responseId)
+
+          if (result.status === 'completed') {
+            // Update allResults with completed result
+            setAllResults((prev) =>
+              prev.map((r) => {
+                // Find by matching responseId in testState.responses
+                const questionId = Array.from(testState.responses.entries()).find(
+                  ([_, rid]) => rid === responseId,
+                )?.[0]
+
+                if (r.questionId === questionId) {
+                  return {
+                    ...r,
+                    transcript: result.transcript,
+                    analysis: result.analysis,
+                  }
+                }
+                return r
+              }),
+            )
+
+            // Remove from pending
+            setPendingResponses((prev) => {
+              const next = new Set(prev)
+              next.delete(responseId)
+              return next
+            })
+          }
+        } catch (error) {
+          console.error('Failed to fetch queued result:', error)
+        }
+      }
+    }, 3000) // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval)
+  }, [testState.phase, testState.responses, pendingResponses])
+
   // Fetch all questions for the exam set
   const { data: examSet, isLoading } = useQuery({
     queryKey: queryKeys.examSets.detail(examSetId ?? ''),
@@ -181,15 +229,22 @@ export default function FullTestPage() {
     },
   })
 
-  // Transcribe and analyze mutation (PREMIUM only)
+  // Transcribe and analyze mutation (PREMIUM only) - USE QUEUE for full test
   const analyzeMutation = useMutation({
     mutationFn: async ({ responseId, partNumber }: { responseId: string; partNumber: number }) => {
       if (isPremium) {
-        return responseService.transcribeAndAnalyze(responseId, partNumber)
+        // Full test mode: Try to use queue (async), fallback to sync if queue unavailable
+        const result = await responseService.transcribeAndAnalyze(responseId, partNumber, true)
+        if ('jobId' in result) {
+          // Job queued successfully
+          return { transcript: '', analysis: null, queued: true }
+        }
+        // Fallback to sync (queue unavailable)
+        return { ...result, queued: false }
       } else {
         // FREE: transcribe only
         const transcript = await responseService.transcribe(responseId)
-        return { transcript, analysis: null }
+        return { transcript, analysis: null, queued: false }
       }
     },
   })
@@ -214,15 +269,28 @@ export default function FullTestPage() {
         partNumber: currentQuestion!.partNumber,
       })
 
-      // Store result for final display
-      setAllResults((prev) => [
-        ...prev,
-        {
-          transcript: result.transcript,
-          analysis: result.analysis,
-          questionId: currentQuestion!.id,
-        },
-      ])
+      // Store result for final display (even if queued, we'll fetch later)
+      if (!('queued' in result) || !result.queued) {
+        setAllResults((prev) => [
+          ...prev,
+          {
+            transcript: result.transcript,
+            analysis: result.analysis,
+            questionId: currentQuestion!.id,
+          },
+        ])
+      } else {
+        // Queued - store placeholder and track for polling
+        setAllResults((prev) => [
+          ...prev,
+          {
+            transcript: '',
+            analysis: null,
+            questionId: currentQuestion!.id,
+          },
+        ])
+        setPendingResponses((prev) => new Set(prev).add(responseId))
+      }
 
       // Move to next question or complete
       moveToNext()
