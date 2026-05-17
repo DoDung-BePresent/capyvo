@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 /**
  * Components
  */
-import { Card, Typography, Tag, Flex, Space, Progress, Tooltip, message } from 'antd'
+import { Card, Typography, Tag, Flex, Space, Progress, Tooltip, message, Image } from 'antd'
 
 /**
  * Icons
@@ -418,21 +418,23 @@ export function QuestionPracticeView({
                     <Title level={5} style={{ marginBottom: 12 }}>
                       Hình ảnh
                     </Title>
-                    <Flex gap={12} justify="center" wrap="wrap">
-                      {question.imageUrls.map((url, index) => (
-                        <img
-                          key={index}
-                          src={url}
-                          alt={`Question ${question.questionNumber}`}
-                          style={{
-                            maxWidth: '100%',
-                            maxHeight: 400,
-                            borderRadius: 8,
-                            objectFit: 'contain',
-                          }}
-                        />
-                      ))}
-                    </Flex>
+                    <Image.PreviewGroup>
+                      <Flex gap={12} justify="center" wrap="wrap">
+                        {question.imageUrls.map((url, index) => (
+                          <Image
+                            key={index}
+                            src={url}
+                            alt={`Question ${question.questionNumber}`}
+                            style={{
+                              maxWidth: '100%',
+                              maxHeight: 400,
+                              borderRadius: 8,
+                              objectFit: 'contain',
+                            }}
+                          />
+                        ))}
+                      </Flex>
+                    </Image.PreviewGroup>
                   </div>
                 )}
 
@@ -455,9 +457,11 @@ export function QuestionPracticeView({
                       style={{
                         fontSize: 15,
                         lineHeight: 1.8,
-                        backgroundColor: '#f5f5f5',
+                        backgroundColor: hexToRgba(COLORS.primary, 0.05),
                         padding: 16,
                         borderRadius: 8,
+                        borderWidth: 2,
+                        borderColor: hexToRgba(COLORS.primary, 0.6),
                       }}
                     >
                       {question.contextText}
