@@ -25,7 +25,7 @@ import { queryKeys } from '@/lib/query-keys'
 /**
  * Subscription hooks
  */
-import { useIsPremium } from '@/features/auth/hooks/useSubscription'
+import { useCurrentSubscription } from '@/features/auth/hooks/useSubscription'
 
 /**
  * Components
@@ -66,7 +66,8 @@ const PART_NAMES: Record<number, string> = {
 export default function FullTestPage() {
   const { examSetId } = useParams<{ examSetId: string }>()
   const navigate = useNavigate()
-  const isPremium = useIsPremium()
+  const { data: subscriptionData, isLoading: isLoadingSubscription } = useCurrentSubscription()
+  const isPremium = subscriptionData?.isPremium ?? false
 
   const [testState, setTestState] = useState<TestState>({
     phase: 'intro',
@@ -84,9 +85,12 @@ export default function FullTestPage() {
   const [contextPlayedForPart, setContextPlayedForPart] = useState<Record<number, boolean>>({})
   const [selectedHistorySessionId, setSelectedHistorySessionId] = useState<string | null>(null)
 
-  // Check if user is premium - block FREE users
+  // Check if user is premium - block FREE users (only after subscription data is loaded)
   useEffect(() => {
-    if (isPremium === false) {
+    // Don't check until subscription data is loaded
+    if (isLoadingSubscription) return
+
+    if (!isPremium) {
       Modal.warning({
         title: (
           <div className="flex items-center space-x-2">
@@ -113,7 +117,7 @@ export default function FullTestPage() {
       // Redirect after showing modal
       setTimeout(() => navigate('/exam'), 500)
     }
-  }, [isPremium, navigate])
+  }, [isPremium, isLoadingSubscription, navigate])
 
   // Load selected session detail when clicking history
   const { data: selectedSession, isLoading: isLoadingSession } = useQuery({
@@ -320,7 +324,7 @@ export default function FullTestPage() {
     return (
       <PageContainer>
         <LeftPanel>
-          <PageHeader mini title="Thi thử Full Test" breadcrumbs={[{ label: 'Đang tải...' }]} />
+          <PageHeader mini title="Thi thử Full Test" />
           <LeftContent>
             <Flex align="center" justify="center" style={{ height: '100%' }}>
               <Spin size="large" />
