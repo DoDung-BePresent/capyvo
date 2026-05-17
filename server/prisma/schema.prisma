@@ -226,14 +226,14 @@ model SystemAudio {
 model PracticeSession {
   id          String        @id @default(uuid())
   userId      String
-  examSetId   String
+  examSetId   String?       // null = practice mode (individual questions), non-null = exam mode
   partNumber  Int?          // null = full exam, 1-5 = specific part
   status      SessionStatus @default(IN_PROGRESS)
   startedAt   DateTime      @default(now())
   completedAt DateTime?
 
   user          User           @relation(fields: [userId], references: [id])
-  examSet       ExamSet        @relation(fields: [examSetId], references: [id])
+  examSet       ExamSet?       @relation(fields: [examSetId], references: [id])
   userResponses UserResponse[]
 
   @@map("practice_sessions")
