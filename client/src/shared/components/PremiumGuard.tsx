@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Modal } from 'antd'
 import { CrownOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'

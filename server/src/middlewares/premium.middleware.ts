@@ -61,13 +61,13 @@ export async function checkPremium(req: PremiumAuthRequest, res: Response, next:
     const userId = req.userId
 
     if (userId) {
-      const [isPremium, isOnTrial] = await Promise.all([
+      const [isPremium, trialStatus] = await Promise.all([
         SubscriptionService.isPremiumUser(userId),
-        TrialService.isOnTrial(userId),
+        TrialService.getTrialStatus(userId),
       ])
 
       req.isPremium = isPremium
-      req.isOnTrial = isOnTrial
+      req.isOnTrial = trialStatus.isOnTrial
       req.isFreeUser = !isPremium
     }
 
