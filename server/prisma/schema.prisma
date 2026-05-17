@@ -60,6 +60,14 @@ enum SubscriptionPlanId {
   CLASSROOM
 }
 
+enum MaintenanceScope {
+  GLOBAL      // Toàn bộ hệ thống
+  PRICING     // Trang pricing và payment
+  PRACTICE    // Trang practice
+  EXAM        // Trang exam/test
+  ADMIN       // Trang admin
+}
+
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model AppSetting {
@@ -341,4 +349,21 @@ model Reaction {
   @@unique([shareId, userId])
   @@index([shareId])
   @@map("reactions")
+}
+
+model MaintenanceSchedule {
+  id        String            @id @default(uuid())
+  scope     MaintenanceScope  @default(GLOBAL)
+  title     String            // e.g. "Bảo trì PayOS", "Nâng cấp hệ thống"
+  message   String            // Message hiển thị cho user
+  startAt   DateTime?         // null = bật ngay
+  endAt     DateTime?         // null = không tự động tắt
+  isActive  Boolean           @default(false)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  
+  @@index([scope])
+  @@index([isActive])
+  @@index([scope, isActive])
+  @@map("maintenance_schedules")
 }

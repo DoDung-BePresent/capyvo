@@ -5,7 +5,7 @@ import questionRouter from './question.routes'
 import topicRouter from './topic.routes'
 import responseRouter from './response.routes'
 import sessionRouter from './session.routes'
-import maintenanceRouter from './maintenance.routes'
+import maintenanceScheduleRouter from './maintenance-schedule.routes'
 import systemStatsRouter from './system-stats.routes'
 import paymentRouter from './payment.routes'
 import adminDashboardRouter from './admin-dashboard.routes'
@@ -19,7 +19,7 @@ import trialRouter from './trial.routes'
 
 const router = Router()
 
-router.use('/maintenance', maintenanceRouter)
+router.use('/maintenance-schedules', maintenanceScheduleRouter)
 router.use('/auth', authRouter)
 router.use('/exam-sets', examSetRouter)
 router.use('/questions', questionRouter)

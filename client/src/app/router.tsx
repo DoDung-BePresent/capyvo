@@ -121,6 +121,10 @@ const router = createBrowserRouter([
                 path: '/admin/trial-settings',
                 lazy: lazy(() => import('@/features/admin/pages/TrialSettingsPage')),
               },
+              {
+                path: '/admin/maintenance-schedules',
+                lazy: lazy(() => import('@/features/admin/pages/MaintenanceSchedulesPage')),
+              },
             ],
           },
         ],

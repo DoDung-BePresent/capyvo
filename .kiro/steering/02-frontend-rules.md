@@ -18,6 +18,55 @@
 - **Constants**: UPPER_SNAKE_CASE (e.g., `API_ENDPOINTS.ts`)
 - **Pages**: PascalCase with `Page` suffix (e.g., `HomePage.tsx`)
 
+## Folder Organization
+
+### Page-Specific Components
+
+When a component is only used by a single page, organize it within that page's folder:
+
+```
+pages/
+  MyFeaturePage/
+    index.tsx              # Main page component
+    components/            # Components used only by this page
+      MyDrawer.tsx
+      MyTable.tsx
+    constants.ts           # Page-specific constants (optional)
+```
+
+**Example:**
+
+```
+pages/
+  PartQuestionsPage/
+    index.tsx
+    components/
+      getColumns.tsx
+      PartFormContent.tsx
+    constants.ts
+  MaintenanceSchedulesPage/
+    index.tsx
+    components/
+      MaintenanceScheduleDrawer.tsx
+```
+
+### Shared Components
+
+Components used across multiple pages should be in the feature's shared `components/` folder:
+
+```
+features/
+  admin/
+    components/           # Shared across multiple admin pages
+      TopicMultiSelect.tsx
+      BulkActionsToolbar.tsx
+    pages/
+      PageOne/
+      PageTwo/
+```
+
+**Key principle:** If a component is used by only one page, keep it in that page's folder. If it's used by multiple pages, move it to the shared components folder.
+
 ## Component Structure
 
 ### Component Organization
@@ -134,7 +183,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 
 ```tsx
 import { cn } from '@/shared/utils/cn'
-
 ;<div className={cn('px-4 py-2 rounded', isActive && 'bg-blue-500', isDisabled && 'opacity-50')} />
 ```
 
@@ -316,6 +364,53 @@ const HeavyComponent = lazy(() => import('./HeavyComponent'))
 - Test behavior, not implementation
 
 ## Common Patterns
+
+### Admin Page Layout
+
+Admin pages should follow this standard pattern:
+
+```tsx
+import { Space, Button } from 'antd'
+import { PlusOutlined } from '@ant-design/icons'
+import { PageHeader } from '@/shared/components'
+
+export default function AdminExamplePage() {
+  return (
+    <Space direction="vertical" size={0} style={{ width: '100%' }}>
+      <PageHeader
+        title="Page Title"
+        description="Brief description of what this page does."
+        breadcrumbs={[{ label: 'Page Title' }]}
+        extra={
+          <Button type="primary" icon={<PlusOutlined />} size="large" onClick={handleCreate}>
+            Create New
+          </Button>
+        }
+      />
+
+      <div style={{ padding: 24, background: '#fff' }}>
+        {/* Main content: Table, Form, or other components */}
+      </div>
+    </Space>
+  )
+}
+```
+
+**Key elements:**
+
+- Wrap entire page in `Space direction="vertical" size={0}` with `width: '100%'`
+- Use `PageHeader` with `title`, `description`, `breadcrumbs`, and optional `extra` for actions
+- Extra buttons should have `size="large"`
+- Wrap main content in `div` with padding and white background (not Card)
+- Use Drawer for create/edit forms with these properties:
+  - `closeIcon={null}` - No close icon
+  - `width={600}` or use `DRAWER_WIDTHS.medium`
+  - `destroyOnClose` - Clean up on close
+  - Footer buttons with `size="large"`
+- Form should have:
+  - `size="large"`
+  - `requiredMark={false}`
+  - `styles={{ label: { height: 22 } }}`
 
 ### Loading States
 

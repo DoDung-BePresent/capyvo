@@ -11,7 +11,6 @@ import * as Sentry from '@sentry/node'
 import { requestLogger } from '@/middlewares/request-logger'
 import { errorHandler } from '@/middlewares/error-handler'
 import { checkMaintenance } from '@/middlewares/check-maintenance'
-import { maintenanceService } from '@/services/maintenance.service'
 import apiRouter from '@/routes'
 import swaggerSpec from '@/lib/swagger'
 import { redis } from '@/lib/redis'
@@ -49,9 +48,6 @@ if (process.env.NODE_ENV !== 'production') {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
   app.get('/api-docs.json', (_req, res) => res.json(swaggerSpec))
 }
-
-// Initialize maintenance state from DB (non-blocking)
-maintenanceService.init().catch(() => {})
 
 // Maintenance check (before all API routes)
 app.use('/api', checkMaintenance)
