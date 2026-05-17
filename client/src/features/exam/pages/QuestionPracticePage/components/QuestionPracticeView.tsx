@@ -92,12 +92,12 @@ export function QuestionPracticeView({
     audioUrl?: string
     responseId?: string
   } | null>(null)
-  const [isCancelled, setIsCancelled] = useState(false)
 
   const contextAudioRef = useRef<HTMLAudioElement>(null!)
   const questionAudioRef = useRef<HTMLAudioElement>(null!)
   const startSoundRef = useRef<HTMLAudioElement>(null!)
   const recordStartSoundRef = useRef<HTMLAudioElement>(null!)
+  const isCancelledRef = useRef(false)
 
   const { mutate: transcribeAndAnalyze, isPending: isAnalyzing } = useTranscribeAndAnalyze({
     onSuccess: (data) => {
@@ -179,7 +179,7 @@ export function QuestionPracticeView({
   // Start recording function
   const startRecording = useCallback(async () => {
     try {
-      setIsCancelled(false) // Reset cancel flag
+      isCancelledRef.current = false // Reset cancel flag
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       setRecordingStream(stream)
 
@@ -196,7 +196,7 @@ export function QuestionPracticeView({
         console.log('🎤 Recording stopped')
 
         // Check if cancelled - don't process if cancelled
-        if (isCancelled) {
+        if (isCancelledRef.current) {
           console.log('❌ Recording was cancelled, not processing')
           return
         }
@@ -251,14 +251,7 @@ export function QuestionPracticeView({
       console.error('Failed to start recording:', error)
       setRecordingState('idle')
     }
-  }, [
-    onRecordingComplete,
-    transcribeAndAnalyze,
-    transcribeOnly,
-    question.partNumber,
-    isCancelled,
-    isPremium,
-  ])
+  }, [onRecordingComplete, transcribeAndAnalyze, transcribeOnly, question.partNumber, isPremium])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -323,7 +316,7 @@ export function QuestionPracticeView({
   }
 
   const handleCancel = () => {
-    setIsCancelled(true) // Set cancel flag before stopping
+    isCancelledRef.current = true // Set cancel flag before stopping
     stopRecording()
     setRecordingState('idle')
     setPrepTimeLeft(question.prepTimeSeconds)
