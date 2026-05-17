@@ -29,11 +29,12 @@ if (redis) {
           delay: 2000,
         },
         removeOnComplete: {
-          count: 100, // Keep last 100 completed jobs
-          age: 24 * 3600, // Keep for 24 hours
+          count: 50, // Keep last 50 completed jobs (reduced from 100)
+          age: 3600, // Keep for 1 hour only (reduced from 24h)
         },
         removeOnFail: {
-          count: 500, // Keep last 500 failed jobs for debugging
+          count: 100, // Keep last 100 failed jobs (reduced from 500)
+          age: 7 * 24 * 3600, // Keep for 7 days for debugging
         },
       },
     })
@@ -48,11 +49,12 @@ if (redis) {
           delay: 2000,
         },
         removeOnComplete: {
-          count: 100,
-          age: 24 * 3600,
+          count: 50,
+          age: 3600, // 1 hour
         },
         removeOnFail: {
-          count: 500,
+          count: 100,
+          age: 7 * 24 * 3600, // 7 days
         },
       },
     })
@@ -67,11 +69,12 @@ if (redis) {
           delay: 2000,
         },
         removeOnComplete: {
-          count: 100,
-          age: 24 * 3600,
+          count: 50,
+          age: 3600, // 1 hour
         },
         removeOnFail: {
-          count: 500,
+          count: 100,
+          age: 7 * 24 * 3600, // 7 days
         },
       },
     })

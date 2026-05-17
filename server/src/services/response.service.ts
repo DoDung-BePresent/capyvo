@@ -60,7 +60,7 @@ CRITICAL RULES for Part 1 (Read Aloud):
 3. ONLY flag errors where the student deviated from the reference text.
 4. Do NOT flag omissions of words that are NOT in the reference text.
 5. Do NOT suggest the student should have said something that is NOT in the reference text.
-6. IGNORE capitalization entirely. "city hall" and "City Hall" are IDENTICAL.
+6. IGNORE capitalization ENTIRELY in ALL comparisons. "city hall" = "City Hall" = "CITY HALL" = IDENTICAL.
 7. IGNORE minor punctuation differences (commas, apostrophes).
 8. "spoken" must be copied CHARACTER-FOR-CHARACTER from the transcript.
 9. "original" must be copied CHARACTER-FOR-CHARACTER from the reference text.
@@ -75,6 +75,10 @@ CRITICAL RULES for Part 1 (Read Aloud):
 11. DATES AND TIME - Accept equivalent formats:
     - "Saturday and Sunday" = "Saturday, Sunday" = "Saturday & Sunday" = ALL CORRECT
     - Minor wording differences in dates/times are acceptable
+12. CASE SENSITIVITY - IGNORE ALL capitalization differences:
+    - "player of the year" = "Player of the Year" = "PLAYER OF THE YEAR" = IDENTICAL
+    - "the fun event" = "The Fun Event" = IDENTICAL
+    - Do NOT flag capitalization as substitution, morphology, or any error category
 
 Category rules:
 - omission: student skipped a word that IS in the reference. "spoken" = surrounding phrase from transcript for UI anchoring.
@@ -100,6 +104,9 @@ Transcript: "Tickets cost fifteen dollars at the gate." → CORRECT (no errors)
 
 Reference: "Saturday and Sunday"
 Transcript: "Saturday & Sunday" → CORRECT (no errors)
+
+Reference: "player of the year"
+Transcript: "Player of the Year" → CORRECT (no errors, capitalization ignored)
 
 If the student read perfectly, return empty issues array and score {MAX_SCORE}.`
 
@@ -147,7 +154,9 @@ Critical rules:
 3. Do NOT suggest "adding more details" — time limits prevent this.
 4. Do NOT flag personal opinions or subjective interpretations as errors.
 5. "spoken" must be copied CHARACTER-FOR-CHARACTER from the transcript. Never rephrase.
-6. IGNORE capitalization.
+6. IGNORE capitalization ENTIRELY. "city hall" = "City Hall" = IDENTICAL.
+7. IGNORE number/symbol format differences. "$15" = "fifteen dollars" = CORRECT.
+8. Only flag clear, objective errors. Be lenient with paraphrasing.
 7. Only flag clear, objective errors. Be lenient with paraphrasing.
 8. A concise, accurate description of main elements deserves a high score.
 
@@ -206,6 +215,8 @@ CRITICAL RULES for Part 3 & 5 (Question Response):
 8. "original" should be a suggested improvement, not a "correct answer" (there is no single correct answer).
 9. Be lenient with paraphrasing and different ways of expressing ideas.
 10. A concise, clear, grammatically correct response that directly answers the question deserves a high score.
+11. IGNORE capitalization ENTIRELY. "new york" = "New York" = IDENTICAL.
+12. IGNORE number/symbol format differences. "$20" = "twenty dollars" = CORRECT.
 
 Category rules:
 - morphology: grammatical form error (wrong tense, missing plural, wrong article, subject-verb agreement). "spoken" = incorrect phrase verbatim.
@@ -688,6 +699,57 @@ export class ResponseService {
     }))
   }
 
+  /**
+   * Calculate TOEIC Speaking score (0-200) using weighted formula
+   * Based on TOEIC Speaking structure with non-linear curve
+   */
+  private calculateTOEICScore(scoresByPart: Record<number, number[]>): number {
+    // Part weights based on TOEIC Speaking structure
+    const weights = {
+      1: 0.15, // Part 1: 2 questions (Read aloud) - 15%
+      2: 0.15, // Part 2: 2 questions (Describe picture) - 15%
+      3: 0.25, // Part 3: 3 questions (Respond to questions) - 25%
+      4: 0.25, // Part 4: 3 questions (Respond using info) - 25%
+      5: 0.2, // Part 5: 1 question (Express opinion) - 20%
+    }
+
+    let weightedSum = 0
+    let totalWeight = 0
+
+    for (const [part, scores] of Object.entries(scoresByPart)) {
+      const partNum = Number(part)
+      const weight = weights[partNum as keyof typeof weights] || 0
+      const maxScore = partNum === 5 ? 5 : 3
+      const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length
+      const normalized = avgScore / maxScore // 0-1 range
+
+      weightedSum += normalized * weight
+      totalWeight += weight
+    }
+
+    if (totalWeight === 0) return 0
+
+    const normalizedScore = weightedSum / totalWeight // 0-1
+
+    // Apply curve (similar to TOEIC scoring - non-linear)
+    let scaledScore: number
+    if (normalizedScore < 0.3) {
+      // 0-30% → 0-40 points (struggling)
+      scaledScore = normalizedScore * 133
+    } else if (normalizedScore < 0.6) {
+      // 30-60% → 40-110 points (developing)
+      scaledScore = 40 + (normalizedScore - 0.3) * 233
+    } else if (normalizedScore < 0.85) {
+      // 60-85% → 110-160 points (competent)
+      scaledScore = 110 + (normalizedScore - 0.6) * 200
+    } else {
+      // 85-100% → 160-200 points (proficient)
+      scaledScore = 160 + (normalizedScore - 0.85) * 267
+    }
+
+    return Math.round(Math.min(200, Math.max(0, scaledScore)))
+  }
+
   async generateOverallAssessment(sessionId: string, userId: string) {
     // Get session with all responses
     const session = await prisma.practiceSession.findFirst({
@@ -708,10 +770,17 @@ export class ResponseService {
 
     if (!session) throw new ForbiddenError('Session not found or access denied')
 
+    // Return cached assessment if exists
+    if (session.overallAssessment) {
+      return session.overallAssessment as {
+        estimatedScore: number
+        assessment: string
+        partScores: Record<number, number>
+      }
+    }
+
     // Collect all scores by part
     const scoresByPart: Record<number, number[]> = {}
-    let totalScore = 0
-    let totalResponses = 0
 
     for (const response of session.userResponses) {
       if (response.pronunciationScore) {
@@ -719,12 +788,10 @@ export class ResponseService {
         const partNumber = response.question.partNumber
         if (!scoresByPart[partNumber]) scoresByPart[partNumber] = []
         scoresByPart[partNumber].push(analysis.score)
-        totalScore += analysis.score
-        totalResponses++
       }
     }
 
-    if (totalResponses === 0) {
+    if (Object.keys(scoresByPart).length === 0) {
       return {
         estimatedScore: 0,
         assessment: 'Chưa có dữ liệu để đánh giá.',
@@ -732,52 +799,58 @@ export class ResponseService {
       }
     }
 
-    // Calculate average score (0-100)
-    const averageScore = totalScore / totalResponses
-
-    // Calculate part averages
+    // Calculate part averages for display
     const partAverages: Record<number, number> = {}
     for (const [part, scores] of Object.entries(scoresByPart)) {
       partAverages[Number(part)] = scores.reduce((a, b) => a + b, 0) / scores.length
     }
 
-    // Use AI to generate overall assessment and estimate TOEIC score
-    const prompt = `You are a TOEIC Speaking test evaluator. Based on the following performance data, provide an overall assessment and estimate the TOEIC Speaking score (0-200).
+    // Calculate TOEIC score using weighted formula
+    const estimatedScore = this.calculateTOEICScore(scoresByPart)
 
-Performance Data:
-- Average Score: ${averageScore.toFixed(1)}/100
-- Part 1 (Read Aloud): ${partAverages[1]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[1]?.length || 0} questions)
-- Part 2 (Describe Picture): ${partAverages[2]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[2]?.length || 0} questions)
-- Part 3 (Respond to Questions): ${partAverages[3]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[3]?.length || 0} questions)
-- Part 4 (Respond Using Information): ${partAverages[4]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[4]?.length || 0} questions)
-- Part 5 (Express Opinion): ${partAverages[5]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[5]?.length || 0} questions)
+    // Use AI to generate assessment text only (not score)
+    const prompt = `You are a TOEIC Speaking test evaluator. The student received a TOEIC Speaking score of ${estimatedScore}/200.
 
-Return a JSON object (no markdown) with this exact shape:
-{
-  "estimatedScore": <0-200 integer, estimated TOEIC Speaking score>,
-  "assessment": <2-3 sentences in Vietnamese summarizing overall performance, strengths, and areas for improvement>
-}
+Performance by part:
+- Part 1 (Read Aloud): ${partAverages[1]?.toFixed(1) || 'N/A'}/3 (${scoresByPart[1]?.length || 0} questions)
+- Part 2 (Describe Picture): ${partAverages[2]?.toFixed(1) || 'N/A'}/3 (${scoresByPart[2]?.length || 0} questions)
+- Part 3 (Respond to Questions): ${partAverages[3]?.toFixed(1) || 'N/A'}/3 (${scoresByPart[3]?.length || 0} questions)
+- Part 4 (Respond Using Information): ${partAverages[4]?.toFixed(1) || 'N/A'}/3 (${scoresByPart[4]?.length || 0} questions)
+- Part 5 (Express Opinion): ${partAverages[5]?.toFixed(1) || 'N/A'}/5 (${scoresByPart[5]?.length || 0} questions)
 
-Scoring guidelines:
-- 0-30: Very limited ability (0-30 TOEIC)
-- 31-50: Limited ability (40-80 TOEIC)
-- 51-70: Fair ability (90-130 TOEIC)
-- 71-85: Good ability (140-170 TOEIC)
-- 86-100: Excellent ability (180-200 TOEIC)`
+Provide 2-3 sentences in Vietnamese summarizing:
+1. Overall performance level
+2. Strongest part(s)
+3. Area(s) for improvement
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-    })
+Return ONLY the assessment text (no JSON, no markdown, just plain Vietnamese text).`
 
-    const content = completion.choices[0]?.message?.content?.trim() || '{}'
-    const result = JSON.parse(content)
+    let assessment: string
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+      })
 
-    return {
-      estimatedScore: result.estimatedScore || 0,
-      assessment: result.assessment || 'Không thể tạo đánh giá.',
+      assessment = completion.choices[0]?.message?.content?.trim() || 'Không thể tạo đánh giá.'
+    } catch (_error) {
+      // Fallback if AI fails
+      assessment = `Điểm TOEIC Speaking ước tính: ${estimatedScore}/200. Hãy tiếp tục luyện tập để cải thiện kỹ năng nói của bạn.`
+    }
+
+    const result = {
+      estimatedScore,
+      assessment,
       partScores: partAverages,
     }
+
+    // Save assessment to database to avoid recalculating
+    await prisma.practiceSession.update({
+      where: { id: sessionId },
+      data: { overallAssessment: result as object },
+    })
+
+    return result
   }
 }

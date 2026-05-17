@@ -655,9 +655,9 @@ export default function FullTestPage() {
                           audioUrl={undefined}
                           isLoading={false}
                           isPremium={isPremium}
+                          hideActions={true}
                           onReset={() => {
                             // No action needed - user is viewing completed test results
-                            // Could navigate back to exam list if needed
                           }}
                         />
                       </div>
