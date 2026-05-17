@@ -1,6 +1,14 @@
 export type Role = 'USER' | 'ADMIN'
 
-export type SubscriptionPlanId = 'BASIC' | 'PREMIUM' | 'CLASSROOM'
+export type SubscriptionPlanId = 'FREE' | 'TRIAL' | 'PREMIUM' | 'CLASSROOM'
+
+export interface TrialStatus {
+  hasUsedTrial: boolean
+  isOnTrial: boolean
+  trialStartedAt: string | null
+  trialEndsAt: string | null
+  daysRemaining: number
+}
 
 export interface SubscriptionPlan {
   id: SubscriptionPlanId
@@ -14,10 +22,12 @@ export interface SubscriptionPlan {
 export interface Subscription {
   id: string
   planId: SubscriptionPlanId
+  planName?: string
   status: 'ACTIVE' | 'EXPIRED' | 'CANCELLED'
   startDate: string
   endDate: string
-  plan: SubscriptionPlan
+  daysRemaining?: number | null
+  plan?: SubscriptionPlan
 }
 
 export interface User {
@@ -28,8 +38,12 @@ export interface User {
   role: Role
   isPremium: boolean
   premiumUntil: string | null
+  hasUsedTrial: boolean
+  trialStartedAt: string | null
+  trialEndsAt: string | null
   createdAt: string
   subscriptions?: Subscription[]
+  trialStatus?: TrialStatus
 }
 
 export interface SendOtpPayload {

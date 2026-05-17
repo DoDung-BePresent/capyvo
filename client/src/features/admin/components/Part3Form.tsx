@@ -1,7 +1,9 @@
-import { Form, Input, Alert } from 'antd'
+import { Form, Input, Select, Divider, Flex } from 'antd'
 import type { FormInstance } from 'antd'
 import AudioUploadField from './AudioUploadField'
 import type { Part3FormValues } from '../types'
+import { QuestionType, QuestionStatus } from '../types'
+import { TopicMultiSelect } from './TopicMultiSelect'
 
 interface Props {
   form?: FormInstance
@@ -18,13 +20,6 @@ export default function Part3Form({ form, onSubmit }: Props) {
       form={form}
       styles={{ label: { height: 22 } }}
     >
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message="Form này tạo cùng lúc 3 câu (5, 6, 7). Mỗi trường có thể tự upload audio hoặc để AI tạo."
-      />
-
       <Form.Item
         label="Bối cảnh (context)"
         name="contextText"
@@ -53,6 +48,46 @@ export default function Part3Form({ form, onSubmit }: Props) {
           </Form.Item>
         </div>
       ))}
+
+      <Divider style={{ margin: '16px 0' }} />
+
+      <Flex gap={16}>
+        <Form.Item
+          label="Loại câu hỏi"
+          name="type"
+          rules={[{ required: true, message: 'Chọn loại câu hỏi' }]}
+          initialValue={QuestionType.PRACTICE}
+          style={{ flex: 1 }}
+        >
+          <Select
+            options={[
+              { label: 'PRACTICE', value: QuestionType.PRACTICE },
+              { label: 'FORECAST', value: QuestionType.FORECAST },
+              { label: 'CUSTOM', value: QuestionType.CUSTOM },
+            ]}
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="Trạng thái"
+          name="status"
+          rules={[{ required: true, message: 'Chọn trạng thái' }]}
+          initialValue={QuestionStatus.DRAFT}
+          style={{ flex: 1 }}
+        >
+          <Select
+            options={[
+              { label: 'DRAFT', value: QuestionStatus.DRAFT },
+              { label: 'PUBLISHED', value: QuestionStatus.PUBLISHED },
+              { label: 'ARCHIVED', value: QuestionStatus.ARCHIVED },
+            ]}
+          />
+        </Form.Item>
+      </Flex>
+
+      <Form.Item label="Chủ đề" name="topicIds">
+        <TopicMultiSelect partNumber={3} />
+      </Form.Item>
     </Form>
   )
 }

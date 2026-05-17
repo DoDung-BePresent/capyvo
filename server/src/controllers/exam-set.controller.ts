@@ -49,11 +49,34 @@ export class ExamSetController {
 
   async getPoolQuestions(req: Request, res: Response, _next: NextFunction): Promise<void> {
     const questionNumber = Number(req.query['questionNumber'])
+    const search = req.query['search'] as string | undefined
+    const assignmentStatus = req.query['assignmentStatus'] as
+      | 'all'
+      | 'assigned'
+      | 'unassigned'
+      | undefined
+
     if (!questionNumber || questionNumber < 1 || questionNumber > 11) {
       res.status(400).json({ success: false, message: 'questionNumber must be 1–11' })
       return
     }
-    const questions = await this.service.getPoolQuestions(questionNumber)
+
+    // For Part 3 & 4 (questions 5-10), return question sets instead of individual questions
+    if (questionNumber >= 5 && questionNumber <= 10) {
+      const sets = await this.service.getPoolQuestionSets(questionNumber, search, assignmentStatus)
+      res.json({ success: true, data: sets })
+      return
+    }
+
+    const questions = await this.service.getPoolQuestions(questionNumber, search, assignmentStatus)
+    res.json({ success: true, data: questions })
+  }
+
+  async assignQuestionSet(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const questions = await this.service.assignQuestionSet(
+      req.params['id'] as string,
+      req.body.setId as string,
+    )
     res.json({ success: true, data: questions })
   }
 

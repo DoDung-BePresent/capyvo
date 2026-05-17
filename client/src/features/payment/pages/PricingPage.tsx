@@ -2,23 +2,26 @@ import { Row, Col, message } from 'antd'
 import { PageHeader } from '@/shared/components'
 import PricingCard, { type PricingPlan } from '@/features/payment/components/PricingCard'
 import { useCreateSubscriptionOrder } from '@/features/payment/hooks/usePayment'
+import { useIsOnTrial, useCurrentSubscription } from '@/features/auth/hooks/useSubscription'
 
 const PRICING_PLANS: PricingPlan[] = [
   {
-    id: 'BASIC',
-    name: 'CƠ BẢN',
-    duration: '30 NGÀY',
-    price: 49000,
-    pricePerMonth: 49,
-    description: 'Luyện tập cơ bản với transcript',
+    id: 'FREE',
+    name: 'MIỄN PHÍ',
+    duration: 'MÃI MÃI',
+    price: 0,
+    pricePerMonth: 0,
+    description: 'Luyện tập cơ bản không giới hạn',
     features: [
-      'Luyện tập không giới hạn',
+      'Luyện tập theo part không giới hạn',
       'AI Transcription',
       'Xem transcript chi tiết',
       'Share bài tập & reactions',
-      'Thi thử toàn bộ đề',
+      '❌ Không có thi thử full đề',
+      '❌ Không có AI chấm điểm',
     ],
-    color: '#1890ff', // Blue
+    color: '#8c8c8c', // Gray
+    isFreePlan: true,
   },
   {
     id: 'PREMIUM',
@@ -26,13 +29,14 @@ const PRICING_PLANS: PricingPlan[] = [
     duration: '30 NGÀY',
     price: 99000,
     pricePerMonth: 99,
-    description: 'Phân tích chuyên sâu với AI',
+    description: 'Trải nghiệm đầy đủ với AI chấm điểm',
     features: [
-      'Tất cả tính năng gói Cơ bản',
-      'AI Analysis & Scoring',
-      'Feedback chi tiết theo tiêu chí',
-      'Phân tích lỗi cụ thể',
-      'Ước tính điểm TOEIC',
+      'Tất cả tính năng gói Miễn phí',
+      '✨ Thi thử full đề không giới hạn',
+      '✨ AI Analysis & Scoring',
+      '✨ Feedback chi tiết theo tiêu chí',
+      '✨ Phân tích lỗi phát âm cụ thể',
+      '✨ Ước tính điểm TOEIC chính xác',
     ],
     color: '#faad14', // Gold
     isPopular: true,
@@ -45,6 +49,7 @@ const PRICING_PLANS: PricingPlan[] = [
     pricePerMonth: 0,
     description: 'Đang phát triển - Liên hệ để được tư vấn và đặt trước',
     features: [
+      'Tất cả tính năng Premium',
       'Xem kết quả học viên (View only)',
       'Quản lý nhiều lớp học',
       'Báo cáo tiến độ lớp',
@@ -60,8 +65,16 @@ const PRICING_PLANS: PricingPlan[] = [
 
 export default function PricingPage() {
   const { mutateAsync: createOrder, isPending } = useCreateSubscriptionOrder()
+  const isOnTrial = useIsOnTrial()
+  const { data: subscription } = useCurrentSubscription()
 
   const handleSelectPlan = async (planId: string) => {
+    // FREE plan doesn't need payment
+    if (planId === 'FREE') {
+      message.info('Bạn đang sử dụng gói miễn phí')
+      return
+    }
+
     try {
       const result = await createOrder(planId)
       // Redirect to PayOS checkout page
@@ -76,7 +89,7 @@ export default function PricingPage() {
     <>
       <PageHeader
         title="Chọn gói phù hợp với bạn"
-        description="Mở khóa toàn bộ tính năng và luyện tập không giới hạn với các gói subscription."
+        description="Mở khóa toàn bộ tính năng và luyện tập không giới hạn với các gói subscription"
       />
 
       <Row gutter={[24, 24]} justify="center">
@@ -88,16 +101,21 @@ export default function PricingPage() {
       </Row>
 
       {/* Additional Info */}
-      <div className="my-12 text-center">
+      <div className="my-12 text-center space-y-2">
         <p className="text-sm text-gray-500">
           Tất cả gói đều có thể hủy bất cứ lúc nào. Không có phí ẩn.
         </p>
-        <p className="text-sm text-gray-500 mt-2">
+        <p className="text-sm text-gray-500">
           Cần hỗ trợ? Liên hệ{' '}
-          <a href="mailto:support@capyvo.com" className="text-blue-600 hover:underline">
-            support@capyvo.com
+          <a href="https://zalo.me/0352195876" className="text-blue-600 hover:underline">
+            Zalo
           </a>
         </p>
+        {!isOnTrial && !subscription?.isPremium && (
+          <p className="text-sm font-medium text-gold-600 mt-4">
+            💡 Mẹo: Đăng ký ngay để nhận 7 ngày dùng thử Premium!
+          </p>
+        )}
       </div>
     </>
   )

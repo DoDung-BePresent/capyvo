@@ -1,6 +1,7 @@
 import { Result, Button, Flex, Typography, Space } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
+import { cn } from '../utils/cn'
 
 const { Text } = Typography
 
@@ -43,9 +44,10 @@ export function ForbiddenPage() {
 interface MaintenancePageProps {
   endTime?: string | null
   message?: string
+  className?: string
 }
 
-export function MaintenancePage({ endTime, message }: MaintenancePageProps = {}) {
+export function MaintenancePage({ endTime, message, className }: MaintenancePageProps = {}) {
   const subTitle = message || 'Hệ thống đang được bảo trì, vui lòng quay lại sau.'
 
   const extra = (
@@ -62,7 +64,7 @@ export function MaintenancePage({ endTime, message }: MaintenancePageProps = {})
   )
 
   return (
-    <Flex className="min-h-dvh" vertical align="center" justify="center">
+    <Flex className={cn('min-h-dvh', className)} vertical align="center" justify="center">
       <Result status="500" title="Đang bảo trì" subTitle={subTitle} extra={extra} />
     </Flex>
   )

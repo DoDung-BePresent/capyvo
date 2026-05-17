@@ -1,8 +1,17 @@
 import prisma from '@/lib/prisma'
 import { NotFoundError } from '@/errors/app-error'
+import { SubscriptionService } from './subscription.service'
 
 export class SessionService {
   async createSession(userId: string, examSetId: string, partNumber?: number | null) {
+    // Validate: FREE users cannot practice full exam (partNumber = null)
+    if (partNumber === null || partNumber === undefined) {
+      const isFree = await SubscriptionService.isFreeUser(userId)
+      if (isFree) {
+        throw new Error('FREE_USER_FULL_EXAM_BLOCKED')
+      }
+    }
+
     return prisma.practiceSession.create({
       data: { userId, examSetId, partNumber: partNumber ?? null, status: 'IN_PROGRESS' },
     })

@@ -1,5 +1,7 @@
 import prisma from '@/lib/prisma'
 import type { User, Subscription, SubscriptionPlan } from '@prisma/client'
+import { TrialService } from './trial.service'
+import logger from '@/lib/logger'
 
 export type UserWithSubscription = User & {
   subscriptions: (Subscription & { plan: SubscriptionPlan })[]
@@ -70,6 +72,12 @@ export class AuthService {
         },
       },
     })
+
+    // Activate premium trial for new user (async, don't wait)
+    TrialService.activateTrial(newUser.id).catch((error) => {
+      logger.error(`Failed to activate trial for user ${newUser.id}:`, error)
+    })
+
     return newUser
   }
 

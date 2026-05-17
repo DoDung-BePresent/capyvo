@@ -231,8 +231,9 @@ Be encouraging and realistic. A short but accurate, grammatically correct respon
 
 export class ResponseService {
   private async checkPlanAccess(userId: string): Promise<{
-    plan: 'BASIC' | 'PREMIUM' | null
+    plan: 'FREE' | 'TRIAL' | 'PREMIUM' | null
     hasAccess: boolean
+    isPremium: boolean
     daysRemaining: number | null
   }> {
     const user = await prisma.user.findUnique({
@@ -240,12 +241,6 @@ export class ResponseService {
       select: {
         isPremium: true,
         premiumUntil: true,
-        subscriptions: {
-          where: { status: 'ACTIVE' },
-          orderBy: { endDate: 'desc' },
-          take: 1,
-          include: { plan: true },
-        },
       },
     })
 
@@ -254,7 +249,7 @@ export class ResponseService {
     }
 
     const now = new Date()
-    const hasAccess = user.isPremium && user.premiumUntil && user.premiumUntil > now
+    const isPremium = user.isPremium && user.premiumUntil && user.premiumUntil >= now
 
     let daysRemaining = null
     if (user.premiumUntil) {
@@ -263,12 +258,35 @@ export class ResponseService {
       daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     }
 
-    const currentPlan = user.subscriptions?.[0]?.plan?.id
-    const plan = currentPlan === 'BASIC' || currentPlan === 'PREMIUM' ? currentPlan : null
+    // Get current active subscription (priority: latest endDate)
+    const subscription = await prisma.subscription.findFirst({
+      where: {
+        userId,
+        status: 'ACTIVE',
+        endDate: { gte: now },
+      },
+      orderBy: { endDate: 'desc' },
+      include: { plan: true },
+    })
+
+    // Determine plan (priority: PREMIUM/CLASSROOM > TRIAL > FREE)
+    let plan: 'FREE' | 'TRIAL' | 'PREMIUM'
+    if (subscription) {
+      if (subscription.planId === 'PREMIUM' || subscription.planId === 'CLASSROOM') {
+        plan = 'PREMIUM'
+      } else if (subscription.planId === 'TRIAL') {
+        plan = 'TRIAL'
+      } else {
+        plan = 'FREE'
+      }
+    } else {
+      plan = 'FREE'
+    }
 
     return {
       plan,
-      hasAccess: hasAccess || false,
+      hasAccess: true, // Everyone has access (FREE or PREMIUM)
+      isPremium: isPremium || false,
       daysRemaining,
     }
   }
@@ -276,11 +294,9 @@ export class ResponseService {
   private async checkSubscriptionAccess(userId: string, requirePremium = false): Promise<void> {
     const access = await this.checkPlanAccess(userId)
 
-    if (!access.hasAccess) {
-      throw new ForbiddenError('subscription_expired')
-    }
-
-    if (requirePremium && access.plan !== 'PREMIUM') {
+    // Everyone has basic access (FREE plan)
+    // Only check premium if required
+    if (requirePremium && !access.isPremium) {
       throw new ForbiddenError('premium_required')
     }
   }
@@ -288,14 +304,14 @@ export class ResponseService {
   async checkUserSubscription(userId: string): Promise<{
     hasAccess: boolean
     isPremium: boolean
-    plan: 'BASIC' | 'PREMIUM' | null
+    plan: 'FREE' | 'TRIAL' | 'PREMIUM' | null
     daysRemaining: number | null
   }> {
     const access = await this.checkPlanAccess(userId)
 
     return {
       hasAccess: access.hasAccess,
-      isPremium: access.plan === 'PREMIUM',
+      isPremium: access.isPremium,
       plan: access.plan,
       daysRemaining: access.daysRemaining,
     }

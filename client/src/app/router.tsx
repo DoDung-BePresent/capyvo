@@ -102,8 +102,28 @@ const router = createBrowserRouter([
                 lazy: lazy(() => import('@/features/admin/pages/ExamSetDetailPage')),
               },
               {
-                path: '/admin/instructions',
-                lazy: lazy(() => import('@/features/admin/pages/PartInstructionsPage')),
+                path: '/admin/topics',
+                lazy: lazy(() => import('@/features/admin/pages/TopicManagementPage')),
+              },
+              {
+                path: '/admin/openai-usage',
+                lazy: lazy(() => import('@/features/admin/pages/OpenAIUsagePage')),
+              },
+              {
+                path: '/admin/pricing-calculator',
+                lazy: lazy(() => import('@/features/admin/pages/PricingCalculatorPage')),
+              },
+              {
+                path: '/admin/abuse-detection',
+                lazy: lazy(() => import('@/features/admin/pages/AbuseDetectionPage')),
+              },
+              {
+                path: '/admin/trial-settings',
+                lazy: lazy(() => import('@/features/admin/pages/TrialSettingsPage')),
+              },
+              {
+                path: '/admin/maintenance-schedules',
+                lazy: lazy(() => import('@/features/admin/pages/MaintenanceSchedulesPage')),
               },
             ],
           },

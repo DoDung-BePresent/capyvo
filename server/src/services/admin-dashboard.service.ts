@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma'
+import { OpenAIUsageService } from './openai-usage.service'
 
 function subDays(date: Date, days: number): Date {
   const d = new Date(date)
@@ -13,6 +14,8 @@ function formatDay(date: Date): string {
 }
 
 export class AdminDashboardService {
+  private openaiUsageService = new OpenAIUsageService()
+
   async getStats() {
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -27,10 +30,11 @@ export class AdminDashboardService {
       sessionsThisMonth,
       totalQuestions,
       questionsByPart,
-      tokenPackageStats,
+      paymentDistribution,
       revenueByDay,
       sessionsByDay,
       recentPayments,
+      openaiUsage,
     ] = await Promise.all([
       // Total users
       prisma.user.count(),
@@ -67,12 +71,14 @@ export class AdminDashboardService {
         orderBy: { partNumber: 'asc' },
       }),
 
-      // Token package sales distribution (paid only)
+      // Payment distribution by description (for historical data)
       prisma.payment.groupBy({
-        by: ['tokenAmount'],
-        where: { status: 'PAID', tokenAmount: { not: null } },
+        by: ['description'],
+        where: { status: 'PAID' },
         _count: { id: true },
         _sum: { amount: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 10,
       }),
 
       // Revenue per day (last 30 days, paid only)
@@ -102,6 +108,9 @@ export class AdminDashboardService {
           user: { select: { email: true, fullName: true } },
         },
       }),
+
+      // OpenAI usage stats
+      this.openaiUsageService.getCurrentMonthUsage(),
     ])
 
     // Build day-by-day map for last 30 days
@@ -137,15 +146,20 @@ export class AdminDashboardService {
         sessionsThisMonth,
         totalQuestions,
       },
+      openai: {
+        totalTokens: openaiUsage.totalTokens,
+        totalRequests: openaiUsage.totalRequests,
+        estimatedCostUsd: openaiUsage.estimatedCostUsd,
+        configured: openaiUsage.configured,
+      },
       questionsByPart: questionsByPart.map((q) => ({
         part: `Part ${q.partNumber}`,
         count: q._count.id,
       })),
-      tokenPackageStats: tokenPackageStats.map((t) => ({
-        tokens: t.tokenAmount ?? 0,
-        label: `${t.tokenAmount} token`,
-        count: t._count.id,
-        totalRevenue: t._sum.amount ?? 0,
+      paymentDistribution: paymentDistribution.map((p) => ({
+        label: p.description,
+        count: p._count.id,
+        totalRevenue: p._sum.amount ?? 0,
       })),
       revenueSeries,
       sessionSeries,

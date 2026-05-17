@@ -7,11 +7,12 @@ interface MaintenanceGateProps {
 }
 
 export function MaintenanceGate({ children }: MaintenanceGateProps) {
-  const { isMaintenance, schedule } = useMaintenance()
+  const { isMaintenance, schedule, isGlobal } = useMaintenance()
 
-  // Admin routes bypass the gate (they authenticate server-side anyway)
-  if (isMaintenance && !window.location.pathname.startsWith('/admin')) {
-    return <MaintenancePage endTime={schedule?.end} message={schedule?.message} />
+  // Only block at app level for GLOBAL maintenance
+  // Scope-specific maintenance will be handled in UserContent
+  if (isMaintenance && isGlobal && !window.location.pathname.startsWith('/admin')) {
+    return <MaintenancePage endTime={schedule?.endAt ?? undefined} message={schedule?.message} />
   }
 
   return <>{children}</>

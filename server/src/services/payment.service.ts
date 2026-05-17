@@ -10,12 +10,6 @@ const payos = new PayOS({
   checksumKey: process.env['PAYOS_CHECKSUM_KEY'],
 })
 
-export const TOKEN_PACKAGES: Record<number, number> = {
-  10: 20_000,
-  30: 50_000,
-  60: 90_000,
-}
-
 function genOrderCode() {
   return Number(Date.now().toString().slice(-9)) * 1000 + Math.floor(Math.random() * 1000)
 }
@@ -57,38 +51,6 @@ export class PaymentService {
     return { checkoutUrl: paymentData.checkoutUrl, orderCode, paymentId: payment.id }
   }
 
-  /** Tạo payment link mua token (credits) - DEPRECATED */
-  async createTokenOrder(userId: string, tokenAmount: number) {
-    const price = TOKEN_PACKAGES[tokenAmount]
-    if (!price) throw new AppError(`Invalid token package: ${tokenAmount}`, 400)
-
-    const orderCode = genOrderCode()
-    const returnUrl = process.env['PAYOS_RETURN_URL'] ?? 'http://localhost:5173/payment/result'
-    const cancelUrl = process.env['PAYOS_CANCEL_URL'] ?? 'http://localhost:5173/payment/cancel'
-
-    const paymentData = await payos.paymentRequests.create({
-      orderCode,
-      amount: price,
-      description: `Capyvo ${tokenAmount} token`,
-      returnUrl: `${returnUrl}?orderCode=${orderCode}`,
-      cancelUrl: `${cancelUrl}?orderCode=${orderCode}`,
-    })
-
-    await prisma.payment.create({
-      data: {
-        userId,
-        orderCode,
-        amount: price,
-        description: `${tokenAmount} token luyện tập`,
-        tokenAmount,
-        checkoutUrl: paymentData.checkoutUrl,
-        status: 'PENDING',
-      },
-    })
-
-    return { checkoutUrl: paymentData.checkoutUrl, orderCode }
-  }
-
   /** Xác minh webhook từ PayOS */
   async handleWebhook(body: unknown) {
     const webhookData = await payos.webhooks.verify(body as never)
@@ -128,9 +90,12 @@ export class PaymentService {
 
   /** Extract plan ID from payment description */
   private extractPlanIdFromDescription(description: string): SubscriptionPlanId | null {
-    if (description.includes('Cơ bản')) return SubscriptionPlanId.BASIC
     if (description.includes('Premium')) return SubscriptionPlanId.PREMIUM
+    if (description.includes('Dùng thử')) return SubscriptionPlanId.TRIAL
     if (description.includes('Lớp học')) return SubscriptionPlanId.CLASSROOM
+    if (description.includes('Miễn phí')) return SubscriptionPlanId.FREE
+    // Legacy: BASIC is deprecated, treat as FREE
+    if (description.includes('Cơ bản')) return SubscriptionPlanId.FREE
     return null
   }
 

@@ -20,6 +20,32 @@ export default function AuthCallbackPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
+    // Check URL for error parameters (when user cancels or OAuth fails)
+    const handleCallback = async () => {
+      const params = new URLSearchParams(window.location.search)
+      const error = params.get('error')
+      const errorDescription = params.get('error_description')
+
+      // If there's an error (user cancelled or OAuth failed), redirect to login
+      if (error) {
+        console.log('OAuth error:', error, errorDescription)
+        navigate('/login', { replace: true })
+        return
+      }
+
+      // Try to get the session from the URL hash
+      const { error: sessionError } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        console.error('Session error:', sessionError)
+        navigate('/login', { replace: true })
+        return
+      }
+    }
+
+    handleCallback()
+
+    // Listen for auth state changes
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
         authService
@@ -31,8 +57,14 @@ export default function AuthCallbackPage() {
       }
     })
 
+    // Fallback timeout: if nothing happens after 5 seconds, redirect to login
+    const timeout = setTimeout(() => {
+      navigate('/login', { replace: true })
+    }, 5000)
+
     return () => {
       listener.subscription.unsubscribe()
+      clearTimeout(timeout)
     }
   }, [navigate])
 

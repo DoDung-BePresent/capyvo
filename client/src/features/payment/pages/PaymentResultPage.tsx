@@ -18,7 +18,9 @@ export default function PaymentResultPage() {
 
   useEffect(() => {
     if (payment?.status === 'PAID') {
+      // Invalidate both user and subscription cache to prevent showing TRIAL before PREMIUM
       queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.subscription.current() })
       message.success('Thanh toán thành công! Gói đăng ký đã được kích hoạt.')
 
       // Redirect to home after 1 seconds

@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { Form, Input, Alert, Spin, Typography } from 'antd'
+import { Form, Input, Spin, Typography, Select, Divider, Flex } from 'antd'
 import type { FormInstance } from 'antd'
 import { RobotOutlined } from '@ant-design/icons'
 import ImageUpload from './ImageUpload'
 import AudioUploadField from './AudioUploadField'
 import { questionService } from '../services/question.service'
 import type { Part4FormValues } from '../types'
+import { QuestionType, QuestionStatus } from '../types'
+import { TopicMultiSelect } from './TopicMultiSelect'
 
 const { Text } = Typography
 
@@ -43,13 +45,6 @@ export default function Part4Form({ form, onSubmit }: Props) {
       form={form}
       styles={{ label: { height: 22 } }}
     >
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message="Form này tạo cùng lúc 3 câu (8, 9, 10) dùng chung 1 ảnh và 1 bối cảnh. Mỗi trường có thể tự upload audio hoặc để AI tạo."
-      />
-
       <Form.Item
         label="Hình ảnh / bảng dữ liệu (dùng chung cho cả 3 câu)"
         name="imageUrl"
@@ -104,6 +99,46 @@ export default function Part4Form({ form, onSubmit }: Props) {
           </Form.Item>
         </div>
       ))}
+
+      <Divider style={{ margin: '16px 0' }} />
+
+      <Flex gap={16}>
+        <Form.Item
+          label="Loại câu hỏi"
+          name="type"
+          rules={[{ required: true, message: 'Chọn loại câu hỏi' }]}
+          initialValue={QuestionType.PRACTICE}
+          style={{ flex: 1 }}
+        >
+          <Select
+            options={[
+              { label: 'PRACTICE', value: QuestionType.PRACTICE },
+              { label: 'FORECAST', value: QuestionType.FORECAST },
+              { label: 'CUSTOM', value: QuestionType.CUSTOM },
+            ]}
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="Trạng thái"
+          name="status"
+          rules={[{ required: true, message: 'Chọn trạng thái' }]}
+          initialValue={QuestionStatus.DRAFT}
+          style={{ flex: 1 }}
+        >
+          <Select
+            options={[
+              { label: 'DRAFT', value: QuestionStatus.DRAFT },
+              { label: 'PUBLISHED', value: QuestionStatus.PUBLISHED },
+              { label: 'ARCHIVED', value: QuestionStatus.ARCHIVED },
+            ]}
+          />
+        </Form.Item>
+      </Flex>
+
+      <Form.Item label="Chủ đề" name="topicIds">
+        <TopicMultiSelect partNumber={4} />
+      </Form.Item>
     </Form>
   )
 }
