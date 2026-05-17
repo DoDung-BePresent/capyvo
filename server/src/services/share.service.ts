@@ -30,6 +30,7 @@ export interface PublicShareDetail {
     id: string
     fullName: string | null
     email: string
+    avatarUrl: string | null
   }
   response: {
     id: string
@@ -163,6 +164,7 @@ export class ShareService {
             id: true,
             fullName: true,
             email: true,
+            avatarUrl: true,
           },
         },
         response: {

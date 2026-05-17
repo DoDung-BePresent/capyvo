@@ -51,6 +51,7 @@ import { getErrorMessage } from '@/shared/constants/error-messages'
  * Assets
  */
 import buttonRecordSound from '@/assets/sounds/button-record-sound.mp3'
+import startRecordPracticeSound from '@/assets/sounds/start-record-practice-sound.mp3'
 
 const { Title, Text, Paragraph } = Typography
 
@@ -63,7 +64,7 @@ const AudioIcon = styled(
 )
 
 interface QuestionPracticeViewProps {
-  question: Question & { examSetTitle: string }
+  question: Question
   onRecordingComplete: (audioBlob: Blob) => Promise<{ responseId: string; audioUrl: string }>
   onAnalysisComplete?: () => void
   isSubmitting?: boolean
@@ -96,6 +97,7 @@ export function QuestionPracticeView({
   const contextAudioRef = useRef<HTMLAudioElement>(null!)
   const questionAudioRef = useRef<HTMLAudioElement>(null!)
   const startSoundRef = useRef<HTMLAudioElement>(null!)
+  const recordStartSoundRef = useRef<HTMLAudioElement>(null!)
 
   const { mutate: transcribeAndAnalyze, isPending: isAnalyzing } = useTranscribeAndAnalyze({
     onSuccess: (data) => {
@@ -237,6 +239,14 @@ export function QuestionPracticeView({
       recorder.start()
       setMediaRecorder(recorder)
       setRecordingState('recording')
+
+      // Play start recording sound
+      if (recordStartSoundRef.current) {
+        recordStartSoundRef.current.currentTime = 0
+        recordStartSoundRef.current
+          .play()
+          .catch((error) => console.log('Sound play failed:', error))
+      }
     } catch (error) {
       console.error('Failed to start recording:', error)
       setRecordingState('idle')
@@ -353,6 +363,8 @@ export function QuestionPracticeView({
       )}
       {/* Start sound */}
       <audio ref={startSoundRef} src={buttonRecordSound} preload="auto" />
+      {/* Record start sound */}
+      <audio ref={recordStartSoundRef} src={startRecordPracticeSound} preload="auto" />
 
       {/* Show Result View when analyzing or analysis is complete */}
       {(recordingState === 'analyzing' ||
@@ -391,12 +403,9 @@ export function QuestionPracticeView({
               <Flex vertical gap={16}>
                 {/* Header */}
                 <Flex align="center" justify="space-between">
-                  <Space>
-                    <Tag color="blue" style={{ fontSize: 14, padding: '4px 12px' }}>
-                      Câu {question.questionNumber}
-                    </Tag>
-                    <Text type="secondary">{question.examSetTitle}</Text>
-                  </Space>
+                  <Tag color="blue" style={{ fontSize: 14, padding: '4px 12px' }}>
+                    Câu {question.questionNumber}
+                  </Tag>
                   <Space>
                     <Tag>{question.prepTimeSeconds}s chuẩn bị</Tag>
                     <Tag>{question.responseTimeSeconds}s trả lời</Tag>
