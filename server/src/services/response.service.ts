@@ -3,8 +3,13 @@ import supabaseAdmin from '@/lib/supabase'
 import prisma from '@/lib/prisma'
 import { ForbiddenError } from '@/errors/app-error'
 import { transcriptionAndAnalysisQueue } from '@/queues/transcription.queue'
+import { env } from '@/config/env'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+const openai = new OpenAI({
+  apiKey: env.OPENAI_API_KEY,
+  timeout: 30000, // 30 seconds timeout
+  maxRetries: 2, // Retry up to 2 times on failure
+})
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

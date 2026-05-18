@@ -1,14 +1,13 @@
 import Redis from 'ioredis'
+import { env } from '@/config/env'
 
-const redisUrl = process.env['REDIS_URL']
-
-if (!redisUrl) {
+if (!env.REDIS_URL) {
   console.warn('⚠️  REDIS_URL not defined - Redis features disabled')
 }
 
 // Create a single Redis instance to be reused
-export const redis = redisUrl
-  ? new Redis(redisUrl, {
+export const redis = env.REDIS_URL
+  ? new Redis(env.REDIS_URL, {
       maxRetriesPerRequest: 3,
       retryStrategy: (times) => {
         // Stop retrying after 3 attempts
@@ -22,7 +21,7 @@ export const redis = redisUrl
       lazyConnect: true, // Don't connect immediately
       enableOfflineQueue: true, // Allow queuing commands while connecting
       // TLS options for Upstash
-      tls: redisUrl.startsWith('rediss://') ? {} : undefined,
+      tls: env.REDIS_URL.startsWith('rediss://') ? {} : undefined,
       family: 4, // Force IPv4
     })
   : null

@@ -8,6 +8,77 @@
 - Keep functions focused and testable
 - Use dependency injection where appropriate
 - Use absolute imports with `@/` prefix (configured in tsconfig paths)
+- **Always use validated environment variables from `@/config/env`**
+
+## Environment Variables
+
+### Using Validated Environment Variables
+
+**ALWAYS** use the validated `env` object from `@/config/env` instead of `process.env`:
+
+```typescript
+// ✅ Good - Type-safe and validated
+import { env, isProduction, isDevelopment } from '@/config/env'
+
+const apiKey = env.OPENAI_API_KEY // Type-safe, guaranteed to exist
+const dbUrl = env.DATABASE_URL // Validated on startup
+
+if (isProduction) {
+  // Production-specific logic
+}
+
+// ❌ Bad - No type safety, no validation
+const apiKey = process.env.OPENAI_API_KEY // Could be undefined
+const dbUrl = process.env['DATABASE_URL'] // No validation
+```
+
+### Benefits of Validated Env
+
+- **Type Safety**: TypeScript knows the exact type of each variable
+- **Startup Validation**: Server won't start if required variables are missing
+- **No Runtime Errors**: No need to check for `undefined` everywhere
+- **Helper Constants**: `isProduction`, `isDevelopment`, `isTest`
+- **Centralized Configuration**: All env vars defined in one place
+
+### Available Environment Variables
+
+See `server/src/config/env.ts` for the complete list of validated environment variables.
+
+### Adding New Environment Variables
+
+1. Add to Zod schema in `server/src/config/env.ts`
+2. Add to `.env.example`
+3. Update documentation
+
+```typescript
+// server/src/config/env.ts
+const EnvSchema = z.object({
+  // ... existing vars
+  NEW_API_KEY: z.string().min(1),
+})
+```
+
+### Helper Constants
+
+Use these boolean constants instead of checking `NODE_ENV` directly:
+
+```typescript
+import { isProduction, isDevelopment, isTest } from '@/config/env'
+
+// ✅ Good - Use helper constants
+if (isProduction) {
+  // Production-specific logic
+}
+
+if (isDevelopment) {
+  // Development-specific logic
+}
+
+// ❌ Bad - Don't check NODE_ENV directly
+if (process.env.NODE_ENV === 'production') {
+  // ...
+}
+```
 
 ## File Naming Conventions
 
@@ -530,6 +601,7 @@ const users = await prisma.user.findMany({
 ## Don'ts
 
 - ❌ Don't use `any` type (use `unknown` if needed)
+- ❌ Don't use `process.env` directly (use `env` from `@/config/env`)
 - ❌ Don't put business logic in controllers
 - ❌ Don't put HTTP logic in services
 - ❌ Don't use `var` (use `const` or `let`)

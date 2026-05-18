@@ -1,4 +1,5 @@
 import logger from '@/lib/logger'
+import { env } from '@/config/env'
 import axios from 'axios'
 
 interface OpenAIUsageResponse {
@@ -54,7 +55,7 @@ export class OpenAIUsageService {
   private adminKey: string | undefined
 
   constructor() {
-    this.adminKey = process.env['OPENAI_API_ADMIN_KEY']
+    this.adminKey = env.OPENAI_API_ADMIN_KEY
   }
 
   /**

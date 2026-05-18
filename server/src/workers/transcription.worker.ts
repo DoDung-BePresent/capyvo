@@ -1,4 +1,5 @@
 import { Worker, Job } from 'bullmq'
+import { env } from '@/config/env'
 import { redis } from '@/lib/redis'
 import { ResponseService } from '@/services/response.service'
 
@@ -24,7 +25,7 @@ if (redis) {
     }
 
     const responseService = new ResponseService()
-    const concurrency = Number(process.env['QUEUE_CONCURRENCY']) || 5
+    const concurrency = env.QUEUE_CONCURRENCY
 
     // Worker for transcription only
     transcriptionWorker = new Worker(

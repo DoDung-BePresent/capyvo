@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
+import { env } from '@/config/env'
 
 interface SupabaseUsageResponse {
   storage_size_bytes?: number
@@ -19,11 +20,9 @@ interface OpenAICostResponse {
 }
 
 function getProjectRef(): string {
-  const env = process.env['SUPABASE_PROJECT_REF']
-  if (env) return env
+  if (env.SUPABASE_PROJECT_REF) return env.SUPABASE_PROJECT_REF
   // Parse from SUPABASE_URL: https://<ref>.supabase.co
-  const url = process.env['SUPABASE_URL'] ?? ''
-  const match = url.match(/https:\/\/([^.]+)\.supabase\.co/)
+  const match = env.SUPABASE_URL.match(/https:\/\/([^.]+)\.supabase\.co/)
   return match?.[1] ?? ''
 }
 
@@ -32,7 +31,7 @@ async function fetchSupabaseStats(): Promise<{
   dbSizeBytes: number | null
   configured: boolean
 }> {
-  const token = process.env['SUPABASE_ACCESS_TOKEN']
+  const token = env.SUPABASE_ACCESS_TOKEN
   const ref = getProjectRef()
 
   if (!token || !ref) {
@@ -59,7 +58,7 @@ async function fetchOpenAIStats(): Promise<{
   currentMonthCostUsd: number | null
   configured: boolean
 }> {
-  const key = process.env['OPENAI_API_KEY']
+  const key = env.OPENAI_API_KEY
   if (!key) return { currentMonthCostUsd: null, configured: false }
 
   const now = new Date()
