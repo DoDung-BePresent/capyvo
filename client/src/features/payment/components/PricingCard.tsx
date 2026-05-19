@@ -17,6 +17,7 @@ export interface PricingPlan {
   isContactPlan?: boolean // For plans that require contact instead of payment
   contactUrl?: string // URL to contact (e.g., Zalo link)
   badge?: string // "Sắp ra mắt", "Mới", etc.
+  isFreePlan?: boolean // For FREE plan
 }
 
 interface PricingCardProps {
@@ -69,7 +70,7 @@ export default function PricingCard({ plan, onSelect, isLoading = false }: Prici
   return (
     <StyledCard
       style={{
-        backgroundColor: isPopular ? hexToRgba(plan.color, 0.03) : '#fff',
+        backgroundColor: isPopular ? 'oklch(98% 0.016 73.684)' : '#fff',
         border: isPopular ? `2px solid ${plan.color}` : '2px solid #e5e7eb',
         boxShadow: isPopular
           ? `0 8px 24px ${hexToRgba(plan.color, 0.15)}`
@@ -99,6 +100,13 @@ export default function PricingCard({ plan, onSelect, isLoading = false }: Prici
               Báo giá theo nhu cầu
             </PricePerMonth>
           </>
+        ) : plan.isFreePlan ? (
+          <>
+            <TotalPrice style={{ color: plan.color }}>Miễn phí</TotalPrice>
+            <PricePerMonth style={{ color: plan.color }}>
+              0đ<span className="text-lg font-semibold">/tháng</span>
+            </PricePerMonth>
+          </>
         ) : (
           <>
             <TotalPrice>{plan.price.toLocaleString('vi-VN')} VNĐ</TotalPrice>
@@ -119,19 +127,25 @@ export default function PricingCard({ plan, onSelect, isLoading = false }: Prici
 
       {/* Features */}
       <FeatureList>
-        {plan.features.map((feature, index) => (
-          <FeatureItem key={index}>
-            <CheckIcon
-              style={{
-                backgroundColor: hexToRgba(plan.color, 0.15),
-                color: plan.color,
-              }}
-            >
-              <Check style={{ fontSize: 14 }} />
-            </CheckIcon>
-            <span>{feature}</span>
-          </FeatureItem>
-        ))}
+        {plan.features.map((feature, index) => {
+          // Check if feature is disabled (starts with ❌)
+          const isDisabled = feature.startsWith('❌')
+          const displayFeature = feature.replace(/^[❌✨]\s*/, '') // Remove emoji prefix
+
+          return (
+            <FeatureItem key={index} style={{ opacity: isDisabled ? 0.5 : 1 }}>
+              <CheckIcon
+                style={{
+                  backgroundColor: hexToRgba(plan.color, 0.15),
+                  color: plan.color,
+                }}
+              >
+                <Check style={{ fontSize: 14 }} />
+              </CheckIcon>
+              <span>{displayFeature}</span>
+            </FeatureItem>
+          )
+        })}
       </FeatureList>
 
       {/* CTA Button */}
@@ -150,6 +164,23 @@ export default function PricingCard({ plan, onSelect, isLoading = false }: Prici
           }
         >
           Liên hệ Zalo
+        </StyledButton>
+      ) : plan.isFreePlan ? (
+        <StyledButton
+          type="default"
+          size="large"
+          disabled
+          style={
+            {
+              '--shadow-color': 'rgba(0,0,0,0.1)',
+              backgroundColor: '#f5f5f5',
+              borderColor: '#d9d9d9',
+              color: '#8c8c8c',
+              cursor: 'not-allowed',
+            } as React.CSSProperties
+          }
+        >
+          Gói hiện tại
         </StyledButton>
       ) : (
         <StyledButton

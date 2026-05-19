@@ -64,11 +64,7 @@ export default function QuestionPracticePage() {
       const questions = await questionService.getByPart(part)
       const q = questions.find((q) => q.id === questionId)
       if (!q) throw new Error('Question not found')
-
-      // Get exam set title properly
-      const examSetTitle = q.examSet?.title || 'Chưa có bộ đề'
-
-      return { ...q, examSetTitle }
+      return q
     },
     enabled: !!questionId && !!part,
   })
@@ -158,7 +154,6 @@ export default function QuestionPracticePage() {
           <PageHeader
             mini
             title={`Câu ${question.questionNumber} - ${meta?.label ?? ''}`}
-            description={question.examSetTitle}
             breadcrumbs={[
               { label: 'Luyện theo Part', href: '/practice' },
               { label: meta?.label ?? '', href: `/practice/part/${part}` },

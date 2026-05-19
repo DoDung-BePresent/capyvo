@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as React from 'react'
 import { useParams } from 'react-router-dom'
 import {
   Button,
@@ -7,15 +8,23 @@ import {
   Empty,
   Flex,
   Image,
+  Input,
   Popconfirm,
   Radio,
+  Segmented,
   Skeleton,
   Space,
   Switch,
   Tag,
   Typography,
 } from 'antd'
-import { CheckOutlined, LinkOutlined, SoundOutlined, SwapOutlined } from '@ant-design/icons'
+import {
+  CheckOutlined,
+  LinkOutlined,
+  SearchOutlined,
+  SoundOutlined,
+  SwapOutlined,
+} from '@ant-design/icons'
 
 import { PageHeader } from '@/shared/components'
 import { DRAWER_WIDTHS } from '@/config'
@@ -25,11 +34,30 @@ import {
   useGetExamSet,
   useUpdateExamSet,
   useAssignQuestion,
+  useAssignQuestionSet,
   useUnassignQuestion,
   useGetPoolQuestions,
 } from '../hooks/useExamSet'
 
 const { Text, Paragraph } = Typography
+
+// Type for question sets (Part 3 & 4)
+interface QuestionSetData {
+  setId: string
+  questions: Array<{
+    id: string
+    questionNumber: number
+    contentText?: string | null
+    questionText?: string | null
+    contextText?: string | null
+  }>
+  examSets?: Array<{ id: string; title: string }>
+}
+
+// Type for individual questions with exam set info
+interface QuestionWithExamSets extends Question {
+  examSets?: Array<{ id: string; title: string }>
+}
 
 // ─── Slot row ─── //
 function QuestionSlot({
@@ -145,17 +173,60 @@ function AssignDrawer({
   onClose: () => void
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const { data: pool = [], isLoading } = useGetPoolQuestions(questionNumber, open)
-  const { mutate: assign, isPending } = useAssignQuestion(currentExamSetId)
+  const [searchText, setSearchText] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all')
+
+  // Determine part number and if it's Part 2 (image-based) or Part 3/4 (set-based)
+  const isPart2 = questionNumber === 3 || questionNumber === 4
+  const isPart3or4 = questionNumber >= 5 && questionNumber <= 10
+
+  // Debounce search input
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchText)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchText])
+
+  const { data: poolData = [], isLoading } = useGetPoolQuestions(
+    questionNumber,
+    open,
+    debouncedSearch || undefined,
+    assignmentFilter,
+  )
+
+  const { mutate: assignQuestion, isPending: assigningQuestion } =
+    useAssignQuestion(currentExamSetId)
+  const { mutate: assignSet, isPending: assigningSet } = useAssignQuestionSet(currentExamSetId)
+  const isPending = assigningQuestion || assigningSet
+
+  // Check if data is question sets (for Part 3/4) or individual questions
+  const isQuestionSets =
+    isPart3or4 && poolData.length > 0 && 'setId' in poolData[0] && 'questions' in poolData[0]
+  const questionSets = isQuestionSets ? (poolData as unknown as QuestionSetData[]) : []
+  const individualQuestions = !isQuestionSets ? (poolData as unknown as QuestionWithExamSets[]) : []
 
   const handleConfirm = () => {
     if (!selectedId) return
-    assign(selectedId, {
-      onSuccess: () => {
-        setSelectedId(null)
-        onClose()
-      },
-    })
+
+    if (isPart3or4) {
+      // Assign question set
+      assignSet(selectedId, {
+        onSuccess: () => {
+          setSelectedId(null)
+          onClose()
+        },
+      })
+    } else {
+      // Assign individual question
+      assignQuestion(selectedId, {
+        onSuccess: () => {
+          setSelectedId(null)
+          onClose()
+        },
+      })
+    }
   }
 
   return (
@@ -180,90 +251,244 @@ function AssignDrawer({
             loading={isPending}
             onClick={handleConfirm}
           >
-            Gán câu này
+            {isPart3or4 ? 'Gán bộ 3 câu này' : 'Gán câu này'}
           </Button>
         </Flex>
       }
     >
+      {/* Search and Filter Controls */}
+      <Space direction="vertical" size={12} style={{ width: '100%', marginBottom: 16 }}>
+        {/* Hide search for Part 2 (image-based questions) */}
+        {!isPart2 && (
+          <Input
+            placeholder="Tìm kiếm nội dung câu hỏi..."
+            prefix={<SearchOutlined />}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            allowClear
+            size="large"
+          />
+        )}
+        <Segmented
+          value={assignmentFilter}
+          onChange={(value) => setAssignmentFilter(value as 'all' | 'assigned' | 'unassigned')}
+          options={[
+            { label: 'Tất cả', value: 'all' },
+            { label: 'Đã gán', value: 'assigned' },
+            { label: 'Chưa gán', value: 'unassigned' },
+          ]}
+          block
+          size="large"
+        />
+      </Space>
+
       {isLoading ? (
         <Skeleton active />
-      ) : pool.length === 0 ? (
-        <Empty description="Chưa có câu hỏi nào cho slot này" />
+      ) : poolData.length === 0 ? (
+        <Empty
+          description={
+            searchText || assignmentFilter !== 'all'
+              ? 'Không tìm thấy câu hỏi phù hợp'
+              : 'Chưa có câu hỏi nào cho slot này'
+          }
+        />
       ) : (
         <Radio.Group
           value={selectedId}
           onChange={(e) => setSelectedId(e.target.value as string)}
           style={{ width: '100%' }}
         >
-          <Space direction="vertical" style={{ width: '100%' }} size={8}>
-            {pool.map((q) => {
-              const isSelected = selectedId === q.id
-              // Check if question is assigned to current exam set
-              const assignedHere = q.examSets?.some((s) => s.id === currentExamSetId) ?? false
-              // Check if question is assigned to other exam sets
-              const otherExamSets = q.examSets?.filter((s) => s.id !== currentExamSetId) ?? []
-              const assignedElsewhere = otherExamSets.length > 0
+          {/* Grid layout for Part 2 (2 columns) */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isPart2 ? 'repeat(2, 1fr)' : '1fr',
+              gap: 12,
+            }}
+          >
+            {isQuestionSets
+              ? // Render question sets for Part 3 & 4
+                questionSets.map((set) => {
+                  const isSelected = selectedId === set.setId
+                  const assignedHere = set.examSets?.some((s) => s.id === currentExamSetId) ?? false
+                  const otherExamSets = set.examSets?.filter((s) => s.id !== currentExamSetId) ?? []
+                  const assignedElsewhere = otherExamSets.length > 0
 
-              return (
-                <Radio
-                  key={q.id}
-                  value={q.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    width: '100%',
-                    padding: '12px 14px',
-                    border: `1.5px solid ${
-                      isSelected ? '#4F46E5' : assignedElsewhere ? '#fa8c16' : '#e8e8e8'
-                    }`,
-                    borderRadius: 8,
-                    backgroundColor: isSelected ? '#f0f0ff' : assignedHere ? '#f6ffed' : '#fff',
-                  }}
-                >
-                  <Space direction="vertical" size={6} style={{ flex: 1, marginLeft: 8 }}>
-                    {/* Assignment badges */}
-                    <Flex align="center" gap={6} wrap="wrap">
-                      {assignedHere && (
-                        <Tag color="green" icon={<CheckOutlined />}>
-                          Bộ đề này
-                        </Tag>
-                      )}
-                      {otherExamSets.map((set) => (
-                        <Tag key={set.id} color="blue" icon={<LinkOutlined />}>
-                          {set.title}
-                        </Tag>
-                      ))}
-                      {!assignedHere && otherExamSets.length === 0 && (
-                        <Tag color="default">Chưa gán</Tag>
-                      )}
-                    </Flex>
+                  return (
+                    <Radio
+                      key={set.setId}
+                      value={set.setId}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        width: '100%',
+                        padding: '12px 14px',
+                        border: `1.5px solid ${
+                          isSelected ? '#4F46E5' : assignedElsewhere ? '#fa8c16' : '#e8e8e8'
+                        }`,
+                        borderRadius: 8,
+                        backgroundColor: isSelected ? '#f0f0ff' : assignedHere ? '#f6ffed' : '#fff',
+                      }}
+                    >
+                      <Space direction="vertical" size={8} style={{ flex: 1, marginLeft: 8 }}>
+                        {/* Assignment badges */}
+                        <Flex align="center" gap={6} wrap="wrap">
+                          {assignedHere && (
+                            <Tag color="green" icon={<CheckOutlined />} style={{ fontSize: 11 }}>
+                              Bộ đề này
+                            </Tag>
+                          )}
+                          {otherExamSets.map((examSet) => (
+                            <Tag
+                              key={examSet.id}
+                              color="blue"
+                              icon={<LinkOutlined />}
+                              style={{ fontSize: 11 }}
+                            >
+                              {examSet.title}
+                            </Tag>
+                          ))}
+                          {!assignedHere && otherExamSets.length === 0 && (
+                            <Tag color="default" style={{ fontSize: 11 }}>
+                              Chưa gán
+                            </Tag>
+                          )}
+                        </Flex>
 
-                    {/* Content */}
-                    {q.contentText && <Text>{q.contentText}</Text>}
-                    {q.questionText && <Text>{q.questionText}</Text>}
-                    {q.imageUrls?.[0] && (
-                      <Image
-                        src={q.imageUrls[0]}
-                        height={56}
-                        style={{ objectFit: 'cover', borderRadius: 4 }}
-                        preview={false}
-                      />
-                    )}
-                    {q.questionAudioUrl && (
-                      <a
-                        href={q.questionAudioUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(e) => e.stopPropagation()}
+                        {/* Display all 3 questions in the set */}
+                        {set.questions.map((q) => (
+                          <div
+                            key={q.id}
+                            style={{
+                              padding: '10px 12px',
+                              backgroundColor: '#fff',
+                              border: '1px solid #e8e8e8',
+                              borderRadius: 6,
+                            }}
+                          >
+                            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                              <Text strong style={{ fontSize: 13, color: '#1890ff' }}>
+                                Câu {q.questionNumber}
+                              </Text>
+                              <Text style={{ fontSize: 13 }}>
+                                {q.questionText ||
+                                  q.contentText ||
+                                  q.contextText ||
+                                  '(Không có nội dung)'}
+                              </Text>
+                            </Space>
+                          </div>
+                        ))}
+                      </Space>
+                    </Radio>
+                  )
+                })
+              : // Render individual questions for Part 1, 2, 5
+                individualQuestions.map((q) => {
+                  const isSelected = selectedId === q.id
+                  const assignedHere = q.examSets?.some((s) => s.id === currentExamSetId) ?? false
+                  const otherExamSets = q.examSets?.filter((s) => s.id !== currentExamSetId) ?? []
+                  const assignedElsewhere = otherExamSets.length > 0
+
+                  return (
+                    <Radio
+                      key={q.id}
+                      value={q.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        width: '100%',
+                        padding: isPart2 ? '8px' : '12px 14px',
+                        border: `1.5px solid ${
+                          isSelected ? '#4F46E5' : assignedElsewhere ? '#fa8c16' : '#e8e8e8'
+                        }`,
+                        borderRadius: 8,
+                        backgroundColor: isSelected ? '#f0f0ff' : assignedHere ? '#f6ffed' : '#fff',
+                      }}
+                    >
+                      <Space
+                        direction="vertical"
+                        size={6}
+                        style={{ flex: 1, marginLeft: isPart2 ? 4 : 8 }}
                       >
-                        <SoundOutlined /> Nghe audio
-                      </a>
-                    )}
-                  </Space>
-                </Radio>
-              )
-            })}
-          </Space>
+                        {/* Assignment badges */}
+                        <Flex align="center" gap={6} wrap="wrap">
+                          {assignedHere && (
+                            <Tag color="green" icon={<CheckOutlined />} style={{ fontSize: 11 }}>
+                              Bộ đề này
+                            </Tag>
+                          )}
+                          {otherExamSets.map((set) => (
+                            <Tag
+                              key={set.id}
+                              color="blue"
+                              icon={<LinkOutlined />}
+                              style={{ fontSize: 11 }}
+                            >
+                              {set.title}
+                            </Tag>
+                          ))}
+                          {!assignedHere && otherExamSets.length === 0 && (
+                            <Tag color="default" style={{ fontSize: 11 }}>
+                              Chưa gán
+                            </Tag>
+                          )}
+                        </Flex>
+
+                        {/* Image for Part 2 - larger and prominent */}
+                        {isPart2 && q.imageUrls?.[0] && (
+                          <div
+                            style={{
+                              width: '100%',
+                              height: 180,
+                              borderRadius: 6,
+                              overflow: 'hidden',
+                              backgroundColor: '#f0f0f0',
+                            }}
+                          >
+                            <img
+                              src={q.imageUrls[0]}
+                              alt="Question"
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {/* Content for non-Part 2 */}
+                        {!isPart2 && (
+                          <>
+                            {q.contentText && <Text>{q.contentText}</Text>}
+                            {q.contextText && <Text>{q.contextText}</Text>}
+                            {q.questionText && <Text>{q.questionText}</Text>}
+                            {q.imageUrls?.[0] && (
+                              <Image
+                                src={q.imageUrls[0]}
+                                height={56}
+                                style={{ objectFit: 'cover', borderRadius: 4 }}
+                                preview={false}
+                              />
+                            )}
+                            {q.questionAudioUrl && (
+                              <a
+                                href={q.questionAudioUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <SoundOutlined /> Nghe audio
+                              </a>
+                            )}
+                          </>
+                        )}
+                      </Space>
+                    </Radio>
+                  )
+                })}
+          </div>
         </Radio.Group>
       )}
     </Drawer>
@@ -297,8 +522,14 @@ export default function ExamSetDetailPage() {
             <Switch
               checked={examSet.isPublished}
               loading={updateMutation.isPending}
+              disabled={!examSet.isComplete}
               onChange={(checked) => updateMutation.mutate({ isPublished: checked })}
             />
+            {!examSet.isComplete && (
+              <Text type="warning" style={{ fontSize: 12 }}>
+                (Cần đủ 11 câu)
+              </Text>
+            )}
           </Space>
         }
       />

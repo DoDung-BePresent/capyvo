@@ -1,9 +1,17 @@
+// Load environment variables FIRST
+import 'dotenv/config'
+
+// Validate environment variables (after dotenv is loaded)
+import '@/config/env'
+
 import app from './app'
 import logger from '@/lib/logger'
 import { startSubscriptionCheckJob } from './jobs/check-expired-subscriptions.job'
+import { startMaintenanceScheduleCheckJob } from './jobs/check-maintenance-schedules.job'
 import { redis } from '@/lib/redis'
+import { env } from '@/config/env'
 
-const PORT = Number(process.env.PORT) || 3000
+const PORT = env.PORT
 
 // Initialize queues and workers only if Redis is available
 if (redis) {
@@ -15,11 +23,12 @@ if (redis) {
 
 const server = app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`, {
-    env: process.env.NODE_ENV ?? 'development',
+    env: env.NODE_ENV,
   })
 
   // Start cron jobs
   startSubscriptionCheckJob()
+  startMaintenanceScheduleCheckJob()
 
   if (redis) {
     logger.info('Bull Board available at /admin/queues')

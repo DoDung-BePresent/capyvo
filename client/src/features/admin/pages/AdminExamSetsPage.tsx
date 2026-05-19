@@ -95,15 +95,30 @@ export default function AdminExamSetsPage() {
     {
       title: 'Câu hỏi',
       width: 100,
-      render: (_, record) => <Text>{record._count?.questions ?? 0} / 11</Text>,
+      render: (_, record) => {
+        const count = record._count?.questions ?? 0
+        const isComplete = count === 11
+        return (
+          <Text style={{ color: isComplete ? '#52c41a' : undefined }}>
+            {count} / 11 {isComplete && '✓'}
+          </Text>
+        )
+      },
     },
     {
       title: 'Trạng thái',
       dataIndex: 'isPublished',
       width: 120,
-      render: (isPublished: boolean) => (
-        <Tag color={isPublished ? 'green' : 'default'}>{isPublished ? 'Đã xuất bản' : 'Nháp'}</Tag>
-      ),
+      render: (isPublished: boolean, record) => {
+        const isComplete = record.isComplete
+        if (isPublished && isComplete) {
+          return <Tag color="green">Đã xuất bản</Tag>
+        }
+        if (!isComplete) {
+          return <Tag color="orange">Chưa đủ câu</Tag>
+        }
+        return <Tag color="default">Nháp</Tag>
+      },
     },
     {
       title: '',

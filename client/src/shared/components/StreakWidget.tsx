@@ -1,6 +1,7 @@
 import { Card, Flex, Typography, Statistic } from 'antd'
 import { FireFilled, TrophyFilled } from '@ant-design/icons'
 import { COLORS } from '@/shared/constants/user-color'
+import { hexToRgba } from '@/shared/utils/color'
 
 const { Text } = Typography
 
@@ -11,7 +12,18 @@ interface StreakWidgetProps {
 
 export function StreakWidget({ currentStreak, longestStreak }: StreakWidgetProps) {
   return (
-    <Card className="rounded-lg!">
+    <Card
+      className="rounded-lg! transition-all! duration-150! ease-out! hover:translate-y-1!"
+      style={{
+        boxShadow: `0 4px 0 0 ${hexToRgba(COLORS.primary, 0.2)}`,
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = 'none'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = `0 4px 0 0 ${hexToRgba(COLORS.primary, 0.2)}`
+      }}
+    >
       <Flex gap={24}>
         {/* Current Streak */}
         <Flex vertical align="center" style={{ flex: 1 }}>

@@ -161,7 +161,7 @@ function ShareCard({ share, onReactionClick }: ShareCardProps) {
       <Flex vertical gap={12}>
         {/* User info */}
         <Flex align="center" gap={8}>
-          <Avatar size="small" icon={<UserOutlined />} />
+          <Avatar size="small" shape="square" src={share.user.avatarUrl} icon={<UserOutlined />} />
           <Text strong style={{ fontSize: 13 }}>
             {displayName}
           </Text>

@@ -1,18 +1,34 @@
 import type { Request, Response, NextFunction } from 'express'
 import type { AuthRequest } from '@/middlewares/authenticate'
 import { SessionService } from '@/services/session.service'
-import { ValidationError } from '@/errors/app-error'
 
 export class SessionController {
   private service = new SessionService()
 
-  async create(req: Request, res: Response, _next: NextFunction): Promise<void> {
-    const userId = (req as AuthRequest).userId
-    const { examSetId, partNumber } = req.body
-    if (!examSetId) throw new ValidationError('examSetId is required')
-    const part = partNumber != null ? Number(partNumber) : null
-    const session = await this.service.createSession(userId, examSetId, part)
-    res.status(201).json({ success: true, data: { sessionId: session.id } })
+  async create(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = (req as AuthRequest).userId
+      const { examSetId, partNumber } = req.body
+
+      // examSetId is optional: null = practice mode, non-null = exam mode
+      const effectiveExamSetId = examSetId && examSetId.trim() !== '' ? examSetId : null
+
+      const part = partNumber != null ? Number(partNumber) : null
+      const session = await this.service.createSession(userId, effectiveExamSetId, part)
+      res.status(201).json({ success: true, data: { sessionId: session.id } })
+    } catch (error) {
+      // Handle FREE user trying to practice full exam
+      if (error instanceof Error && error.message === 'FREE_USER_FULL_EXAM_BLOCKED') {
+        res.status(403).json({
+          success: false,
+          error: 'Premium feature',
+          message: 'Luyện full đề chỉ dành cho người dùng Premium. Vui lòng nâng cấp để sử dụng.',
+          upgradeUrl: '/pricing',
+        })
+        return
+      }
+      next(error)
+    }
   }
 
   async complete(req: Request, res: Response, _next: NextFunction): Promise<void> {

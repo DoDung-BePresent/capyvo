@@ -9,8 +9,32 @@ import type {
   Part4FormValues,
   Part5FormValues,
   UpdateQuestionPayload,
+  QuestionType,
+  QuestionStatus,
 } from '../types'
 
+/**
+ * Hook to fetch questions with optional filters
+ * Supports filtering by partNumber, type, status, topicId, examSetId, and search
+ */
+export function useQuestions(filters?: {
+  partNumber?: number
+  type?: QuestionType
+  status?: QuestionStatus
+  topicId?: string
+  examSetId?: string
+  search?: string
+}) {
+  return useQuery({
+    queryKey: ['questions', filters],
+    queryFn: () => questionService.getAll(filters),
+  })
+}
+
+/**
+ * Legacy hook for backward compatibility
+ * @deprecated Use useQuestions({ partNumber }) instead
+ */
 export function useGetQuestions(partNumber: number) {
   return useQuery({
     queryKey: queryKeys.questions.byPart(partNumber),
@@ -23,6 +47,8 @@ function useCreateQuestion<T>(partNumber: number, mutateFn: (payload: T) => Prom
   return useMutation({
     mutationFn: mutateFn,
     onSuccess: () => {
+      // Invalidate all questions queries to ensure UI updates
+      queryClient.invalidateQueries({ queryKey: ['questions'] })
       queryClient.invalidateQueries({ queryKey: queryKeys.questions.byPart(partNumber) })
       message.success('Thêm câu hỏi thành công!')
     },
@@ -52,6 +78,8 @@ export function useDeleteQuestion(partNumber: number) {
   return useMutation({
     mutationFn: questionService.delete,
     onSuccess: () => {
+      // Invalidate all questions queries to ensure UI updates
+      queryClient.invalidateQueries({ queryKey: ['questions'] })
       queryClient.invalidateQueries({ queryKey: queryKeys.questions.byPart(partNumber) })
       message.success('Đã xóa câu hỏi')
     },
@@ -67,11 +95,116 @@ export function useUpdateQuestion(partNumber: number) {
     mutationFn: ({ id, payload }: { id: string; payload: UpdateQuestionPayload }) =>
       questionService.update(id, payload),
     onSuccess: () => {
+      // Invalidate all questions queries to ensure UI updates
+      queryClient.invalidateQueries({ queryKey: ['questions'] })
       queryClient.invalidateQueries({ queryKey: queryKeys.questions.byPart(partNumber) })
       message.success('Cập nhật câu hỏi thành công!')
     },
     onError: (err: Error) => {
       message.error(err.message || 'Có lỗi xảy ra, vui lòng thử lại')
+    },
+  })
+}
+
+/**
+ * Hook to update a single question's status
+ * Invalidates all question queries to ensure UI consistency
+ */
+export function useUpdateQuestionStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: QuestionStatus }) =>
+      questionService.updateStatus(id, status),
+    onSuccess: (updatedQuestion) => {
+      // Invalidate all question queries to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ['questions'] })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.questions.byPart(updatedQuestion.partNumber),
+      })
+      message.success('Cập nhật trạng thái thành công!')
+    },
+    onError: (err: Error) => {
+      message.error(err.message || 'Có lỗi xảy ra, vui lòng thử lại')
+    },
+  })
+}
+
+/**
+ * Hook to bulk update status for multiple questions
+ * Invalidates all question queries to ensure UI consistency
+ */
+export function useBulkUpdateStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ questionIds, status }: { questionIds: string[]; status: QuestionStatus }) =>
+      questionService.bulkUpdateStatus(questionIds, status),
+    onSuccess: (result) => {
+      // Invalidate all question queries to ensure consistency across all views
+      queryClient.invalidateQueries({ queryKey: ['questions'] })
+      // Also invalidate topics queries as question counts may have changed
+      queryClient.invalidateQueries({ queryKey: queryKeys.topics.list() })
+      message.success(`Đã cập nhật ${result.updated} câu hỏi thành công!`)
+    },
+    onError: (err: Error) => {
+      message.error(err.message || 'Có lỗi xảy ra, vui lòng thử lại')
+    },
+  })
+}
+
+/**
+ * Hook to fetch questions grouped by setId (Part 3 & 4) or individual (Part 1, 2, 5)
+ */
+export function useQuestionsGrouped(filters: {
+  partNumber: number
+  type?: QuestionType
+  status?: QuestionStatus
+  topicId?: string
+  search?: string
+}) {
+  return useQuery({
+    queryKey: ['questions', 'grouped', filters],
+    queryFn: () => questionService.getQuestionsGrouped(filters),
+  })
+}
+
+/**
+ * Hook to update entire question set (Part 3 or 4)
+ */
+export function useUpdateQuestionSet(partNumber: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      setId,
+      payload,
+    }: {
+      setId: string
+      payload: Part3FormValues | Part4FormValues
+    }) => questionService.updateQuestionSet(setId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['questions'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.questions.byPart(partNumber) })
+      message.success('Cập nhật bộ câu hỏi thành công!')
+    },
+    onError: (err: Error) => {
+      message.error(err.message || 'Có lỗi xảy ra, vui lòng thử lại')
+    },
+  })
+}
+
+/**
+ * Hook to delete entire question set (Part 3 or 4)
+ */
+export function useDeleteQuestionSet(partNumber: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: questionService.deleteQuestionSet,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['questions'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.questions.byPart(partNumber) })
+      message.success(`Đã xóa ${result.deleted} câu hỏi`)
+    },
+    onError: () => {
+      message.error('Xóa thất bại')
     },
   })
 }

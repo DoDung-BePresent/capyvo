@@ -20,6 +20,7 @@ router.post('/', asyncHandler(controller.create.bind(controller)))
 router.put('/:id', asyncHandler(controller.update.bind(controller)))
 router.delete('/:id', asyncHandler(controller.remove.bind(controller)))
 router.post('/:id/assign', asyncHandler(controller.assignQuestion.bind(controller)))
+router.post('/:id/assign-set', asyncHandler(controller.assignQuestionSet.bind(controller)))
 router.post('/:id/unassign', asyncHandler(controller.unassignQuestion.bind(controller)))
 
 export default router

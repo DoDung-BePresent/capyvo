@@ -1,12 +1,13 @@
 import { Router } from 'express'
 import { authenticate } from '@/middlewares/authenticate'
-import { ResponseController, uploadAudio } from '@/controllers/response.controller'
+import { ResponseController } from '@/controllers/response.controller'
 import { asyncHandler } from '@/utils/async-handler'
 import {
   transcribeRateLimit,
   analyzeRateLimit,
   transcribeAndAnalyzeRateLimit,
 } from '@/middlewares/rate-limit'
+import { uploadAudio } from '@/middlewares/upload'
 
 const router = Router()
 const ctrl = new ResponseController()
@@ -31,6 +32,7 @@ router.post(
   transcribeAndAnalyzeRateLimit,
   asyncHandler(ctrl.transcribeAndAnalyze.bind(ctrl)),
 )
+router.get('/:id/result', authenticate, asyncHandler(ctrl.getQueuedResult.bind(ctrl)))
 router.get(
   '/question/:questionId/history',
   authenticate,

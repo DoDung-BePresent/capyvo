@@ -77,6 +77,21 @@ export function useAssignQuestion(examSetId: string) {
   })
 }
 
+export function useAssignQuestionSet(examSetId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (setId: string) => examSetService.assignQuestionSet(examSetId, setId),
+    onSuccess: (_data, _v, _ctx) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.examSets.detail(examSetId) })
+      queryClient.invalidateQueries({ queryKey: ['questions', 'pool'] })
+      message.success('Đã gán bộ 3 câu hỏi vào bộ đề')
+    },
+    onError: (err: Error) => {
+      message.error(err.message || 'Gán thất bại')
+    },
+  })
+}
+
 export function useUnassignQuestion(examSetId: string) {
   const queryClient = useQueryClient()
   return useMutation({
@@ -91,10 +106,15 @@ export function useUnassignQuestion(examSetId: string) {
   })
 }
 
-export function useGetPoolQuestions(questionNumber: number, enabled: boolean) {
+export function useGetPoolQuestions(
+  questionNumber: number,
+  enabled: boolean,
+  search?: string,
+  assignmentStatus?: 'all' | 'assigned' | 'unassigned',
+) {
   return useQuery({
-    queryKey: queryKeys.questions.pool(questionNumber),
-    queryFn: () => examSetService.getPoolQuestions(questionNumber),
+    queryKey: queryKeys.questions.pool(questionNumber, search, assignmentStatus),
+    queryFn: () => examSetService.getPoolQuestions(questionNumber, search, assignmentStatus),
     enabled,
   })
 }

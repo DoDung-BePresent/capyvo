@@ -1,9 +1,16 @@
 import OpenAI from 'openai'
+import crypto from 'crypto'
 import supabaseAdmin from '@/lib/supabase'
 import prisma from '@/lib/prisma'
 import { ForbiddenError } from '@/errors/app-error'
+import { transcriptionAndAnalysisQueue } from '@/queues/transcription.queue'
+import { env } from '@/config/env'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+const openai = new OpenAI({
+  apiKey: env.OPENAI_API_KEY,
+  timeout: 30000, // 30 seconds timeout
+  maxRetries: 2, // Retry up to 2 times on failure
+})
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,7 +66,7 @@ CRITICAL RULES for Part 1 (Read Aloud):
 3. ONLY flag errors where the student deviated from the reference text.
 4. Do NOT flag omissions of words that are NOT in the reference text.
 5. Do NOT suggest the student should have said something that is NOT in the reference text.
-6. IGNORE capitalization entirely. "city hall" and "City Hall" are IDENTICAL.
+6. IGNORE capitalization ENTIRELY in ALL comparisons. "city hall" = "City Hall" = "CITY HALL" = IDENTICAL.
 7. IGNORE minor punctuation differences (commas, apostrophes).
 8. "spoken" must be copied CHARACTER-FOR-CHARACTER from the transcript.
 9. "original" must be copied CHARACTER-FOR-CHARACTER from the reference text.
@@ -74,6 +81,10 @@ CRITICAL RULES for Part 1 (Read Aloud):
 11. DATES AND TIME - Accept equivalent formats:
     - "Saturday and Sunday" = "Saturday, Sunday" = "Saturday & Sunday" = ALL CORRECT
     - Minor wording differences in dates/times are acceptable
+12. CASE SENSITIVITY - IGNORE ALL capitalization differences:
+    - "player of the year" = "Player of the Year" = "PLAYER OF THE YEAR" = IDENTICAL
+    - "the fun event" = "The Fun Event" = IDENTICAL
+    - Do NOT flag capitalization as substitution, morphology, or any error category
 
 Category rules:
 - omission: student skipped a word that IS in the reference. "spoken" = surrounding phrase from transcript for UI anchoring.
@@ -99,6 +110,9 @@ Transcript: "Tickets cost fifteen dollars at the gate." → CORRECT (no errors)
 
 Reference: "Saturday and Sunday"
 Transcript: "Saturday & Sunday" → CORRECT (no errors)
+
+Reference: "player of the year"
+Transcript: "Player of the Year" → CORRECT (no errors, capitalization ignored)
 
 If the student read perfectly, return empty issues array and score {MAX_SCORE}.`
 
@@ -146,7 +160,9 @@ Critical rules:
 3. Do NOT suggest "adding more details" — time limits prevent this.
 4. Do NOT flag personal opinions or subjective interpretations as errors.
 5. "spoken" must be copied CHARACTER-FOR-CHARACTER from the transcript. Never rephrase.
-6. IGNORE capitalization.
+6. IGNORE capitalization ENTIRELY. "city hall" = "City Hall" = IDENTICAL.
+7. IGNORE number/symbol format differences. "$15" = "fifteen dollars" = CORRECT.
+8. Only flag clear, objective errors. Be lenient with paraphrasing.
 7. Only flag clear, objective errors. Be lenient with paraphrasing.
 8. A concise, accurate description of main elements deserves a high score.
 
@@ -205,6 +221,8 @@ CRITICAL RULES for Part 3 & 5 (Question Response):
 8. "original" should be a suggested improvement, not a "correct answer" (there is no single correct answer).
 9. Be lenient with paraphrasing and different ways of expressing ideas.
 10. A concise, clear, grammatically correct response that directly answers the question deserves a high score.
+11. IGNORE capitalization ENTIRELY. "new york" = "New York" = IDENTICAL.
+12. IGNORE number/symbol format differences. "$20" = "twenty dollars" = CORRECT.
 
 Category rules:
 - morphology: grammatical form error (wrong tense, missing plural, wrong article, subject-verb agreement). "spoken" = incorrect phrase verbatim.
@@ -231,8 +249,9 @@ Be encouraging and realistic. A short but accurate, grammatically correct respon
 
 export class ResponseService {
   private async checkPlanAccess(userId: string): Promise<{
-    plan: 'BASIC' | 'PREMIUM' | null
+    plan: 'FREE' | 'TRIAL' | 'PREMIUM' | null
     hasAccess: boolean
+    isPremium: boolean
     daysRemaining: number | null
   }> {
     const user = await prisma.user.findUnique({
@@ -240,12 +259,6 @@ export class ResponseService {
       select: {
         isPremium: true,
         premiumUntil: true,
-        subscriptions: {
-          where: { status: 'ACTIVE' },
-          orderBy: { endDate: 'desc' },
-          take: 1,
-          include: { plan: true },
-        },
       },
     })
 
@@ -254,7 +267,7 @@ export class ResponseService {
     }
 
     const now = new Date()
-    const hasAccess = user.isPremium && user.premiumUntil && user.premiumUntil > now
+    const isPremium = user.isPremium && user.premiumUntil && user.premiumUntil >= now
 
     let daysRemaining = null
     if (user.premiumUntil) {
@@ -263,12 +276,35 @@ export class ResponseService {
       daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     }
 
-    const currentPlan = user.subscriptions?.[0]?.plan?.id
-    const plan = currentPlan === 'BASIC' || currentPlan === 'PREMIUM' ? currentPlan : null
+    // Get current active subscription (priority: latest endDate)
+    const subscription = await prisma.subscription.findFirst({
+      where: {
+        userId,
+        status: 'ACTIVE',
+        endDate: { gte: now },
+      },
+      orderBy: { endDate: 'desc' },
+      include: { plan: true },
+    })
+
+    // Determine plan (priority: PREMIUM/CLASSROOM > TRIAL > FREE)
+    let plan: 'FREE' | 'TRIAL' | 'PREMIUM'
+    if (subscription) {
+      if (subscription.planId === 'PREMIUM' || subscription.planId === 'CLASSROOM') {
+        plan = 'PREMIUM'
+      } else if (subscription.planId === 'TRIAL') {
+        plan = 'TRIAL'
+      } else {
+        plan = 'FREE'
+      }
+    } else {
+      plan = 'FREE'
+    }
 
     return {
       plan,
-      hasAccess: hasAccess || false,
+      hasAccess: true, // Everyone has access (FREE or PREMIUM)
+      isPremium: isPremium || false,
       daysRemaining,
     }
   }
@@ -276,11 +312,9 @@ export class ResponseService {
   private async checkSubscriptionAccess(userId: string, requirePremium = false): Promise<void> {
     const access = await this.checkPlanAccess(userId)
 
-    if (!access.hasAccess) {
-      throw new ForbiddenError('subscription_expired')
-    }
-
-    if (requirePremium && access.plan !== 'PREMIUM') {
+    // Everyone has basic access (FREE plan)
+    // Only check premium if required
+    if (requirePremium && !access.isPremium) {
       throw new ForbiddenError('premium_required')
     }
   }
@@ -288,14 +322,14 @@ export class ResponseService {
   async checkUserSubscription(userId: string): Promise<{
     hasAccess: boolean
     isPremium: boolean
-    plan: 'BASIC' | 'PREMIUM' | null
+    plan: 'FREE' | 'TRIAL' | 'PREMIUM' | null
     daysRemaining: number | null
   }> {
     const access = await this.checkPlanAccess(userId)
 
     return {
       hasAccess: access.hasAccess,
-      isPremium: access.plan === 'PREMIUM',
+      isPremium: access.isPremium,
       plan: access.plan,
       daysRemaining: access.daysRemaining,
     }
@@ -308,7 +342,7 @@ export class ResponseService {
     mimeType: string,
   ): Promise<{ audioUrl: string; responseId: string }> {
     const ext = mimeType.includes('ogg') ? 'ogg' : mimeType.includes('mp4') ? 'mp4' : 'webm'
-    const filename = `${Date.now()}-${questionId}.${ext}`
+    const filename = `${Date.now()}-${crypto.randomUUID()}.${ext}`
     const storagePath = `responses/${filename}`
 
     const { error } = await supabaseAdmin.storage
@@ -553,6 +587,87 @@ export class ResponseService {
     return { transcript, analysis }
   }
 
+  /**
+   * Queue version: Add job to queue and return immediately
+   * Used for Full Test mode to avoid blocking
+   * Falls back to synchronous processing if queue is unavailable
+   */
+  async transcribeAndAnalyzeAsync(
+    responseId: string,
+    userId: string,
+    partNumber: number,
+  ): Promise<
+    { jobId: string; status: 'queued' } | { transcript: string; analysis: AnalysisResult }
+  > {
+    // 1. Verify response exists and user has access
+    const response = await prisma.userResponse.findFirst({
+      where: { id: responseId, session: { userId } },
+      select: { id: true, audioUrl: true },
+    })
+    if (!response?.audioUrl) throw new ForbiddenError('Response not found or has no audio')
+
+    // 2. Check PREMIUM access
+    await this.checkSubscriptionAccess(userId, true)
+
+    // 3. Try to add job to queue, fallback to sync if queue unavailable
+    if (!transcriptionAndAnalysisQueue) {
+      console.warn('⚠️  Queue not available, processing synchronously')
+      const result = await this.transcribeAndAnalyze(responseId, userId, partNumber)
+      return result
+    }
+
+    try {
+      const job = await transcriptionAndAnalysisQueue.add('process', {
+        responseId,
+        userId,
+        partNumber,
+      })
+
+      console.log(`✅ Job ${job.id} queued for response ${responseId}`)
+      return { jobId: job.id!, status: 'queued' }
+    } catch (error) {
+      console.warn('⚠️  Failed to queue job, falling back to synchronous processing:', error)
+      // Fallback: Process synchronously
+      const result = await this.transcribeAndAnalyze(responseId, userId, partNumber)
+      return result
+    }
+  }
+
+  /**
+   * Get result of queued job
+   */
+  async getQueuedResult(
+    responseId: string,
+    userId: string,
+  ): Promise<
+    | { status: 'completed'; transcript: string; analysis: AnalysisResult }
+    | { status: 'processing' | 'failed'; error?: string }
+  > {
+    // Verify access
+    const response = await prisma.userResponse.findFirst({
+      where: { id: responseId, session: { userId } },
+      select: {
+        id: true,
+        transcript: true,
+        pronunciationScore: true,
+      },
+    })
+
+    if (!response) throw new ForbiddenError('Response not found')
+
+    // Check if result is ready
+    if (response.transcript && response.pronunciationScore) {
+      return {
+        status: 'completed',
+        transcript: response.transcript,
+        analysis: response.pronunciationScore as unknown as AnalysisResult,
+      }
+    }
+
+    // Still processing
+    return { status: 'processing' }
+  }
+
   async getQuestionHistory(questionId: string, userId: string) {
     const responses = await prisma.userResponse.findMany({
       where: {
@@ -590,6 +705,57 @@ export class ResponseService {
     }))
   }
 
+  /**
+   * Calculate TOEIC Speaking score (0-200) using weighted formula
+   * Based on TOEIC Speaking structure with non-linear curve
+   */
+  private calculateTOEICScore(scoresByPart: Record<number, number[]>): number {
+    // Part weights based on TOEIC Speaking structure
+    const weights = {
+      1: 0.15, // Part 1: 2 questions (Read aloud) - 15%
+      2: 0.15, // Part 2: 2 questions (Describe picture) - 15%
+      3: 0.25, // Part 3: 3 questions (Respond to questions) - 25%
+      4: 0.25, // Part 4: 3 questions (Respond using info) - 25%
+      5: 0.2, // Part 5: 1 question (Express opinion) - 20%
+    }
+
+    let weightedSum = 0
+    let totalWeight = 0
+
+    for (const [part, scores] of Object.entries(scoresByPart)) {
+      const partNum = Number(part)
+      const weight = weights[partNum as keyof typeof weights] || 0
+      const maxScore = partNum === 5 ? 5 : 3
+      const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length
+      const normalized = avgScore / maxScore // 0-1 range
+
+      weightedSum += normalized * weight
+      totalWeight += weight
+    }
+
+    if (totalWeight === 0) return 0
+
+    const normalizedScore = weightedSum / totalWeight // 0-1
+
+    // Apply curve (similar to TOEIC scoring - non-linear)
+    let scaledScore: number
+    if (normalizedScore < 0.3) {
+      // 0-30% → 0-40 points (struggling)
+      scaledScore = normalizedScore * 133
+    } else if (normalizedScore < 0.6) {
+      // 30-60% → 40-110 points (developing)
+      scaledScore = 40 + (normalizedScore - 0.3) * 233
+    } else if (normalizedScore < 0.85) {
+      // 60-85% → 110-160 points (competent)
+      scaledScore = 110 + (normalizedScore - 0.6) * 200
+    } else {
+      // 85-100% → 160-200 points (proficient)
+      scaledScore = 160 + (normalizedScore - 0.85) * 267
+    }
+
+    return Math.round(Math.min(200, Math.max(0, scaledScore)))
+  }
+
   async generateOverallAssessment(sessionId: string, userId: string) {
     // Get session with all responses
     const session = await prisma.practiceSession.findFirst({
@@ -610,10 +776,17 @@ export class ResponseService {
 
     if (!session) throw new ForbiddenError('Session not found or access denied')
 
+    // Return cached assessment if exists
+    if (session.overallAssessment) {
+      return session.overallAssessment as {
+        estimatedScore: number
+        assessment: string
+        partScores: Record<number, number>
+      }
+    }
+
     // Collect all scores by part
     const scoresByPart: Record<number, number[]> = {}
-    let totalScore = 0
-    let totalResponses = 0
 
     for (const response of session.userResponses) {
       if (response.pronunciationScore) {
@@ -621,12 +794,10 @@ export class ResponseService {
         const partNumber = response.question.partNumber
         if (!scoresByPart[partNumber]) scoresByPart[partNumber] = []
         scoresByPart[partNumber].push(analysis.score)
-        totalScore += analysis.score
-        totalResponses++
       }
     }
 
-    if (totalResponses === 0) {
+    if (Object.keys(scoresByPart).length === 0) {
       return {
         estimatedScore: 0,
         assessment: 'Chưa có dữ liệu để đánh giá.',
@@ -634,52 +805,62 @@ export class ResponseService {
       }
     }
 
-    // Calculate average score (0-100)
-    const averageScore = totalScore / totalResponses
-
-    // Calculate part averages
+    // Calculate part averages for display (convert to 0-100 scale)
     const partAverages: Record<number, number> = {}
     for (const [part, scores] of Object.entries(scoresByPart)) {
-      partAverages[Number(part)] = scores.reduce((a, b) => a + b, 0) / scores.length
+      const partNum = Number(part)
+      const maxScore = partNum === 5 ? 5 : 3
+      const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length
+      // Convert to 0-100 scale and round to 1 decimal
+      partAverages[partNum] = Math.round((avgScore / maxScore) * 1000) / 10
     }
 
-    // Use AI to generate overall assessment and estimate TOEIC score
-    const prompt = `You are a TOEIC Speaking test evaluator. Based on the following performance data, provide an overall assessment and estimate the TOEIC Speaking score (0-200).
+    // Calculate TOEIC score using weighted formula
+    const estimatedScore = this.calculateTOEICScore(scoresByPart)
 
-Performance Data:
-- Average Score: ${averageScore.toFixed(1)}/100
+    // Use AI to generate assessment text only (not score)
+    const prompt = `You are a TOEIC Speaking test evaluator. The student received a TOEIC Speaking score of ${estimatedScore}/200.
+
+Performance by part (0-100 scale):
 - Part 1 (Read Aloud): ${partAverages[1]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[1]?.length || 0} questions)
 - Part 2 (Describe Picture): ${partAverages[2]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[2]?.length || 0} questions)
 - Part 3 (Respond to Questions): ${partAverages[3]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[3]?.length || 0} questions)
 - Part 4 (Respond Using Information): ${partAverages[4]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[4]?.length || 0} questions)
 - Part 5 (Express Opinion): ${partAverages[5]?.toFixed(1) || 'N/A'}/100 (${scoresByPart[5]?.length || 0} questions)
 
-Return a JSON object (no markdown) with this exact shape:
-{
-  "estimatedScore": <0-200 integer, estimated TOEIC Speaking score>,
-  "assessment": <2-3 sentences in Vietnamese summarizing overall performance, strengths, and areas for improvement>
-}
+Provide 2-3 sentences in Vietnamese summarizing:
+1. Overall performance level
+2. Strongest part(s)
+3. Area(s) for improvement
 
-Scoring guidelines:
-- 0-30: Very limited ability (0-30 TOEIC)
-- 31-50: Limited ability (40-80 TOEIC)
-- 51-70: Fair ability (90-130 TOEIC)
-- 71-85: Good ability (140-170 TOEIC)
-- 86-100: Excellent ability (180-200 TOEIC)`
+Return ONLY the assessment text (no JSON, no markdown, just plain Vietnamese text).`
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-    })
+    let assessment: string
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+      })
 
-    const content = completion.choices[0]?.message?.content?.trim() || '{}'
-    const result = JSON.parse(content)
+      assessment = completion.choices[0]?.message?.content?.trim() || 'Không thể tạo đánh giá.'
+    } catch (_error) {
+      // Fallback if AI fails
+      assessment = `Điểm TOEIC Speaking ước tính: ${estimatedScore}/200. Hãy tiếp tục luyện tập để cải thiện kỹ năng nói của bạn.`
+    }
 
-    return {
-      estimatedScore: result.estimatedScore || 0,
-      assessment: result.assessment || 'Không thể tạo đánh giá.',
+    const result = {
+      estimatedScore,
+      assessment,
       partScores: partAverages,
     }
+
+    // Save assessment to database to avoid recalculating
+    await prisma.practiceSession.update({
+      where: { id: sessionId },
+      data: { overallAssessment: result as object },
+    })
+
+    return result
   }
 }

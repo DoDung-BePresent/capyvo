@@ -4,6 +4,7 @@ export class ActivityService {
   /**
    * Get user's practice activity grouped by date
    * Returns count of completed responses per day for the last 90 days
+   * Uses Vietnam timezone (UTC+7) for date grouping
    */
   async getUserActivity(userId: string): Promise<{
     activityByDate: Record<string, number>
@@ -26,12 +27,14 @@ export class ActivityService {
       orderBy: { createdAt: 'asc' },
     })
 
-    // Group by date (YYYY-MM-DD)
+    // Group by date (YYYY-MM-DD) using Vietnam timezone (UTC+7)
     const activityByDate: Record<string, number> = {}
     const uniqueDates = new Set<string>()
 
     responses.forEach((r) => {
-      const dateKey = r.createdAt.toISOString().slice(0, 10)
+      // Convert to Vietnam timezone (UTC+7)
+      const vnDate = new Date(r.createdAt.getTime() + 7 * 60 * 60 * 1000)
+      const dateKey = vnDate.toISOString().slice(0, 10)
       activityByDate[dateKey] = (activityByDate[dateKey] || 0) + 1
       uniqueDates.add(dateKey)
     })
@@ -49,6 +52,7 @@ export class ActivityService {
 
   /**
    * Calculate current and longest streak from sorted date strings
+   * Uses Vietnam timezone (UTC+7)
    */
   private calculateStreaks(sortedDates: string[]): {
     currentStreak: number
@@ -58,12 +62,14 @@ export class ActivityService {
       return { currentStreak: 0, longestStreak: 0 }
     }
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const todayStr = today.toISOString().slice(0, 10)
+    // Get today in Vietnam timezone
+    const now = new Date()
+    const vnNow = new Date(now.getTime() + 7 * 60 * 60 * 1000)
+    vnNow.setUTCHours(0, 0, 0, 0)
+    const todayStr = vnNow.toISOString().slice(0, 10)
 
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterday = new Date(vnNow)
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1)
     const yesterdayStr = yesterday.toISOString().slice(0, 10)
 
     let currentStreak = 0
@@ -77,8 +83,8 @@ export class ActivityService {
 
       // Count backwards from last date
       for (let i = sortedDates.length - 2; i >= 0; i--) {
-        const currentDate = new Date(sortedDates[i + 1])
-        const prevDate = new Date(sortedDates[i])
+        const currentDate = new Date(sortedDates[i + 1] + 'T00:00:00Z')
+        const prevDate = new Date(sortedDates[i] + 'T00:00:00Z')
         const diffDays = Math.floor(
           (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24),
         )
@@ -93,8 +99,8 @@ export class ActivityService {
 
     // Calculate longest streak
     for (let i = 1; i < sortedDates.length; i++) {
-      const currentDate = new Date(sortedDates[i])
-      const prevDate = new Date(sortedDates[i - 1])
+      const currentDate = new Date(sortedDates[i] + 'T00:00:00Z')
+      const prevDate = new Date(sortedDates[i - 1] + 'T00:00:00Z')
       const diffDays = Math.floor(
         (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24),
       )

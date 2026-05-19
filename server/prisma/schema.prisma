@@ -22,6 +22,18 @@ enum ExamSetType {
   CUSTOM
 }
 
+enum QuestionType {
+  PRACTICE
+  FORECAST
+  CUSTOM
+}
+
+enum QuestionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 enum SessionStatus {
   IN_PROGRESS
   COMPLETED
@@ -42,9 +54,18 @@ enum SubscriptionStatus {
 }
 
 enum SubscriptionPlanId {
-  BASIC
+  FREE
+  TRIAL
   PREMIUM
   CLASSROOM
+}
+
+enum MaintenanceScope {
+  GLOBAL      // Toàn bộ hệ thống
+  PRICING     // Trang pricing và payment
+  PRACTICE    // Trang practice
+  EXAM        // Trang exam/test
+  ADMIN       // Trang admin
 }
 
 // ─── Models ───────────────────────────────────────────────────────────────────
@@ -61,9 +82,10 @@ model User {
   id                   String    @id
   email                String    @unique
   fullName             String?
+  avatarUrl            String?
   role                 Role      @default(USER)
   
-  // Subscription fields
+  // Cache fields (computed from subscriptions for fast queries)
   isPremium            Boolean   @default(false)
   premiumUntil         DateTime? @db.Date
   
@@ -85,6 +107,7 @@ model ExamSet {
   description String?
   type        ExamSetType @default(PRACTICE)
   isPublished Boolean     @default(false)
+  isComplete  Boolean     @default(false) // true if has all 11 questions
   createdBy   String
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -99,6 +122,14 @@ model Question {
   id             String   @id @default(uuid())
   partNumber     Int // 1-5
   questionNumber Int // Question number within the part (not globally unique)
+  
+  // Question grouping (Part 3, 4 only)
+  setId          String? // Groups 3 questions together (Part 3: Q5-7, Part 4: Q8-10)
+  
+  // Question type and status
+  type           QuestionType   @default(PRACTICE)
+  status         QuestionStatus @default(DRAFT)
+  
   // Part 1: read aloud
   contentText    String?
   // Part 3, 4: context
@@ -114,11 +145,18 @@ model Question {
   prepTimeSeconds     Int
   responseTimeSeconds Int
   createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   examSetAssignments QuestionAssignment[]
+  topicAssignments   QuestionTopicAssignment[]
   userResponses      UserResponse[]
   publicShares       PublicShare[]
 
+  @@index([partNumber])
+  @@index([type])
+  @@index([status])
+  @@index([partNumber, status])
+  @@index([setId])
   @@map("questions")
 }
 
@@ -139,6 +177,36 @@ model QuestionAssignment {
   @@map("question_assignments")
 }
 
+model Topic {
+  id          String   @id @default(uuid())
+  name        String
+  partNumber  Int
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  questionAssignments QuestionTopicAssignment[]
+
+  @@unique([name, partNumber])
+  @@map("topics")
+}
+
+// Junction table for many-to-many relationship between Question and Topic
+model QuestionTopicAssignment {
+  id         String   @id @default(uuid())
+  questionId String
+  topicId    String
+  createdAt  DateTime @default(now())
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  topic    Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, topicId])
+  @@index([questionId])
+  @@index([topicId])
+  @@map("question_topic_assignments")
+}
+
 model PartInstruction {
   partNumber Int      @id // 1-5
   audioUrl   String?
@@ -156,16 +224,17 @@ model SystemAudio {
 }
 
 model PracticeSession {
-  id          String        @id @default(uuid())
-  userId      String
-  examSetId   String
-  partNumber  Int?          // null = full exam, 1-5 = specific part
-  status      SessionStatus @default(IN_PROGRESS)
-  startedAt   DateTime      @default(now())
-  completedAt DateTime?
+  id                 String        @id @default(uuid())
+  userId             String
+  examSetId          String?       // null = practice mode (individual questions), non-null = exam mode
+  partNumber         Int?          // null = full exam, 1-5 = specific part
+  status             SessionStatus @default(IN_PROGRESS)
+  startedAt          DateTime      @default(now())
+  completedAt        DateTime?
+  overallAssessment  Json?         // Store assessment result to avoid recalculating
 
   user          User           @relation(fields: [userId], references: [id])
-  examSet       ExamSet        @relation(fields: [examSetId], references: [id])
+  examSet       ExamSet?       @relation(fields: [examSetId], references: [id])
   userResponses UserResponse[]
 
   @@map("practice_sessions")
@@ -233,7 +302,7 @@ model Subscription {
   planId    SubscriptionPlanId
   status    SubscriptionStatus @default(ACTIVE)
   
-  startDate DateTime           @default(now())
+  startDate DateTime
   endDate   DateTime
   
   createdAt DateTime           @default(now())
@@ -245,7 +314,9 @@ model Subscription {
 
   @@index([userId])
   @@index([status])
+  @@index([planId])
   @@index([endDate])
+  @@index([userId, status, endDate])
   @@map("subscriptions")
 }
 
@@ -279,4 +350,21 @@ model Reaction {
   @@unique([shareId, userId])
   @@index([shareId])
   @@map("reactions")
+}
+
+model MaintenanceSchedule {
+  id        String            @id @default(uuid())
+  scope     MaintenanceScope  @default(GLOBAL)
+  title     String            // e.g. "Bảo trì PayOS", "Nâng cấp hệ thống"
+  message   String            // Message hiển thị cho user
+  startAt   DateTime?         // null = bật ngay
+  endAt     DateTime?         // null = không tự động tắt
+  isActive  Boolean           @default(false)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  
+  @@index([scope])
+  @@index([isActive])
+  @@index([scope, isActive])
+  @@map("maintenance_schedules")
 }

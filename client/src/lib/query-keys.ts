@@ -8,6 +8,19 @@ export const queryKeys = {
     me: () => ['auth', 'me'] as const,
   },
 
+  // Trial
+  trial: {
+    status: () => ['trial', 'status'] as const,
+    settings: () => ['trial', 'admin', 'settings'] as const,
+  },
+
+  // Subscription
+  subscription: {
+    plans: () => ['subscription', 'plans'] as const,
+    current: () => ['subscription', 'current'] as const,
+    history: () => ['subscription', 'history'] as const,
+  },
+
   // Exam sets
   examSets: {
     all: () => ['exam-sets'] as const,
@@ -23,7 +36,8 @@ export const queryKeys = {
     examSetsByPart: (partNumber: number) => ['questions', 'exam-sets', 'part', partNumber] as const,
     byExamSet: (examSetId: string) => ['questions', 'exam-set', examSetId] as const,
     detail: (id: string) => ['questions', 'detail', id] as const,
-    pool: (questionNumber: number) => ['questions', 'pool', questionNumber] as const,
+    pool: (questionNumber: number, search?: string, assignmentStatus?: string) =>
+      ['questions', 'pool', questionNumber, search, assignmentStatus] as const,
     practiceSets: (partNumber: number) => ['questions', 'practice-sets', partNumber] as const,
     byPartAndSet: (partNumber: number, examSetId: string) =>
       ['questions', 'part-set', partNumber, examSetId] as const,
@@ -50,16 +64,6 @@ export const queryKeys = {
     questionHistory: (questionId: string) => ['responses', 'question-history', questionId] as const,
   },
 
-  // System audio
-  systemAudio: {
-    all: () => ['system-audio'] as const,
-  },
-
-  // Part instructions (manual audio per part)
-  partInstructions: {
-    all: () => ['part-instructions'] as const,
-  },
-
   // System stats (storage, AI cost)
   systemStats: {
     all: () => ['system-stats'] as const,
@@ -70,16 +74,32 @@ export const queryKeys = {
     stats: () => ['admin', 'dashboard', 'stats'] as const,
   },
 
+  // OpenAI Usage
+  openaiUsage: {
+    detailed: (startDate?: string, endDate?: string) =>
+      ['admin', 'openai-usage', 'detailed', startDate, endDate] as const,
+  },
+
+  // Abuse Detection
+  abuseDetection: {
+    detect: () => ['admin', 'abuse-detection', 'detect'] as const,
+  },
+
   // Payments
   payments: {
     my: () => ['payments', 'my'] as const,
     status: (orderCode: number) => ['payments', 'status', orderCode] as const,
-    tokenPackages: () => ['payments', 'token-packages'] as const,
   },
 
   // Shares
   shares: {
     byQuestion: (questionId: string) => ['shares', 'question', questionId] as const,
     my: () => ['shares', 'my'] as const,
+  },
+
+  // Topics
+  topics: {
+    list: () => ['topics'] as const,
+    detail: (id: string) => ['topics', 'detail', id] as const,
   },
 }

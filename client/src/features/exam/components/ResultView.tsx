@@ -58,6 +58,7 @@ interface ResultViewProps {
   isLoading?: boolean
   isPremium?: boolean
   onReset: () => void
+  hideActions?: boolean // Hide "Luyện lại" button (for Full Test results)
 }
 
 export function ResultView({
@@ -69,6 +70,7 @@ export function ResultView({
   isLoading = false,
   isPremium = true,
   onReset,
+  hideActions = false,
 }: ResultViewProps) {
   const scale = SCORE_SCALES[partNumber]
 
@@ -177,24 +179,26 @@ export function ResultView({
         </ResultCard>
 
         {/* Control Panel with Reset button */}
-        <ControlPanel>
-          <Flex justify="end">
-            <StyledButton
-              size="large"
-              type="primary"
-              icon={<Refresh style={{ fontSize: 20 }} />}
-              onClick={onReset}
-              shadowColor={hexToRgba(COLORS.primary, 0.6)}
-              style={{
-                minWidth: 150,
-                backgroundColor: COLORS.primary,
-                borderColor: COLORS.primary,
-              }}
-            >
-              Luyện lại
-            </StyledButton>
-          </Flex>
-        </ControlPanel>
+        {!hideActions && (
+          <ControlPanel>
+            <Flex justify="end">
+              <StyledButton
+                size="large"
+                type="primary"
+                icon={<Refresh style={{ fontSize: 20 }} />}
+                onClick={onReset}
+                shadowColor={hexToRgba(COLORS.primary, 0.6)}
+                style={{
+                  minWidth: 150,
+                  backgroundColor: COLORS.primary,
+                  borderColor: COLORS.primary,
+                }}
+              >
+                Luyện lại
+              </StyledButton>
+            </Flex>
+          </ControlPanel>
+        )}
       </Container>
     )
   }
@@ -467,24 +471,26 @@ export function ResultView({
       </ResultCard>
 
       {/* Control Panel with Reset button */}
-      <ControlPanel>
-        <Flex justify="end">
-          <StyledButton
-            size="large"
-            type="primary"
-            icon={<Refresh style={{ fontSize: 20 }} />}
-            onClick={onReset}
-            shadowColor={hexToRgba(COLORS.primary, 0.6)}
-            style={{
-              minWidth: 150,
-              backgroundColor: COLORS.primary,
-              borderColor: COLORS.primary,
-            }}
-          >
-            Luyện lại
-          </StyledButton>
-        </Flex>
-      </ControlPanel>
+      {!hideActions && (
+        <ControlPanel>
+          <Flex justify="end">
+            <StyledButton
+              size="large"
+              type="primary"
+              icon={<Refresh style={{ fontSize: 20 }} />}
+              onClick={onReset}
+              shadowColor={hexToRgba(COLORS.primary, 0.6)}
+              style={{
+                minWidth: 150,
+                backgroundColor: COLORS.primary,
+                borderColor: COLORS.primary,
+              }}
+            >
+              Luyện lại
+            </StyledButton>
+          </Flex>
+        </ControlPanel>
+      )}
     </Container>
   )
 }

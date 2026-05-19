@@ -1,20 +1,7 @@
 import type { Request, Response, NextFunction } from 'express'
-import multer from 'multer'
 import { ResponseService } from '@/services/response.service'
 import { ValidationError } from '@/errors/app-error'
 import type { AuthRequest } from '@/middlewares/authenticate'
-
-export const uploadAudio = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith('audio/')) {
-      cb(new Error('Only audio files are allowed'))
-      return
-    }
-    cb(null, true)
-  },
-})
 
 export class ResponseController {
   private service = new ResponseService()
@@ -55,9 +42,25 @@ export class ResponseController {
   async transcribeAndAnalyze(req: Request, res: Response, _next: NextFunction): Promise<void> {
     const id = req.params['id'] as string
     const userId = (req as AuthRequest).userId
-    const { partNumber } = req.body
+    const { partNumber, useQueue } = req.body
     if (!partNumber) throw new ValidationError('partNumber is required')
+
+    // If useQueue=true, use async queue processing (for Full Test mode)
+    if (useQueue === true) {
+      const result = await this.service.transcribeAndAnalyzeAsync(id, userId, partNumber)
+      res.json({ success: true, data: result })
+      return
+    }
+
+    // Otherwise, process synchronously (for Practice mode)
     const result = await this.service.transcribeAndAnalyze(id, userId, partNumber)
+    res.json({ success: true, data: result })
+  }
+
+  async getQueuedResult(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const id = req.params['id'] as string
+    const userId = (req as AuthRequest).userId
+    const result = await this.service.getQueuedResult(id, userId)
     res.json({ success: true, data: result })
   }
 

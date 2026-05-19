@@ -19,8 +19,7 @@ import { styled } from '@/shared/utils/cn'
 /**
  * Hooks
  */
-import { useGetMe } from '@/features/auth/hooks/useAuth'
-import { useSession } from '@/features/auth/hooks/useSession'
+import { useCurrentSubscription } from '@/features/auth/hooks/useSubscription'
 
 /**
  * Components
@@ -49,27 +48,21 @@ export interface UserSidebarProps {
 export function UserSidebar({ collapsed }: UserSidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { session } = useSession()
-  const { data: user } = useGetMe(session)
+  const { data: subscriptionData, isLoading: isLoadingSubscription } = useCurrentSubscription()
 
   const selectedKey =
     location.pathname === '/'
       ? '/'
       : (MENU_ITEMS.slice(1).find((m) => location.pathname.startsWith(m.key))?.key ?? '/')
 
-  // Calculate days remaining (premiumUntil is stored as DATE without time)
-  const daysRemaining = user?.premiumUntil
-    ? (() => {
-        const now = new Date()
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        const diffTime = new Date(user.premiumUntil).getTime() - today.getTime()
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      })()
-    : null
-
-  // Get current active subscription plan
-  const currentPlan = user?.subscriptions?.[0]?.plan
-  const planName = currentPlan?.id
+  // Get subscription info - ONLY use subscriptionData (don't fallback to user data)
+  // This prevents showing TRIAL from user cache before subscription API loads
+  const isPremium = subscriptionData?.isPremium ?? false
+  const trialStatus = subscriptionData?.trialStatus
+  const isOnTrial = trialStatus?.isOnTrial ?? false
+  const daysRemaining =
+    subscriptionData?.subscription?.daysRemaining ?? trialStatus?.daysRemaining ?? null
+  const planName = subscriptionData?.plan ?? 'FREE'
 
   return (
     <Sider
@@ -116,9 +109,11 @@ export function UserSidebar({ collapsed }: UserSidebarProps) {
         <UpgradeWidget
           collapsed={collapsed}
           onUpgrade={() => navigate('/pricing')}
-          isPremium={user?.isPremium}
+          isPremium={isPremium}
+          isOnTrial={isOnTrial}
           daysRemaining={daysRemaining}
           planName={planName}
+          isLoading={isLoadingSubscription}
         />
       </Bottom>
     </Sider>

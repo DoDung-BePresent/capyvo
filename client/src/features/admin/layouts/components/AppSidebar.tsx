@@ -4,7 +4,16 @@ import { useNavigate, useLocation } from 'react-router-dom'
 /**
  * Icons
  */
-import { DashboardOutlined, FileDoneOutlined, ReadOutlined, SoundOutlined } from '@ant-design/icons'
+import {
+  DashboardOutlined,
+  FileDoneOutlined,
+  ReadOutlined,
+  TagsOutlined,
+  RobotOutlined,
+  CalculatorOutlined,
+  SafetyOutlined,
+  ClockCircleOutlined,
+} from '@ant-design/icons'
 
 /**
  * Types
@@ -47,9 +56,29 @@ const MENU_ITEMS = [
     label: 'Bộ đề',
   },
   {
-    key: '/admin/instructions',
-    icon: <SoundOutlined />,
-    label: 'Cấu hình giọng đọc',
+    key: '/admin/topics',
+    icon: <TagsOutlined />,
+    label: 'Chủ đề',
+  },
+  {
+    key: '/admin/trial-settings',
+    icon: <ClockCircleOutlined />,
+    label: 'Premium Trial',
+  },
+  {
+    key: '/admin/openai-usage',
+    icon: <RobotOutlined />,
+    label: 'OpenAI Usage',
+  },
+  {
+    key: '/admin/pricing-calculator',
+    icon: <CalculatorOutlined />,
+    label: 'Pricing Calculator',
+  },
+  {
+    key: '/admin/abuse-detection',
+    icon: <SafetyOutlined />,
+    label: 'Abuse Detection',
   },
 ]
 

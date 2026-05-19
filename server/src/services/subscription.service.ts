@@ -1,6 +1,8 @@
 import { SubscriptionPlanId, SubscriptionStatus } from '@prisma/client'
 import { addDays } from 'date-fns'
 import prisma from '@/lib/prisma'
+import type { Prisma } from '@prisma/client'
+import logger from '@/lib/logger'
 
 export class SubscriptionService {
   /**
@@ -54,38 +56,76 @@ export class SubscriptionService {
 
   /**
    * Tạo subscription mới hoặc gia hạn subscription hiện tại
+   * RULE: Chỉ stack khi mua cùng plan (PREMIUM + PREMIUM)
+   * Nếu upgrade từ TRIAL → PREMIUM: Bắt đầu từ hôm nay (không stack)
    */
   static async createSubscription(userId: string, planId: SubscriptionPlanId, paymentId?: string) {
-    const plan = await this.getPlanById(planId)
+    return prisma.$transaction(async (tx) => {
+      return this.createSubscriptionInTransaction(tx, userId, planId, paymentId)
+    })
+  }
+
+  /**
+   * Tạo subscription trong transaction (để tránh race condition)
+   * Được gọi từ payment webhook hoặc createSubscription
+   */
+  static async createSubscriptionInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    planId: SubscriptionPlanId,
+    paymentId?: string,
+  ) {
+    const plan = await tx.subscriptionPlan.findUnique({
+      where: { id: planId },
+    })
+
     if (!plan) {
       throw new Error('Plan not found')
     }
 
-    // Check if user has existing active subscription
-    const existingSubscription = await this.getCurrentSubscription(userId)
+    // Get current active subscription (latest endDate) with FOR UPDATE lock
+    const existingSubscription = await tx.subscription.findFirst({
+      where: {
+        userId,
+        status: SubscriptionStatus.ACTIVE,
+        endDate: { gte: new Date() },
+      },
+      orderBy: { endDate: 'desc' },
+      include: { plan: true },
+    })
 
     let startDate: Date
     let endDate: Date
+    const now = new Date()
 
-    if (existingSubscription && existingSubscription.endDate > new Date()) {
-      // User has active subscription - extend from current end date
+    // RULE: Only stack if buying the SAME plan
+    if (
+      existingSubscription &&
+      existingSubscription.endDate > now &&
+      existingSubscription.planId === planId
+    ) {
+      // Same plan - extend from current end date (STACKING)
       startDate = existingSubscription.endDate
       endDate = addDays(startDate, plan.durationDays)
-      console.log(
-        `Extending subscription for user ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`,
-      )
+      logger.info('Stacking subscription', {
+        userId,
+        planId,
+        from: startDate.toISOString(),
+        to: endDate.toISOString(),
+      })
     } else {
-      // No active subscription - start from now
-      const now = new Date()
-      // Normalize to start of day (00:00:00)
-      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      // Different plan or no active subscription - start from today (NO STACKING)
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()) // Normalize to 00:00:00
       endDate = addDays(startDate, plan.durationDays)
-      console.log(
-        `Creating new subscription for user ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`,
-      )
+      logger.info('Creating new subscription', {
+        userId,
+        planId,
+        from: startDate.toISOString(),
+        to: endDate.toISOString(),
+      })
     }
 
-    const subscription = await prisma.subscription.create({
+    const subscription = await tx.subscription.create({
       data: {
         userId,
         planId,
@@ -99,7 +139,7 @@ export class SubscriptionService {
     })
 
     // Update user premium status
-    await prisma.user.update({
+    await tx.user.update({
       where: { id: userId },
       data: {
         isPremium: true,
@@ -109,11 +149,18 @@ export class SubscriptionService {
 
     // Link payment if provided
     if (paymentId) {
-      await prisma.payment.update({
+      await tx.payment.update({
         where: { id: paymentId },
         data: { subscriptionId: subscription.id },
       })
     }
+
+    logger.info('Subscription created successfully', {
+      subscriptionId: subscription.id,
+      userId,
+      planId,
+      endDate: endDate.toISOString(),
+    })
 
     return subscription
   }
@@ -237,7 +284,7 @@ export class SubscriptionService {
   }
 
   /**
-   * Check if user has active premium
+   * Check if user has active premium (including trial)
    */
   static async isPremiumUser(userId: string): Promise<boolean> {
     const user = await prisma.user.findUnique({
@@ -245,11 +292,25 @@ export class SubscriptionService {
       select: { isPremium: true, premiumUntil: true },
     })
 
-    if (!user || !user.isPremium || !user.premiumUntil) {
+    if (!user || !user.isPremium) {
       return false
     }
 
-    return user.premiumUntil > new Date()
+    // If no premiumUntil date, user is not premium
+    if (!user.premiumUntil) {
+      return false
+    }
+
+    // Check if premium is still valid
+    return user.premiumUntil >= new Date()
+  }
+
+  /**
+   * Check if user is on FREE plan
+   */
+  static async isFreeUser(userId: string): Promise<boolean> {
+    const isPremium = await this.isPremiumUser(userId)
+    return !isPremium
   }
 
   /**

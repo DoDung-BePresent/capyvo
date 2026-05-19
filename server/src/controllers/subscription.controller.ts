@@ -1,26 +1,31 @@
 import { Request, NextFunction, Response } from 'express'
 import { SubscriptionService } from '../services/subscription.service'
+import { TrialService } from '../services/trial.service'
 import { SubscriptionPlanId } from '@prisma/client'
 import type { AuthRequest } from '@/middlewares/authenticate'
+import prisma from '@/lib/prisma'
 
 export class SubscriptionController {
   /**
    * GET /api/subscription/plans
-   * Lấy danh sách các gói subscription
+   * Lấy danh sách các gói subscription (chỉ PREMIUM, không show FREE)
    */
   static async getPlans(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const plans = await SubscriptionService.getPlans()
 
-      // Format response để match với frontend
-      const formattedPlans = plans.map((plan) => ({
-        id: plan.id.toLowerCase(),
-        name: plan.name,
-        durationDays: plan.durationDays,
-        price: plan.price,
-        pricePerMonth: plan.pricePerMonth,
-        isActive: plan.isActive,
-      }))
+      // Filter out FREE and TRIAL plans (users get these automatically)
+      // Only show purchasable plans
+      const formattedPlans = plans
+        .filter((plan) => plan.id !== 'FREE' && plan.id !== 'TRIAL')
+        .map((plan) => ({
+          id: plan.id.toLowerCase(),
+          name: plan.name,
+          durationDays: plan.durationDays,
+          price: plan.price,
+          pricePerMonth: plan.pricePerMonth,
+          isActive: plan.isActive,
+        }))
 
       res.json({ plans: formattedPlans })
     } catch (error) {
@@ -30,7 +35,7 @@ export class SubscriptionController {
 
   /**
    * GET /api/subscription/current
-   * Lấy subscription hiện tại của user
+   * Lấy subscription hiện tại của user (bao gồm trial info)
    */
   static async getCurrentSubscription(
     req: Request,
@@ -44,10 +49,48 @@ export class SubscriptionController {
         return
       }
 
-      const subscription = await SubscriptionService.getCurrentSubscription(userId)
+      // Get current active subscription (priority: latest endDate)
+      const subscription = await prisma.subscription.findFirst({
+        where: {
+          userId,
+          status: 'ACTIVE',
+          endDate: { gte: new Date() },
+        },
+        orderBy: { endDate: 'desc' },
+        include: { plan: true },
+      })
 
+      // Determine current plan (priority: PREMIUM/CLASSROOM > TRIAL > FREE)
+      let currentPlan: string
+      if (subscription) {
+        if (subscription.planId === 'PREMIUM' || subscription.planId === 'CLASSROOM') {
+          currentPlan = subscription.planId
+        } else if (subscription.planId === 'TRIAL') {
+          currentPlan = 'TRIAL'
+        } else {
+          currentPlan = 'FREE'
+        }
+      } else {
+        currentPlan = 'FREE'
+      }
+
+      const isPremium = await SubscriptionService.isPremiumUser(userId)
+
+      // Only get trial status if user doesn't have PREMIUM/CLASSROOM subscription
+      // This prevents showing TRIAL when user has upgraded to PREMIUM
+      let trialStatus = null
+      if (currentPlan !== 'PREMIUM' && currentPlan !== 'CLASSROOM') {
+        trialStatus = await TrialService.getTrialStatus(userId)
+      }
+
+      // If no subscription, return basic info
       if (!subscription) {
-        res.json({ subscription: null })
+        res.json({
+          subscription: null,
+          plan: currentPlan,
+          isPremium,
+          trialStatus,
+        })
         return
       }
 
@@ -63,6 +106,9 @@ export class SubscriptionController {
           endDate: subscription.endDate,
           daysRemaining,
         },
+        plan: currentPlan,
+        isPremium,
+        trialStatus,
       })
     } catch (error) {
       next(error)

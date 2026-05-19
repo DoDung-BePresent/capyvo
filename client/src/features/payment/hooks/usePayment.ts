@@ -8,20 +8,6 @@ export function useCreateSubscriptionOrder() {
   })
 }
 
-export function useCreateTokenOrder() {
-  return useMutation({
-    mutationFn: (tokenAmount: number) => paymentService.createTokenOrder(tokenAmount),
-  })
-}
-
-export function useTokenPackages() {
-  return useQuery({
-    queryKey: queryKeys.payments.tokenPackages(),
-    queryFn: () => paymentService.getTokenPackages(),
-    staleTime: Infinity,
-  })
-}
-
 export function usePaymentStatus(orderCode: number | null) {
   return useQuery({
     queryKey: queryKeys.payments.status(orderCode!),

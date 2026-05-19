@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 /**
  * Components
  */
-import { Card, Typography, Tag, Flex, Space, Progress, Tooltip, message } from 'antd'
+import { Card, Typography, Tag, Flex, Space, Progress, Tooltip, message, Image } from 'antd'
 
 /**
  * Icons
@@ -30,14 +30,10 @@ import { StyledButton } from '@/shared/components'
 import { useMicPermission } from '@/features/exam/hooks/useMicPermission'
 import { useTranscribeAndAnalyze } from '@/features/exam/hooks/useTranscribeAndAnalyze'
 import { useTranscribe } from '@/features/exam/hooks/useTranscribe'
+import { useIsPremium } from '@/features/auth/hooks/useSubscription'
 import { MicWaveform } from '@/features/exam/components/MicWaveform'
 import { BasicResultView } from './BasicResultView'
 import { PremiumResultView } from './PremiumResultView'
-
-/**
- * Services
- */
-import { responseService } from '@/features/exam/services/response.service'
 
 /**
  * Types
@@ -55,6 +51,7 @@ import { getErrorMessage } from '@/shared/constants/error-messages'
  * Assets
  */
 import buttonRecordSound from '@/assets/sounds/button-record-sound.mp3'
+import startRecordPracticeSound from '@/assets/sounds/start-record-practice-sound.mp3'
 
 const { Title, Text, Paragraph } = Typography
 
@@ -67,7 +64,7 @@ const AudioIcon = styled(
 )
 
 interface QuestionPracticeViewProps {
-  question: Question & { examSetTitle: string }
+  question: Question
   onRecordingComplete: (audioBlob: Blob) => Promise<{ responseId: string; audioUrl: string }>
   onAnalysisComplete?: () => void
   isSubmitting?: boolean
@@ -82,6 +79,8 @@ export function QuestionPracticeView({
   isSubmitting = false,
 }: QuestionPracticeViewProps) {
   const { hasPermission, requestPermission } = useMicPermission()
+  const isPremium = useIsPremium()
+
   const [recordingState, setRecordingState] = useState<RecordingState>('idle')
   const [prepTimeLeft, setPrepTimeLeft] = useState(question.prepTimeSeconds)
   const [recordTimeLeft, setRecordTimeLeft] = useState(question.responseTimeSeconds)
@@ -93,27 +92,12 @@ export function QuestionPracticeView({
     audioUrl?: string
     responseId?: string
   } | null>(null)
-  const [isCancelled, setIsCancelled] = useState(false)
-  const [userPlan, setUserPlan] = useState<'BASIC' | 'PREMIUM' | null>(null)
 
   const contextAudioRef = useRef<HTMLAudioElement>(null!)
   const questionAudioRef = useRef<HTMLAudioElement>(null!)
   const startSoundRef = useRef<HTMLAudioElement>(null!)
-
-  // Check subscription on mount
-  useEffect(() => {
-    const checkSubscription = async () => {
-      try {
-        const result = await responseService.checkSubscription()
-        setUserPlan(result.plan)
-      } catch (error) {
-        console.error('Failed to check subscription:', error)
-        // Assume BASIC if check fails
-        setUserPlan('BASIC')
-      }
-    }
-    checkSubscription()
-  }, [])
+  const recordStartSoundRef = useRef<HTMLAudioElement>(null!)
+  const isCancelledRef = useRef(false)
 
   const { mutate: transcribeAndAnalyze, isPending: isAnalyzing } = useTranscribeAndAnalyze({
     onSuccess: (data) => {
@@ -195,7 +179,7 @@ export function QuestionPracticeView({
   // Start recording function
   const startRecording = useCallback(async () => {
     try {
-      setIsCancelled(false) // Reset cancel flag
+      isCancelledRef.current = false // Reset cancel flag
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       setRecordingStream(stream)
 
@@ -212,7 +196,7 @@ export function QuestionPracticeView({
         console.log('🎤 Recording stopped')
 
         // Check if cancelled - don't process if cancelled
-        if (isCancelled) {
+        if (isCancelledRef.current) {
           console.log('❌ Recording was cancelled, not processing')
           return
         }
@@ -237,13 +221,13 @@ export function QuestionPracticeView({
           })
 
           // Check user plan and call appropriate API
-          if (userPlan === 'PREMIUM') {
+          if (isPremium) {
             // PREMIUM: Full analysis
             console.log('🔄 Starting transcribe & analyze (PREMIUM)...')
             transcribeAndAnalyze({ responseId: result.responseId, partNumber: question.partNumber })
           } else {
-            // BASIC: Transcribe only
-            console.log('🔄 Starting transcribe only (BASIC)...')
+            // FREE: Transcribe only
+            console.log('🔄 Starting transcribe only (FREE)...')
             transcribeOnly(result.responseId)
           }
         } catch (error) {
@@ -255,18 +239,19 @@ export function QuestionPracticeView({
       recorder.start()
       setMediaRecorder(recorder)
       setRecordingState('recording')
+
+      // Play start recording sound
+      if (recordStartSoundRef.current) {
+        recordStartSoundRef.current.currentTime = 0
+        recordStartSoundRef.current
+          .play()
+          .catch((error) => console.log('Sound play failed:', error))
+      }
     } catch (error) {
       console.error('Failed to start recording:', error)
       setRecordingState('idle')
     }
-  }, [
-    onRecordingComplete,
-    transcribeAndAnalyze,
-    transcribeOnly,
-    question.partNumber,
-    isCancelled,
-    userPlan,
-  ])
+  }, [onRecordingComplete, transcribeAndAnalyze, transcribeOnly, question.partNumber, isPremium])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -331,7 +316,7 @@ export function QuestionPracticeView({
   }
 
   const handleCancel = () => {
-    setIsCancelled(true) // Set cancel flag before stopping
+    isCancelledRef.current = true // Set cancel flag before stopping
     stopRecording()
     setRecordingState('idle')
     setPrepTimeLeft(question.prepTimeSeconds)
@@ -371,13 +356,15 @@ export function QuestionPracticeView({
       )}
       {/* Start sound */}
       <audio ref={startSoundRef} src={buttonRecordSound} preload="auto" />
+      {/* Record start sound */}
+      <audio ref={recordStartSoundRef} src={startRecordPracticeSound} preload="auto" />
 
       {/* Show Result View when analyzing or analysis is complete */}
       {(recordingState === 'analyzing' ||
         recordingState === 'result' ||
         recordingState === 'completed') && (
         <>
-          {userPlan === 'PREMIUM' ? (
+          {isPremium ? (
             <PremiumResultView
               partNumber={question.partNumber as PartNumber}
               transcript={analysisResult?.transcript}
@@ -409,12 +396,9 @@ export function QuestionPracticeView({
               <Flex vertical gap={16}>
                 {/* Header */}
                 <Flex align="center" justify="space-between">
-                  <Space>
-                    <Tag color="blue" style={{ fontSize: 14, padding: '4px 12px' }}>
-                      Câu {question.questionNumber}
-                    </Tag>
-                    <Text type="secondary">{question.examSetTitle}</Text>
-                  </Space>
+                  <Tag color="blue" style={{ fontSize: 14, padding: '4px 12px' }}>
+                    Câu {question.questionNumber}
+                  </Tag>
                   <Space>
                     <Tag>{question.prepTimeSeconds}s chuẩn bị</Tag>
                     <Tag>{question.responseTimeSeconds}s trả lời</Tag>
@@ -427,21 +411,23 @@ export function QuestionPracticeView({
                     <Title level={5} style={{ marginBottom: 12 }}>
                       Hình ảnh
                     </Title>
-                    <Flex gap={12} justify="center" wrap="wrap">
-                      {question.imageUrls.map((url, index) => (
-                        <img
-                          key={index}
-                          src={url}
-                          alt={`Question ${question.questionNumber}`}
-                          style={{
-                            maxWidth: '100%',
-                            maxHeight: 400,
-                            borderRadius: 8,
-                            objectFit: 'contain',
-                          }}
-                        />
-                      ))}
-                    </Flex>
+                    <Image.PreviewGroup>
+                      <Flex gap={12} justify="center" wrap="wrap">
+                        {question.imageUrls.map((url, index) => (
+                          <Image
+                            key={index}
+                            src={url}
+                            alt={`Question ${question.questionNumber}`}
+                            style={{
+                              maxWidth: '100%',
+                              maxHeight: 400,
+                              borderRadius: 8,
+                              objectFit: 'contain',
+                            }}
+                          />
+                        ))}
+                      </Flex>
+                    </Image.PreviewGroup>
                   </div>
                 )}
 
@@ -464,9 +450,11 @@ export function QuestionPracticeView({
                       style={{
                         fontSize: 15,
                         lineHeight: 1.8,
-                        backgroundColor: '#f5f5f5',
+                        backgroundColor: hexToRgba(COLORS.primary, 0.05),
                         padding: 16,
                         borderRadius: 8,
+                        borderWidth: 2,
+                        borderColor: hexToRgba(COLORS.primary, 0.6),
                       }}
                     >
                       {question.contextText}
