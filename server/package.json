@@ -13,7 +13,9 @@
     "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
     "seed:subscriptions": "ts-node -r tsconfig-paths/register prisma/seeds/seed-subscriptions.ts",
     "seed:topics": "ts-node -r tsconfig-paths/register prisma/seeds/seed-topics.ts",
-    "test:webhook": "node scripts/test-payos-webhook.js"
+    "test:webhook": "node scripts/test-payos-webhook.js",
+    "script:expire-trials": "ts-node -r tsconfig-paths/register prisma/scripts/expire-trial-subscriptions.ts",
+    "script:check-subs": "ts-node -r tsconfig-paths/register prisma/scripts/check-subscriptions.ts"
   },
   "prisma": {
     "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"

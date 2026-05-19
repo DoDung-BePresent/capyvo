@@ -3,6 +3,7 @@ import { TrophyOutlined, EditOutlined, CheckOutlined } from '@ant-design/icons'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { COLORS } from '../constants/user-color'
 import { hexToRgba } from '../utils/color'
+import { StyledButton } from './StyledButton'
 
 const { Text } = Typography
 
@@ -94,9 +95,19 @@ export function GoalsWidget({ targetScore, onTargetScoreChange }: GoalsWidgetPro
               autoFocus
               onPressEnter={handleSave}
             />
-            <Button type="primary" icon={<CheckOutlined />} onClick={handleSave} block size="large">
+            <StyledButton
+              type="primary"
+              icon={<CheckOutlined />}
+              onClick={handleSave}
+              block
+              style={{
+                backgroundColor: COLORS.primary,
+                borderColor: COLORS.primary,
+              }}
+              size="large"
+            >
               Lưu
-            </Button>
+            </StyledButton>
           </Flex>
         ) : (
           <>
