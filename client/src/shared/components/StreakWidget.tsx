@@ -31,7 +31,7 @@ export function StreakWidget({ currentStreak, longestStreak }: StreakWidgetProps
           <Statistic
             value={currentStreak}
             suffix="ngày"
-            styles={{ value: { fontSize: 24, fontWeight: 700, color: COLORS.accent } }}
+            valueStyle={{ fontSize: 24, fontWeight: 700, color: COLORS.accent }}
           />
           <Text type="secondary" style={{ fontSize: 12 }}>
             Chuỗi hiện tại
@@ -47,7 +47,7 @@ export function StreakWidget({ currentStreak, longestStreak }: StreakWidgetProps
           <Statistic
             value={longestStreak}
             suffix="ngày"
-            styles={{ value: { fontSize: 24, fontWeight: 700, color: COLORS.primary } }}
+            valueStyle={{ fontSize: 24, fontWeight: 700, color: COLORS.primary }}
           />
           <Text type="secondary" style={{ fontSize: 12 }}>
             Chuỗi dài nhất
