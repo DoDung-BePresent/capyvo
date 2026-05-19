@@ -1,7 +1,8 @@
 import { Router } from 'express'
-import { QuestionController, upload, uploadAudio } from '@/controllers/question.controller'
+import { QuestionController } from '@/controllers/question.controller'
 import { authenticate, requireRole } from '@/middlewares/authenticate'
 import { asyncHandler } from '@/utils/async-handler'
+import { uploadImage, uploadAudio } from '@/middlewares/upload'
 
 const router = Router()
 const ctrl = new QuestionController()
@@ -27,7 +28,7 @@ router.patch('/:id', asyncHandler(ctrl.updateQuestion.bind(ctrl)))
 router.patch('/:id/status', asyncHandler(ctrl.updateQuestionStatus.bind(ctrl)))
 router.patch('/set/:setId', asyncHandler(ctrl.updateQuestionSet.bind(ctrl)))
 router.patch('/bulk/status', asyncHandler(ctrl.bulkUpdateQuestionStatus.bind(ctrl)))
-router.post('/upload/image', upload.single('image'), asyncHandler(ctrl.uploadImage.bind(ctrl)))
+router.post('/upload/image', uploadImage.single('image'), asyncHandler(ctrl.uploadImage.bind(ctrl)))
 router.post('/upload/audio', uploadAudio.single('audio'), asyncHandler(ctrl.uploadAudio.bind(ctrl)))
 router.post('/analyze-image', asyncHandler(ctrl.analyzeImage.bind(ctrl)))
 router.post('/part/1', asyncHandler(ctrl.createPart1.bind(ctrl)))

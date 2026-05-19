@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import crypto from 'crypto'
 import supabaseAdmin from '@/lib/supabase'
 import prisma from '@/lib/prisma'
 import { ForbiddenError } from '@/errors/app-error'
@@ -341,7 +342,7 @@ export class ResponseService {
     mimeType: string,
   ): Promise<{ audioUrl: string; responseId: string }> {
     const ext = mimeType.includes('ogg') ? 'ogg' : mimeType.includes('mp4') ? 'mp4' : 'webm'
-    const filename = `${Date.now()}-${questionId}.${ext}`
+    const filename = `${Date.now()}-${crypto.randomUUID()}.${ext}`
     const storagePath = `responses/${filename}`
 
     const { error } = await supabaseAdmin.storage

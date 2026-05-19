@@ -7,13 +7,13 @@ ffmpeg.setFfmpegPath(ffmpegInstaller.path)
 
 // ─── Image ────────────────────────────────────────────────────────────────────
 
-/** Resize to fit within 1920×1920, convert to WebP @85. Returns new buffer + mime. */
+/** Resize to fit within 1200×1200, convert to WebP @80. Returns new buffer + mime. */
 export async function optimizeImage(
   buffer: Buffer,
 ): Promise<{ data: Buffer; contentType: string; ext: string }> {
   const data = await sharp(buffer)
-    .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: 85 })
+    .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: 80 })
     .toBuffer()
   return { data, contentType: 'image/webp', ext: 'webp' }
 }
@@ -35,7 +35,7 @@ const MIME_TO_FORMAT: Record<string, string> = {
 }
 
 /**
- * Re-encode to MP3 128kbps mono — good quality for speech, ~1 MB/min.
+ * Re-encode to MP3 64kbps mono — optimized for speech, ~0.5 MB/min.
  * Already-MP3 files are still re-encoded to normalise bitrate.
  */
 export function compressAudio(buffer: Buffer, mimeType: string): Promise<Buffer> {
@@ -59,7 +59,7 @@ export function compressAudio(buffer: Buffer, mimeType: string): Promise<Buffer>
       .inputFormat(inputFormat)
       .noVideo()
       .audioCodec('libmp3lame')
-      .audioBitrate('128k')
+      .audioBitrate('64k')
       .audioChannels(1)
       .audioFrequency(44100)
       .format('mp3')

@@ -1,33 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
-import multer from 'multer'
 import { QuestionService } from '@/services/question.service'
 import { NotFoundError } from '@/errors/app-error'
-
-// Multer — store in memory, max 5MB for image uploads
-export const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith('image/')) {
-      cb(new Error('Only image files are allowed'))
-      return
-    }
-    cb(null, true)
-  },
-})
-
-// Multer — audio uploads, max 20MB
-export const uploadAudio = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith('audio/')) {
-      cb(new Error('Only audio files are allowed'))
-      return
-    }
-    cb(null, true)
-  },
-})
 
 export class QuestionController {
   private service = new QuestionService()

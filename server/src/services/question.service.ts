@@ -1,5 +1,6 @@
 import OpenAI from 'openai'
 import { z } from 'zod'
+import crypto from 'crypto'
 import prisma from '@/lib/prisma'
 import supabaseAdmin from '@/lib/supabase'
 import { ValidationError } from '@/errors/app-error'
@@ -585,8 +586,7 @@ export class QuestionService {
 
   async uploadAudio(buffer: Buffer, originalName: string, mimeType: string): Promise<string> {
     const compressed = await compressAudio(buffer, mimeType)
-    const baseName = originalName.replace(/\.[^.]+$/, '').replace(/\s+/g, '_')
-    const filename = `${Date.now()}-${baseName}.mp3`
+    const filename = `${Date.now()}-${crypto.randomUUID()}.mp3`
     const storagePath = `questions/${filename}`
 
     const { error } = await supabaseAdmin.storage
@@ -602,10 +602,9 @@ export class QuestionService {
     return publicUrl
   }
 
-  async uploadImage(buffer: Buffer, originalName: string): Promise<string> {
+  async uploadImage(buffer: Buffer, _originalName: string): Promise<string> {
     const { data: optimized, contentType, ext } = await optimizeImage(buffer)
-    const baseName = originalName.replace(/\.[^.]+$/, '').replace(/\s+/g, '_')
-    const filename = `${Date.now()}-${baseName}.${ext}`
+    const filename = `${Date.now()}-${crypto.randomUUID()}.${ext}`
     const storagePath = `questions/${filename}`
 
     const { error } = await supabaseAdmin.storage

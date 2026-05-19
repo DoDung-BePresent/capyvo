@@ -1,20 +1,7 @@
 import type { Request, Response, NextFunction } from 'express'
-import multer from 'multer'
 import { ResponseService } from '@/services/response.service'
 import { ValidationError } from '@/errors/app-error'
 import type { AuthRequest } from '@/middlewares/authenticate'
-
-export const uploadAudio = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith('audio/')) {
-      cb(new Error('Only audio files are allowed'))
-      return
-    }
-    cb(null, true)
-  },
-})
 
 export class ResponseController {
   private service = new ResponseService()
