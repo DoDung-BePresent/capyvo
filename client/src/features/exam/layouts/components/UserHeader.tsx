@@ -67,7 +67,7 @@ export function UserHeader({ collapsed, onCollapse }: UserHeaderProps) {
         <Avatar
           shape="square"
           src={user?.avatarUrl}
-          icon={!user?.avatarUrl && <UserOutlined />}
+          icon={<UserOutlined />}
           style={{ cursor: 'pointer' }}
         />
       </Dropdown>

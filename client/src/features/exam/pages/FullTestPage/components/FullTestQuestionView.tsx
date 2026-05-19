@@ -121,14 +121,34 @@ export function FullTestQuestionView({
           return
         }
 
-        // Part 4: Show image + context text for 45s → play context audio once → play question audio → "begin preparing"
+        // Part 4: Play "begin preparing" → Show image for 45s → play context audio once → play question audio → "begin preparing" for response
         if (question.partNumber === 4) {
           // First question in Part 4: Give 45s to read context
           if (!skipContextAudio) {
+            // Play "begin preparing now" sound BEFORE 45s reading time
+            if (beginPreparingRef.current) {
+              await beginPreparingRef.current.play()
+              await new Promise<void>((resolve) => {
+                if (beginPreparingRef.current) {
+                  beginPreparingRef.current.onended = () => resolve()
+                }
+              })
+            }
+
             setIsInPart4Reading(true)
             // Start 45s countdown timer
             part4ReadingTimerRef.current = setInterval(() => {
-              setPart4ReadingTime((prev) => prev - 1)
+              setPart4ReadingTime((prev) => {
+                const next = prev - 1
+                // SAFEGUARD: Never go below 0
+                if (next <= 0) {
+                  if (part4ReadingTimerRef.current) {
+                    clearInterval(part4ReadingTimerRef.current)
+                  }
+                  return 0
+                }
+                return next
+              })
             }, 1000)
 
             // Wait 45 seconds for reading
@@ -302,6 +322,8 @@ export function FullTestQuestionView({
     prepTimerRef.current = setInterval(() => {
       setPrepTimeLeft((prev) => {
         const next = prev - 1
+
+        // SAFEGUARD: Never go below 0
         if (next <= 0) {
           // Timer reached 0, trigger recording start
           if (prepTimerRef.current) clearInterval(prepTimerRef.current)
@@ -309,7 +331,9 @@ export function FullTestQuestionView({
             setCanStartTimer(false)
             startRecording()
           }, 0)
+          return 0 // Force to 0, never negative
         }
+
         return next
       })
     }, 1000)
@@ -326,13 +350,17 @@ export function FullTestQuestionView({
     recordTimerRef.current = setInterval(() => {
       setRecordTimeLeft((prev) => {
         const next = prev - 1
+
+        // SAFEGUARD: Never go below 0
         if (next <= 0) {
           // Timer reached 0, stop recording
           if (recordTimerRef.current) clearInterval(recordTimerRef.current)
           setTimeout(() => {
             stopRecording()
           }, 0)
+          return 0 // Force to 0, never negative
         }
+
         return next
       })
     }, 1000)
@@ -399,26 +427,26 @@ export function FullTestQuestionView({
             </Flex>
           )}
 
-          {/* Context Text - For Part 3 when showContext, and Part 4 during reading phase */}
-          {((question.partNumber === 3 && showContext) ||
-            (question.partNumber === 4 && isInPart4Reading)) &&
-            question.contextText && (
-              <Paragraph
-                style={{
-                  fontSize: 16,
-                  lineHeight: 1.8,
-                  textAlign: 'justify',
-                }}
-              >
-                {question.contextText}
-              </Paragraph>
-            )}
+          {/* Context Text - For Part 3 ONLY when showContext */}
+          {question.partNumber === 3 && showContext && question.contextText && (
+            <Paragraph
+              style={{
+                fontSize: 16,
+                lineHeight: 1.8,
+                textAlign: 'justify',
+              }}
+            >
+              {question.contextText}
+            </Paragraph>
+          )}
 
           {/* Question Text - Show for Part 1, 2, 5, and Part 3 when showQuestion is true */}
-          {(question.partNumber === 1 ||
-            question.partNumber === 2 ||
-            question.partNumber === 5 ||
-            (question.partNumber === 3 && showQuestion)) &&
+          {/* Part 4: NEVER show question text (audio only) */}
+          {question.partNumber !== 4 &&
+            (question.partNumber === 1 ||
+              question.partNumber === 2 ||
+              question.partNumber === 5 ||
+              (question.partNumber === 3 && showQuestion)) &&
             (question.contentText || question.questionText) && (
               <Paragraph style={{ fontSize: 16, lineHeight: 1.8, textAlign: 'justify' }}>
                 {question.contentText || question.questionText}

@@ -1,4 +1,5 @@
 import winston from 'winston'
+import { env, isProduction } from '@/config/env'
 
 const { combine, timestamp, colorize, printf, json } = winston.format
 
@@ -14,11 +15,11 @@ const devFormat = combine(
 const prodFormat = combine(timestamp(), json())
 
 const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL ?? 'info',
-  format: process.env.NODE_ENV === 'production' ? prodFormat : devFormat,
+  level: env.LOG_LEVEL,
+  format: isProduction ? prodFormat : devFormat,
   transports: [
     new winston.transports.Console(),
-    ...(process.env.NODE_ENV === 'production'
+    ...(isProduction
       ? [
           new winston.transports.File({
             filename: 'logs/error.log',

@@ -1,4 +1,4 @@
-import { Card, Typography, Flex } from 'antd'
+import { Card, Typography, Flex, Table } from 'antd'
 
 /**
  * Utils
@@ -31,6 +31,72 @@ interface TestIntroViewProps {
   onStart: () => void
 }
 
+interface TestStructureData {
+  key: string
+  question: string
+  task: string
+  criteria: string[]
+}
+
+const columns = [
+  {
+    title: 'Question',
+    dataIndex: 'question',
+    key: 'question',
+    width: 100,
+  },
+  {
+    title: 'Task',
+    dataIndex: 'task',
+    key: 'task',
+  },
+  {
+    title: 'Evaluation Criteria',
+    dataIndex: 'criteria',
+    key: 'criteria',
+    render: (criteria: string[]) => (
+      <div>
+        {criteria.map((item, index) => (
+          <div key={index}>• {item}</div>
+        ))}
+      </div>
+    ),
+  },
+]
+
+const dataSource: TestStructureData[] = [
+  {
+    key: '1',
+    question: '1-2',
+    task: 'Read a text aloud',
+    criteria: ['pronunciation', 'intonation and stress'],
+  },
+  {
+    key: '2',
+    question: '3-4',
+    task: 'Describe a picture',
+    criteria: ['all of the above, plus', 'grammar', 'vocabulary', 'cohesion'],
+  },
+  {
+    key: '3',
+    question: '5-7',
+    task: 'Respond to questions',
+    criteria: ['all of the above, plus', 'relevance of content', 'completeness of content'],
+  },
+  {
+    key: '4',
+    question: '8-10',
+    task: 'Respond to questions using information provided',
+    criteria: ['all of the above'],
+  },
+  {
+    key: '5',
+    question: '11',
+    task: 'Express an opinion',
+    criteria: ['all of the above'],
+  },
+]
+
 export function TestIntroView({ onStart }: TestIntroViewProps) {
   return (
     <Container>
@@ -44,65 +110,13 @@ export function TestIntroView({ onStart }: TestIntroViewProps) {
             {TEST_INTRO_TEXT}
           </Paragraph>
 
-          <div
-            style={{
-              backgroundColor: '#f5f5f5',
-              padding: 16,
-              borderRadius: 8,
-              border: '1px solid #d9d9d9',
-            }}
-          >
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #d9d9d9' }}>
-                  <th style={{ padding: '12px 8px', textAlign: 'left' }}>Question</th>
-                  <th style={{ padding: '12px 8px', textAlign: 'left' }}>Task</th>
-                  <th style={{ padding: '12px 8px', textAlign: 'left' }}>Evaluation Criteria</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style={{ borderBottom: '1px solid #e8e8e8' }}>
-                  <td style={{ padding: '12px 8px' }}>1-2</td>
-                  <td style={{ padding: '12px 8px' }}>Read a text aloud</td>
-                  <td style={{ padding: '12px 8px' }}>
-                    • pronunciation
-                    <br />• intonation and stress
-                  </td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid #e8e8e8' }}>
-                  <td style={{ padding: '12px 8px' }}>3-4</td>
-                  <td style={{ padding: '12px 8px' }}>Describe a picture</td>
-                  <td style={{ padding: '12px 8px' }}>
-                    all of the above, plus
-                    <br />• grammar
-                    <br />• vocabulary
-                    <br />• cohesion
-                  </td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid #e8e8e8' }}>
-                  <td style={{ padding: '12px 8px' }}>5-7</td>
-                  <td style={{ padding: '12px 8px' }}>Respond to questions</td>
-                  <td style={{ padding: '12px 8px' }}>
-                    all of the above, plus
-                    <br />• relevance of content
-                    <br />• completeness of content
-                  </td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid #e8e8e8' }}>
-                  <td style={{ padding: '12px 8px' }}>8-10</td>
-                  <td style={{ padding: '12px 8px' }}>
-                    Respond to questions using information provided
-                  </td>
-                  <td style={{ padding: '12px 8px' }}>all of the above</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '12px 8px' }}>11</td>
-                  <td style={{ padding: '12px 8px' }}>Express an opinion</td>
-                  <td style={{ padding: '12px 8px' }}>all of the above</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <Table
+            dataSource={dataSource}
+            columns={columns}
+            pagination={false}
+            size="small"
+            bordered
+          />
         </Flex>
       </ContentCard>
 

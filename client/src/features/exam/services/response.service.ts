@@ -41,16 +41,38 @@ export const responseService = {
   transcribeAndAnalyze: async (
     responseId: string,
     partNumber: number,
-  ): Promise<{
-    transcript: string
-    analysis: AnalysisResult
-  }> => {
-    const { data } = await axiosInstance.post<
-      ApiResponse<{
+    useQueue = false,
+  ): Promise<
+    | {
         transcript: string
         analysis: AnalysisResult
-      }>
-    >(`/responses/${responseId}/transcribe-analyze`, { partNumber })
+      }
+    | { jobId: string; status: 'queued' }
+  > => {
+    const { data } = await axiosInstance.post<
+      ApiResponse<
+        | {
+            transcript: string
+            analysis: AnalysisResult
+          }
+        | { jobId: string; status: 'queued' }
+      >
+    >(`/responses/${responseId}/transcribe-analyze`, { partNumber, useQueue })
+    return data.data
+  },
+
+  getQueuedResult: async (
+    responseId: string,
+  ): Promise<
+    | { status: 'completed'; transcript: string; analysis: AnalysisResult }
+    | { status: 'processing' | 'failed'; error?: string }
+  > => {
+    const { data } = await axiosInstance.get<
+      ApiResponse<
+        | { status: 'completed'; transcript: string; analysis: AnalysisResult }
+        | { status: 'processing' | 'failed'; error?: string }
+      >
+    >(`/responses/${responseId}/result`)
     return data.data
   },
 

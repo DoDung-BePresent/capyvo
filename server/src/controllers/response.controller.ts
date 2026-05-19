@@ -55,9 +55,25 @@ export class ResponseController {
   async transcribeAndAnalyze(req: Request, res: Response, _next: NextFunction): Promise<void> {
     const id = req.params['id'] as string
     const userId = (req as AuthRequest).userId
-    const { partNumber } = req.body
+    const { partNumber, useQueue } = req.body
     if (!partNumber) throw new ValidationError('partNumber is required')
+
+    // If useQueue=true, use async queue processing (for Full Test mode)
+    if (useQueue === true) {
+      const result = await this.service.transcribeAndAnalyzeAsync(id, userId, partNumber)
+      res.json({ success: true, data: result })
+      return
+    }
+
+    // Otherwise, process synchronously (for Practice mode)
     const result = await this.service.transcribeAndAnalyze(id, userId, partNumber)
+    res.json({ success: true, data: result })
+  }
+
+  async getQueuedResult(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const id = req.params['id'] as string
+    const userId = (req as AuthRequest).userId
+    const result = await this.service.getQueuedResult(id, userId)
     res.json({ success: true, data: result })
   }
 

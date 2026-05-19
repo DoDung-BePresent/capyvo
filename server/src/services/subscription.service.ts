@@ -1,6 +1,8 @@
 import { SubscriptionPlanId, SubscriptionStatus } from '@prisma/client'
 import { addDays } from 'date-fns'
 import prisma from '@/lib/prisma'
+import type { Prisma } from '@prisma/client'
+import logger from '@/lib/logger'
 
 export class SubscriptionService {
   /**
@@ -58,13 +60,31 @@ export class SubscriptionService {
    * Nếu upgrade từ TRIAL → PREMIUM: Bắt đầu từ hôm nay (không stack)
    */
   static async createSubscription(userId: string, planId: SubscriptionPlanId, paymentId?: string) {
-    const plan = await this.getPlanById(planId)
+    return prisma.$transaction(async (tx) => {
+      return this.createSubscriptionInTransaction(tx, userId, planId, paymentId)
+    })
+  }
+
+  /**
+   * Tạo subscription trong transaction (để tránh race condition)
+   * Được gọi từ payment webhook hoặc createSubscription
+   */
+  static async createSubscriptionInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    planId: SubscriptionPlanId,
+    paymentId?: string,
+  ) {
+    const plan = await tx.subscriptionPlan.findUnique({
+      where: { id: planId },
+    })
+
     if (!plan) {
       throw new Error('Plan not found')
     }
 
-    // Get current active subscription (latest endDate)
-    const existingSubscription = await prisma.subscription.findFirst({
+    // Get current active subscription (latest endDate) with FOR UPDATE lock
+    const existingSubscription = await tx.subscription.findFirst({
       where: {
         userId,
         status: SubscriptionStatus.ACTIVE,
@@ -87,19 +107,25 @@ export class SubscriptionService {
       // Same plan - extend from current end date (STACKING)
       startDate = existingSubscription.endDate
       endDate = addDays(startDate, plan.durationDays)
-      console.log(
-        `Stacking ${planId} subscription for user ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`,
-      )
+      logger.info('Stacking subscription', {
+        userId,
+        planId,
+        from: startDate.toISOString(),
+        to: endDate.toISOString(),
+      })
     } else {
       // Different plan or no active subscription - start from today (NO STACKING)
       startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()) // Normalize to 00:00:00
       endDate = addDays(startDate, plan.durationDays)
-      console.log(
-        `Creating new ${planId} subscription for user ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`,
-      )
+      logger.info('Creating new subscription', {
+        userId,
+        planId,
+        from: startDate.toISOString(),
+        to: endDate.toISOString(),
+      })
     }
 
-    const subscription = await prisma.subscription.create({
+    const subscription = await tx.subscription.create({
       data: {
         userId,
         planId,
@@ -113,7 +139,7 @@ export class SubscriptionService {
     })
 
     // Update user premium status
-    await prisma.user.update({
+    await tx.user.update({
       where: { id: userId },
       data: {
         isPremium: true,
@@ -123,11 +149,18 @@ export class SubscriptionService {
 
     // Link payment if provided
     if (paymentId) {
-      await prisma.payment.update({
+      await tx.payment.update({
         where: { id: paymentId },
         data: { subscriptionId: subscription.id },
       })
     }
+
+    logger.info('Subscription created successfully', {
+      subscriptionId: subscription.id,
+      userId,
+      planId,
+      endDate: endDate.toISOString(),
+    })
 
     return subscription
   }

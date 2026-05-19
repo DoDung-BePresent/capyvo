@@ -94,7 +94,13 @@ export type UpdateQuestionDto = z.infer<typeof UpdateQuestionSchema>
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+import { env } from '@/config/env'
+
+const openai = new OpenAI({
+  apiKey: env.OPENAI_API_KEY,
+  timeout: 30000, // 30 seconds timeout
+  maxRetries: 2, // Retry up to 2 times on failure
+})
 
 /**
  * Validate question data

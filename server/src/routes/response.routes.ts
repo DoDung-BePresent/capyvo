@@ -31,6 +31,7 @@ router.post(
   transcribeAndAnalyzeRateLimit,
   asyncHandler(ctrl.transcribeAndAnalyze.bind(ctrl)),
 )
+router.get('/:id/result', authenticate, asyncHandler(ctrl.getQueuedResult.bind(ctrl)))
 router.get(
   '/question/:questionId/history',
   authenticate,

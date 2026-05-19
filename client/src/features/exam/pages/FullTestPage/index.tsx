@@ -25,7 +25,7 @@ import { queryKeys } from '@/lib/query-keys'
 /**
  * Subscription hooks
  */
-import { useIsPremium } from '@/features/auth/hooks/useSubscription'
+import { useCurrentSubscription } from '@/features/auth/hooks/useSubscription'
 
 /**
  * Components
@@ -66,7 +66,8 @@ const PART_NAMES: Record<number, string> = {
 export default function FullTestPage() {
   const { examSetId } = useParams<{ examSetId: string }>()
   const navigate = useNavigate()
-  const isPremium = useIsPremium()
+  const { data: subscriptionData, isLoading: isLoadingSubscription } = useCurrentSubscription()
+  const isPremium = subscriptionData?.isPremium ?? false
 
   const [testState, setTestState] = useState<TestState>({
     phase: 'intro',
@@ -83,10 +84,14 @@ export default function FullTestPage() {
   >([])
   const [contextPlayedForPart, setContextPlayedForPart] = useState<Record<number, boolean>>({})
   const [selectedHistorySessionId, setSelectedHistorySessionId] = useState<string | null>(null)
+  const [pendingResponses, setPendingResponses] = useState<Set<string>>(new Set())
 
-  // Check if user is premium - block FREE users
+  // Check if user is premium - block FREE users (only after subscription data is loaded)
   useEffect(() => {
-    if (isPremium === false) {
+    // Don't check until subscription data is loaded
+    if (isLoadingSubscription) return
+
+    if (!isPremium) {
       Modal.warning({
         title: (
           <div className="flex items-center space-x-2">
@@ -113,7 +118,7 @@ export default function FullTestPage() {
       // Redirect after showing modal
       setTimeout(() => navigate('/exam'), 500)
     }
-  }, [isPremium, navigate])
+  }, [isPremium, isLoadingSubscription, navigate])
 
   // Load selected session detail when clicking history
   const { data: selectedSession, isLoading: isLoadingSession } = useQuery({
@@ -131,6 +136,53 @@ export default function FullTestPage() {
   const handleSelectHistorySession = (historySessionId: string) => {
     setSelectedHistorySessionId(historySessionId)
   }
+
+  // Poll for queued results when test is completed
+  useEffect(() => {
+    if (testState.phase !== 'completed' || pendingResponses.size === 0) return
+
+    const pollInterval = setInterval(async () => {
+      const responseIds = Array.from(pendingResponses)
+
+      for (const responseId of responseIds) {
+        try {
+          const result = await responseService.getQueuedResult(responseId)
+
+          if (result.status === 'completed') {
+            // Update allResults with completed result
+            setAllResults((prev) =>
+              prev.map((r) => {
+                // Find by matching responseId in testState.responses
+                const questionId = Array.from(testState.responses.entries()).find(
+                  ([_, rid]) => rid === responseId,
+                )?.[0]
+
+                if (r.questionId === questionId) {
+                  return {
+                    ...r,
+                    transcript: result.transcript,
+                    analysis: result.analysis,
+                  }
+                }
+                return r
+              }),
+            )
+
+            // Remove from pending
+            setPendingResponses((prev) => {
+              const next = new Set(prev)
+              next.delete(responseId)
+              return next
+            })
+          }
+        } catch (error) {
+          console.error('Failed to fetch queued result:', error)
+        }
+      }
+    }, 3000) // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval)
+  }, [testState.phase, testState.responses, pendingResponses])
 
   // Fetch all questions for the exam set
   const { data: examSet, isLoading } = useQuery({
@@ -177,15 +229,22 @@ export default function FullTestPage() {
     },
   })
 
-  // Transcribe and analyze mutation (PREMIUM only)
+  // Transcribe and analyze mutation (PREMIUM only) - USE QUEUE for full test
   const analyzeMutation = useMutation({
     mutationFn: async ({ responseId, partNumber }: { responseId: string; partNumber: number }) => {
       if (isPremium) {
-        return responseService.transcribeAndAnalyze(responseId, partNumber)
+        // Full test mode: Try to use queue (async), fallback to sync if queue unavailable
+        const result = await responseService.transcribeAndAnalyze(responseId, partNumber, true)
+        if ('jobId' in result) {
+          // Job queued successfully
+          return { transcript: '', analysis: null, queued: true }
+        }
+        // Fallback to sync (queue unavailable)
+        return { ...result, queued: false }
       } else {
         // FREE: transcribe only
         const transcript = await responseService.transcribe(responseId)
-        return { transcript, analysis: null }
+        return { transcript, analysis: null, queued: false }
       }
     },
   })
@@ -210,15 +269,28 @@ export default function FullTestPage() {
         partNumber: currentQuestion!.partNumber,
       })
 
-      // Store result for final display
-      setAllResults((prev) => [
-        ...prev,
-        {
-          transcript: result.transcript,
-          analysis: result.analysis,
-          questionId: currentQuestion!.id,
-        },
-      ])
+      // Store result for final display (even if queued, we'll fetch later)
+      if (!('queued' in result) || !result.queued) {
+        setAllResults((prev) => [
+          ...prev,
+          {
+            transcript: result.transcript,
+            analysis: result.analysis,
+            questionId: currentQuestion!.id,
+          },
+        ])
+      } else {
+        // Queued - store placeholder and track for polling
+        setAllResults((prev) => [
+          ...prev,
+          {
+            transcript: '',
+            analysis: null,
+            questionId: currentQuestion!.id,
+          },
+        ])
+        setPendingResponses((prev) => new Set(prev).add(responseId))
+      }
 
       // Move to next question or complete
       moveToNext()
@@ -320,7 +392,7 @@ export default function FullTestPage() {
     return (
       <PageContainer>
         <LeftPanel>
-          <PageHeader mini title="Thi thử Full Test" breadcrumbs={[{ label: 'Đang tải...' }]} />
+          <PageHeader mini title="Thi thử Full Test" />
           <LeftContent>
             <Flex align="center" justify="center" style={{ height: '100%' }}>
               <Spin size="large" />
@@ -583,9 +655,9 @@ export default function FullTestPage() {
                           audioUrl={undefined}
                           isLoading={false}
                           isPremium={isPremium}
+                          hideActions={true}
                           onReset={() => {
                             // No action needed - user is viewing completed test results
-                            // Could navigate back to exam list if needed
                           }}
                         />
                       </div>

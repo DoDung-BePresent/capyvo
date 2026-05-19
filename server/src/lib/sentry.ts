@@ -1,23 +1,21 @@
 import * as Sentry from '@sentry/node'
 import { nodeProfilingIntegration } from '@sentry/profiling-node'
+import { env, isProduction, isTest } from '@/config/env'
 
-const dsn = process.env['SENTRY_DSN']
-const environment = process.env['SENTRY_ENVIRONMENT'] || process.env['NODE_ENV'] || 'development'
-
-if (dsn) {
+if (env.SENTRY_DSN) {
   Sentry.init({
-    dsn,
-    environment,
+    dsn: env.SENTRY_DSN,
+    environment: env.NODE_ENV,
     integrations: [nodeProfilingIntegration()],
     // Performance Monitoring
-    tracesSampleRate: environment === 'production' ? 0.1 : 1.0, // 10% in prod, 100% in dev
+    tracesSampleRate: isProduction ? 0.1 : 1.0, // 10% in prod, 100% in dev
     // Profiling
-    profilesSampleRate: environment === 'production' ? 0.1 : 1.0,
+    profilesSampleRate: isProduction ? 0.1 : 1.0,
     // Don't send errors in test environment
-    enabled: environment !== 'test',
+    enabled: !isTest,
   })
 
-  console.log('✅ Sentry initialized:', environment)
+  console.log('✅ Sentry initialized:', env.NODE_ENV)
 } else {
   console.log('⚠️  Sentry DSN not found, error tracking disabled')
 }

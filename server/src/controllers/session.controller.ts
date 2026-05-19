@@ -1,7 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
 import type { AuthRequest } from '@/middlewares/authenticate'
 import { SessionService } from '@/services/session.service'
-import { ValidationError } from '@/errors/app-error'
 
 export class SessionController {
   private service = new SessionService()
@@ -10,9 +9,12 @@ export class SessionController {
     try {
       const userId = (req as AuthRequest).userId
       const { examSetId, partNumber } = req.body
-      if (!examSetId) throw new ValidationError('examSetId is required')
+
+      // examSetId is optional: null = practice mode, non-null = exam mode
+      const effectiveExamSetId = examSetId && examSetId.trim() !== '' ? examSetId : null
+
       const part = partNumber != null ? Number(partNumber) : null
-      const session = await this.service.createSession(userId, examSetId, part)
+      const session = await this.service.createSession(userId, effectiveExamSetId, part)
       res.status(201).json({ success: true, data: { sessionId: session.id } })
     } catch (error) {
       // Handle FREE user trying to practice full exam

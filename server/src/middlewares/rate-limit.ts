@@ -16,17 +16,6 @@ interface AuthenticatedRequest extends Request {
   }
 }
 
-// Helper to generate rate limit key (user-based only, no IP fallback)
-const generateKey = (req: Request): string => {
-  const user = (req as AuthenticatedRequest).user
-  if (user?.id) {
-    return `user:${user.id}`
-  }
-  // For unauthenticated requests, use a generic key
-  // This means all unauthenticated users share the same limit
-  return 'anonymous'
-}
-
 // Create Redis store only if Redis is available
 const createStore = (prefix: string) => {
   if (!redis) {
@@ -40,40 +29,44 @@ const createStore = (prefix: string) => {
   })
 }
 
-// Transcribe only: 10 requests per minute per user
+// Transcribe only: 10 requests per minute per user, 2 per minute for unauthenticated
 export const transcribeRateLimit = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 10,
+  max: (req) => {
+    // Authenticated users: 10 requests/min
+    // Unauthenticated: 2 requests/min (stricter)
+    return (req as AuthenticatedRequest).user ? 10 : 2
+  },
   message: 'Quá nhiều yêu cầu phiên âm. Vui lòng đợi 1 phút.',
   standardHeaders: true,
   legacyHeaders: false,
   store: createStore('rl:transcribe:'),
-  keyGenerator: generateKey,
-  skip: (req) => !(req as AuthenticatedRequest).user, // Skip rate limit for unauthenticated
+  // Use default key generator (handles IPv6 properly)
+  // Authenticated users are tracked by session, unauthenticated by IP
 })
 
-// Analyze only: 20 requests per minute per user
+// Analyze only: 20 requests per minute per user, 5 per minute for unauthenticated
 export const analyzeRateLimit = rateLimit({
   windowMs: 60 * 1000,
-  max: 20,
+  max: (req) => {
+    return (req as AuthenticatedRequest).user ? 20 : 5
+  },
   message: 'Quá nhiều yêu cầu phân tích. Vui lòng đợi 1 phút.',
   standardHeaders: true,
   legacyHeaders: false,
   store: createStore('rl:analyze:'),
-  keyGenerator: generateKey,
-  skip: (req) => !(req as AuthenticatedRequest).user,
 })
 
-// Transcribe + Analyze: 5 requests per minute per user (most expensive)
+// Transcribe + Analyze: 5 requests per minute per user, 1 per minute for unauthenticated (most expensive)
 export const transcribeAndAnalyzeRateLimit = rateLimit({
   windowMs: 60 * 1000,
-  max: 5,
+  max: (req) => {
+    return (req as AuthenticatedRequest).user ? 5 : 1
+  },
   message: 'Quá nhiều yêu cầu phiên âm và phân tích. Vui lòng đợi 1 phút.',
   standardHeaders: true,
   legacyHeaders: false,
   store: createStore('rl:transcribe-analyze:'),
-  keyGenerator: generateKey,
-  skip: (req) => !(req as AuthenticatedRequest).user,
 })
 
 // General API rate limit: 100 requests per minute per user
@@ -84,6 +77,16 @@ export const generalRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: createStore('rl:general:'),
-  keyGenerator: generateKey,
   skip: (req) => !(req as AuthenticatedRequest).user,
+})
+
+// Webhook rate limit: 100 requests per minute per IP (prevent DDoS)
+export const webhookRateLimit = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // Max 100 webhooks per minute per IP
+  message: 'Too many webhook requests. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: createStore('rl:webhook:'),
+  // Use default key generator (IP-based, handles IPv6 properly)
 })

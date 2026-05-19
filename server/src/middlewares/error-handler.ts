@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express'
 import { ZodError, type ZodIssue } from 'zod'
 import { AppError } from '@/errors/app-error'
+import { isProduction } from '@/config/env'
 import logger from '@/lib/logger'
 import * as Sentry from '@sentry/node'
 
@@ -64,6 +65,6 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
 
   res.status(500).json({
     success: false,
-    message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+    message: isProduction ? 'Internal server error' : err.message,
   })
 }

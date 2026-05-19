@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express'
 import supabaseAdmin from '@/lib/supabase'
 import { UnauthorizedError } from '@/errors/app-error'
+import logger from '@/lib/logger'
 
 export interface AuthRequest extends Request {
   userId: string
@@ -19,6 +20,11 @@ export async function authenticate(
   try {
     const authHeader = req.headers.authorization
     if (!authHeader?.startsWith('Bearer ')) {
+      logger.warn('Authentication failed: Missing authorization token', {
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+      })
       throw new UnauthorizedError('Missing authorization token')
     }
 
@@ -26,6 +32,12 @@ export async function authenticate(
     const { data, error } = await supabaseAdmin.auth.getUser(token)
 
     if (error || !data.user) {
+      logger.warn('Authentication failed: Invalid or expired token', {
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        error: error?.message,
+      })
       throw new UnauthorizedError('Invalid or expired token')
     }
 
@@ -51,6 +63,13 @@ export function requireRole(role: 'ADMIN') {
         select: { role: true },
       })
       if (!user || user.role !== role) {
+        logger.warn('Authorization failed: Insufficient permissions', {
+          userId: (req as AuthRequest).userId,
+          requiredRole: role,
+          userRole: user?.role,
+          path: req.path,
+          ip: req.ip,
+        })
         throw new UnauthorizedError(`Requires ${role} role`)
       }
       next()

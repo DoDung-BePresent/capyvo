@@ -1,20 +1,21 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+import { env, isDevelopment, isProduction } from '@/config/env'
 import logger from './logger'
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
 
 function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString: process.env['DATABASE_URL'] })
+  const adapter = new PrismaPg({ connectionString: env.DATABASE_URL })
   return new PrismaClient({
     adapter,
-    log: process.env.NODE_ENV === 'development' ? ['query', 'warn', 'error'] : ['error'],
+    log: isDevelopment ? ['query', 'warn', 'error'] : ['error'],
   })
 }
 
 const prisma = globalForPrisma.prisma ?? createPrismaClient()
 
-if (process.env.NODE_ENV !== 'production') {
+if (!isProduction) {
   globalForPrisma.prisma = prisma
 }
 
