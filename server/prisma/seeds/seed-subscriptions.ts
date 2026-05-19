@@ -29,8 +29,8 @@ async function seedSubscriptionPlans() {
       id: SubscriptionPlanId.PREMIUM,
       name: 'Premium',
       durationDays: 30,
-      price: 99000,
-      pricePerMonth: 99000,
+      price: 49000,
+      pricePerMonth: 49000,
       isActive: true,
     },
     {
