@@ -41,9 +41,20 @@ export function ExamCountdownWidget({ examDate, onExamDateChange }: ExamCountdow
     if (!isEditing) return
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
-        handleCancel()
+      const target = event.target as HTMLElement
+
+      // Check if click is inside card
+      if (cardRef.current && cardRef.current.contains(target)) {
+        return
       }
+
+      // Check if click is inside DatePicker dropdown (Ant Design portal)
+      if (target.closest('.ant-picker-dropdown')) {
+        return
+      }
+
+      // Click is outside both card and dropdown, cancel editing
+      handleCancel()
     }
 
     document.addEventListener('mousedown', handleClickOutside)
