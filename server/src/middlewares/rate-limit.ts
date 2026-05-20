@@ -29,13 +29,13 @@ const createStore = (prefix: string) => {
   })
 }
 
-// Transcribe only: 10 requests per minute per user, 2 per minute for unauthenticated
+// Transcribe only: 50 requests per minute per user, 10 per minute for unauthenticated
 export const transcribeRateLimit = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: (req) => {
     // Authenticated users: 10 requests/min
     // Unauthenticated: 2 requests/min (stricter)
-    return (req as AuthenticatedRequest).user ? 10 : 2
+    return (req as AuthenticatedRequest).user ? 50 : 10
   },
   message: 'Quá nhiều yêu cầu phiên âm. Vui lòng đợi 1 phút.',
   standardHeaders: true,
@@ -45,11 +45,11 @@ export const transcribeRateLimit = rateLimit({
   // Authenticated users are tracked by session, unauthenticated by IP
 })
 
-// Analyze only: 20 requests per minute per user, 5 per minute for unauthenticated
+// Analyze only: 50 requests per minute per user, 10 per minute for unauthenticated
 export const analyzeRateLimit = rateLimit({
   windowMs: 60 * 1000,
   max: (req) => {
-    return (req as AuthenticatedRequest).user ? 20 : 5
+    return (req as AuthenticatedRequest).user ? 50 : 10
   },
   message: 'Quá nhiều yêu cầu phân tích. Vui lòng đợi 1 phút.',
   standardHeaders: true,
@@ -57,11 +57,11 @@ export const analyzeRateLimit = rateLimit({
   store: createStore('rl:analyze:'),
 })
 
-// Transcribe + Analyze: 5 requests per minute per user, 1 per minute for unauthenticated (most expensive)
+// Transcribe + Analyze: 50 requests per minute per user, 10 per minute for unauthenticated (most expensive)
 export const transcribeAndAnalyzeRateLimit = rateLimit({
   windowMs: 60 * 1000,
   max: (req) => {
-    return (req as AuthenticatedRequest).user ? 5 : 1
+    return (req as AuthenticatedRequest).user ? 50 : 10
   },
   message: 'Quá nhiều yêu cầu phiên âm và phân tích. Vui lòng đợi 1 phút.',
   standardHeaders: true,
