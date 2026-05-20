@@ -142,7 +142,12 @@ export function ExamCountdownWidget({ examDate, onExamDateChange }: ExamCountdow
                 </Text>
                 <StyledButton
                   type="primary"
-                  size="small"
+                  size="large"
+                  style={{
+                    backgroundColor: COLORS.primary,
+                    borderColor: COLORS.primary,
+                  }}
+                  block
                   onClick={() => setIsEditing(true)}
                   shadowColor={hexToRgba(COLORS.accent, 0.6)}
                 >
