@@ -27,8 +27,8 @@ const PRICING_PLANS: PricingPlan[] = [
     id: 'PREMIUM',
     name: 'PREMIUM',
     duration: '30 NGÀY',
-    price: 99000,
-    pricePerMonth: 99,
+    price: 49000,
+    pricePerMonth: 49,
     description: 'Trải nghiệm đầy đủ với AI chấm điểm',
     features: [
       'Tất cả tính năng gói Miễn phí',
