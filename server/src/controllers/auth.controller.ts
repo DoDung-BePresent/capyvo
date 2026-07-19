@@ -20,6 +20,15 @@ export class AuthController {
     // Get trial status
     const trialStatus = await TrialService.getTrialStatus(authReq.userId)
 
+    // Profile data is authentication-dependent. It must never be served from a
+    // browser or proxy cache, otherwise Express can reply 304 without a body
+    // and the client will interpret the user as missing.
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+    })
+
     res.json({
       success: true,
       data: {

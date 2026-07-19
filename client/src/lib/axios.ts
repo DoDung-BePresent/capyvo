@@ -6,6 +6,10 @@ const axiosInstance = axios.create({
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
+    // API responses may include user-specific data. Avoid conditional cache
+    // requests that could produce a body-less 304 response.
+    'Cache-Control': 'no-cache',
+    Pragma: 'no-cache',
   },
 })
 
